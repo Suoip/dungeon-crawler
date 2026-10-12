@@ -1,0 +1,9 @@
+# OS clutter
+.DS_Store
+Thumbs.db
+
+# Editor settings
+.vscode/
+
+# In case we add npm tools later
+node_modules/
