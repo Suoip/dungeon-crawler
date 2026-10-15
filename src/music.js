@@ -99,7 +99,7 @@ export function startMusic(audioContext) {
   ctx = audioContext;
 
   output = ctx.createGain();
-  output.gain.value = 0.3;
+  output.gain.value = 0.09; // the music's overall volume (was 0.3)
   output.connect(ctx.destination);
 
   // Echo: a delayed copy of the sound, fed back into itself so each repeat
