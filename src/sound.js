@@ -10,7 +10,9 @@ import { startMusic, stopMusic } from "./music.js";
 // To design new ones, the ZzFX website has a sound designer:
 // https://killedbyapixel.github.io/ZzFX/
 const SOUNDS = {
-  step:     [0.25, 0.2, 90, 0, 0, 0.04, 4, 1, 0, 0, 0, 0, 0, 0.5],
+  // Half the volume of the original step, and an 8 ms fade-in so it doesn't
+  // start with a sharp click.
+  step:     [0.12, 0.2, 90, 0.008, 0, 0.04, 4, 1, 0, 0, 0, 0, 0, 0.5],
   climb:    [0.3, 0.2, 160, 0, 0, 0.04, 4, 1, 0, 0, 0, 0, 0, 0.3],
   door:     [0.5, 0.05, 120, 0.05, 0.25, 0.2, 2, 1, -1, 0, 0, 0, 0, 0, 25],
   fall:     [0.3, 0.1, 500, 0.15, 0.25, 0.1, 4, 1, -8, 0, 0, 0, 0, 1],
