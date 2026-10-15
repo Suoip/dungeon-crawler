@@ -23,7 +23,7 @@ const SOUNDS = {
   crumble:  [0.7, 0.1, 70, 0.05, 0.4, 0.5, 4, 2, 0, 0, 0, 0, 0, 2, 0, 0.2],
   spikes:   [0.5, 0.05, 1400, 0, 0.04, 0.15, 3, 1, 20, 0, 0, 0, 0, 0, 0, 0, 0.04],
   hit:      [0.6, 0.1, 220, 0, 0.05, 0.2, 2, 1, -12, 0, 0, 0, 0, 1],
-  lever:    [0.5, 0, 160, 0, 0.02, 0.08, 5, 0.3, 0, 0, -50, 0.03],
+  lever:    [0.0625, 0, 160, 0, 0.02, 0.08, 5, 0.3, 0, 0, -50, 0.03],
   poof:     [0.4, 0.05, 400, 0.02, 0.1, 0.3, 1, 1, 6, 0, 200, 0.05],
 };
 
@@ -35,7 +35,8 @@ const SOUNDS = {
 // Sounds not listed here play as they are. The values were picked by ear on
 // an equalizer test page.
 const EQ = {
-  step:    { lowpass: 670, shelf: -10, shelfFrom: 500 },
+  step:    { lowpass: 670, shelf: -2, shelfFrom: 500 },
+  climb:   { lowpass: 670, shelf: -2, shelfFrom: 500 },  // same as the footsteps
   door:    { lowpass: 1800, shelf: -13, shelfFrom: 1150 },
   fall:    { lowpass: 2000, shelf: -3, shelfFrom: 7000 },
   crack:   { lowpass: 1600, shelf: -10, shelfFrom: 2700 },
