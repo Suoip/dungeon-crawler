@@ -66,8 +66,8 @@ export async function fallIn(player) {
 }
 
 // The wrong answer: the floor cracks under him, crumbles into a spike pit, and
-// he drops in.
-export async function collapseFloor(floor, player) {
+// he drops in. `onSpikes` runs the moment the spikes hit him.
+export async function collapseFloor(floor, player, onSpikes = () => {}) {
   // A pit 4 tiles wide and 3 tall around where he landed. It's built under
   // the floor right away, but stays hidden until the floor tiles fall away.
   const landed = tileAt(LAND_X, LAND_Y);
@@ -121,6 +121,7 @@ export async function collapseFloor(floor, player) {
   player.use(color(255, 90, 90));
   shakeScreen(6);
   flashScreen([200, 30, 30]);
+  onSpikes();
 
   await sleep(0.5);
   await animate(0, 90, 0.25, (angle) => (player.angle = angle)); // tips over

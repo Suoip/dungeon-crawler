@@ -25,6 +25,16 @@ const SOUNDS = {
   hit:      [0.6, 0.1, 220, 0, 0.05, 0.2, 2, 1, -12, 0, 0, 0, 0, 1],
   lever:    [0.0625, 0, 160, 0, 0.02, 0.08, 5, 0.3, 0, 0, -50, 0.03],
   poof:     [0.4, 0.05, 400, 0.02, 0.1, 0.3, 1, 1, 6, 0, 200, 0.05],
+
+  // Combat
+  swing:    [0.2, 0.05, 520, 0.01, 0.02, 0.1, 1, 1, -20],
+  mobHit:   [0.35, 0.05, 180, 0, 0.02, 0.08, 0, 1, -6],
+  mobDie:   [0.35, 0.1, 300, 0, 0.05, 0.2, 1, 1, -10, 0, 0, 0, 0, 0.5],
+  spawn:    [0.3, 0.1, 60, 0.1, 0.2, 0.2, 0, 1, 2],
+  hurt:     [0.5, 0.1, 220, 0, 0.05, 0.2, 2, 1, -12, 0, 0, 0, 0, 1],
+  unlock:   [0.3, 0, 600, 0, 0.03, 0.15, 3, 1, 0, 0, -200, 0.04],
+  locked:   [0.15, 0.2, 400, 0, 0.02, 0.06, 3, 1, 0, 0, 0, 0, 0.03],
+  charge:   [0.4, 0.1, 90, 0.1, 0.3, 0.3, 2, 1, 3, 0, 0, 0, 0, 0.5],
 };
 
 // An equalizer (EQ) for some sounds: it changes their tone without changing
@@ -41,6 +51,11 @@ const EQ = {
   fall:    { lowpass: 2000, shelf: -3, shelfFrom: 7000 },
   crack:   { lowpass: 1600, shelf: -10, shelfFrom: 2700 },
   crumble: { lowpass: 1600, shelf: -10, shelfFrom: 2700 },
+  // New combat sounds made from noisy or buzzy waves start out softened too.
+  hurt:    { lowpass: 1800, shelf: -10, shelfFrom: 1200 },
+  unlock:  { lowpass: 2500, shelf: -6, shelfFrom: 1800 },
+  locked:  { lowpass: 2000, shelf: -6, shelfFrom: 1500 },
+  charge:  { lowpass: 1500, shelf: -8, shelfFrom: 1000 },
 };
 
 // Each sound's filters are built once, the first time it plays, and reused.

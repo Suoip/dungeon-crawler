@@ -30,7 +30,10 @@ function shuffle(list) {
 // A run is one attempt at the dungeon. Questions come in a new order every
 // run, and so do the answers behind the doors, so nobody can memorize
 // "the answer is always the left door".
-export function newRun(dungeon) {
+// `boss` is which boss waits in the last question room (picked in the
+// boss-select test room). Hearts carry over from room to room for the whole
+// run. The timer starts when the hero lands in the first room.
+export function newRun(dungeon, boss) {
   const rooms = shuffle(dungeon.rooms).map((room) => {
     const answers = shuffle([
       { text: room.correct, correct: true },
@@ -39,5 +42,16 @@ export function newRun(dungeon) {
     return { question: room.question, explanation: room.explanation, answers };
   });
 
-  return { dungeon, rooms, index: 0 };
+  return {
+    dungeon, rooms, index: 0, boss,
+    hearts: 3, maxHearts: 3,
+    startTime: null, endTime: null,
+  };
+}
+
+// How long the run has taken so far, as "1:23".
+export function runTime(run) {
+  if (run.startTime === null) return "0:00";
+  const seconds = Math.floor(((run.endTime ?? performance.now()) - run.startTime) / 1000);
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
 }
