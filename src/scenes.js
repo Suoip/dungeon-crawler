@@ -75,27 +75,18 @@ async function collapseFloor(floor, player) {
 
   await sleep(0.4); // a moment where it looks like he made it...
 
-  // Crack! The cracks spread outwards, and each cracked tile goes darker.
+  // Crack!
   shake(3);
   for (const { tile } of tiles) {
     tile.use(sprite(choose(["floor_2", "floor_4"]))); // the cracked floor tiles
-    tile.use(color(150, 140, 150));
-    await sleep(0.04);
+    await sleep(0.03);
   }
-
-  // The cracked tiles tremble for a moment before they give way.
-  const home = tiles.map(({ tile }) => tile.pos.clone());
-  const tremble = onUpdate(() => {
-    tiles.forEach(({ tile }, i) => (tile.pos = home[i].add(randi(-1, 2), randi(-1, 2))));
-  });
-  await sleep(0.45);
-  tremble.cancel();
+  await sleep(0.3);
 
   // Crumble: each tile sinks and fades, at slightly different times.
   shake(5);
   puffDust(LAND_X, LAND_Y, 14, 26);
-  tiles.forEach(({ tile }, i) => {
-    tile.pos = home[i];
+  for (const { tile } of tiles) {
     tile.use(opacity(1));
     const startY = tile.pos.y;
     wait(rand(0, 0.12), () => {
@@ -104,7 +95,7 @@ async function collapseFloor(floor, player) {
         tile.opacity = 1 - t;
       }, easings.easeInQuad).then(() => destroy(tile));
     });
-  });
+  }
   await sleep(0.2);
 
   // He drops into the pit, and the spikes shoot up.

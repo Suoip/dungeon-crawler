@@ -25,13 +25,10 @@ function wallTileAt(col, row) {
   return null; // plain floor, no wall
 }
 
-// Mostly plain floor, with a dirty or chipped tile now and then for variety.
-// The two cracked tiles (floor_2 and floor_4) are left out on purpose: they
-// only appear when the floor is about to give way, so a crack always means
-// danger.
+// Mostly plain floor, with a cracked or dirty tile now and then for variety.
 function randomFloor() {
   return chance(0.85) ? "floor_1" : choose([
-    "floor_3", "floor_5", "floor_6", "floor_7", "floor_8",
+    "floor_2", "floor_3", "floor_4", "floor_5", "floor_6", "floor_7", "floor_8",
   ]);
 }
 
