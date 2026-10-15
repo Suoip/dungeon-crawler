@@ -27,9 +27,56 @@ const SOUNDS = {
   poof:     [0.4, 0.05, 400, 0.02, 0.1, 0.3, 1, 1, 6, 0, 200, 0.05],
 };
 
+// An equalizer (EQ) for some sounds: it changes their tone without changing
+// the sound itself. The noisy sounds had harsh high frequencies that scratch
+// the ear, so each of these goes through two of the browser's audio filters:
+//   a high-shelf: turns everything above `shelfFrom` Hz down by `shelf` dB
+//   a low-pass:   cuts everything above `lowpass` Hz
+// Sounds not listed here play as they are. The values were picked by ear on
+// an equalizer test page.
+const EQ = {
+  step:    { lowpass: 670, shelf: -10, shelfFrom: 500 },
+  door:    { lowpass: 1800, shelf: -13, shelfFrom: 1150 },
+  fall:    { lowpass: 2000, shelf: -3, shelfFrom: 7000 },
+  crack:   { lowpass: 1600, shelf: -10, shelfFrom: 2700 },
+  crumble: { lowpass: 1600, shelf: -10, shelfFrom: 2700 },
+};
+
+// Each sound's filters are built once, the first time it plays, and reused.
+const eqInputs = {};
+function eqInput(name) {
+  if (!eqInputs[name]) {
+    const { lowpass, shelf, shelfFrom } = EQ[name];
+    const shelfFilter = zzfxX.createBiquadFilter();
+    shelfFilter.type = "highshelf";
+    shelfFilter.frequency.value = shelfFrom;
+    shelfFilter.gain.value = shelf;
+
+    const lowpassFilter = zzfxX.createBiquadFilter();
+    lowpassFilter.type = "lowpass";
+    lowpassFilter.frequency.value = lowpass;
+    // The smoothest curve, with no boost at the cutoff, is a "Q" of 0.707.
+    // The browser measures a low-pass filter's Q in decibels, so that's
+    // 20 * log10(0.707) = -3.01 dB. (ZzFX's own filter uses Q 2, which adds a
+    // small peak at the cutoff.)
+    lowpassFilter.Q.value = -3.01;
+
+    shelfFilter.connect(lowpassFilter).connect(zzfxX.destination);
+    eqInputs[name] = shelfFilter;
+  }
+  return eqInputs[name];
+}
+
 export function playSound(name) {
   if (!getSetting("sound") || !SOUNDS[name]) return;
-  zzfx(...SOUNDS[name]);
+  const source = zzfx(...SOUNDS[name]);
+  if (EQ[name]) {
+    // zzfx() connects the sound straight to the speakers. It hasn't actually
+    // started yet (audio runs a moment later), so we can re-route it through
+    // its EQ first.
+    source.disconnect();
+    source.connect(eqInput(name));
+  }
 }
 
 // Browsers keep sound switched off until the player clicks, taps or presses a
