@@ -1,11 +1,14 @@
 import { PLAYER_SPEED } from "./config.js";
 import { puffDust } from "./effects.js";
+import { getSetting } from "./settings.js";
+import { playSound } from "./sound.js";
 
 const DUST_EVERY = 0.22; // seconds between dust puffs while running
 
+// The player, as whichever hero they picked in the Heroes room.
 export function addPlayer(x, y) {
   return add([
-    sprite("knight", { anim: "idle" }),
+    sprite(getSetting("hero"), { anim: "idle" }),
     pos(x, y),
     anchor("bot"), // pos is the point between his feet, not his top-left corner
     // Only his feet collide (10x6 px), not his whole 16x28 body. That's what
@@ -51,6 +54,7 @@ export function setupPlayerMovement(player) {
       dustTimer -= dt();
       if (dustTimer <= 0) {
         puffDust(player.pos.x, player.pos.y, 2, 5, 9); // z 9: behind him
+        playSound("step");
         dustTimer = DUST_EVERY;
       }
     } else if (player.getCurAnim().name !== "idle") {

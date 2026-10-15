@@ -1,4 +1,5 @@
 import { TILE, ROOM_COLS, TOP, LETTERS, LETTER_COLORS } from "./config.js";
+import { playSound } from "./sound.js";
 
 const DOOR_COLS = 4; // each door is 4 tiles wide: wall, door (2 tiles), wall
 
@@ -30,9 +31,15 @@ function doorColumns(count) {
   return columns;
 }
 
-// Adds `count` doors (2 to 4) on the top wall and returns one object per door.
-export function addDoors(count) {
-  return doorColumns(count).map((col, i) => {
+const LABEL_Y = 7;
+const LABEL_ROOM = 60; // px above each door for its label (a door is 64 px wide)
+
+// Adds 2 to 4 doors on the top wall and returns one object per door.
+// `labels` is what's written above each door: the quiz rooms use the letters
+// A-D in their colors; the title room uses words like "PLAY".
+//   { hidden: true } keeps the labels invisible until revealLabels().
+export function addDoors(labels, { hidden = false } = {}) {
+  return doorColumns(labels.length).map((col, i) => {
     const x = col * TILE;
     const doorX = x + TILE; // the door itself starts one tile in
 
@@ -50,13 +57,17 @@ export function addDoors(count) {
     const leaf = add([sprite("door_closed"), pos(doorX, TOP), z(3)]);
 
     const label = add([
-      text(LETTERS[i], { size: 8, font: "pixel" }),
-      pos(doorX + TILE, 7),
+      text(labels[i].text, { size: 8, font: "pixel" }),
+      pos(doorX + TILE, LABEL_Y),
       anchor("center"),
-      color(...LETTER_COLORS[i]),
+      color(...labels[i].color),
       scale(1),
-      opacity(0), // hidden until the knight lands safely (see revealLetters)
+      opacity(hidden ? 0 : 1),
     ]);
+    // How much the label can grow when highlighted without bumping into the
+    // next door's label: a lot for one letter, a little for a word.
+    const labelWidth = formatText({ text: labels[i].text, size: 8, font: "pixel" }).width;
+    const maxScale = Math.min(1.4, LABEL_ROOM / labelWidth);
 
     // An invisible strip of floor in front of the door. Standing on it means
     // "I'm at this door". It has an area but no body, so it never blocks you.
@@ -65,43 +76,51 @@ export function addDoors(count) {
       area({ shape: new Rect(vec2(0), 2 * TILE - 8, 14) }),
     ]);
 
-    return { index: i, letter: LETTERS[i], leaf, label, zone, centerX: doorX + TILE };
+    return { index: i, leaf, label, maxScale, zone, centerX: doorX + TILE };
   });
 }
 
-// Pops the letters in one after another, left to right.
-export function revealLetters(doors) {
+// The quiz rooms' labels: A, B, C, D in their colors.
+export const letterLabels = (count) =>
+  LETTERS.slice(0, count).map((letter, i) => ({ text: letter, color: LETTER_COLORS[i] }));
+
+// Pops the labels in one after another, left to right.
+export function revealLabels(doors) {
   doors.forEach((door, i) => {
     wait(i * 0.08, () => {
       door.label.opacity = 1;
+      playSound("letter");
       tween(2, 1, 0.25, (s) => (door.label.scale = vec2(s)), easings.easeOutBack);
     });
   });
 }
 
-// The door the player is standing at, or null.
-export function doorAt(player, doors) {
-  return doors.find((door) => player.isColliding(door.zone)) ?? null;
-}
-
-// Makes the active door's letter grow and bob so you can tell which one you'll
-// open. The others go back to normal.
-export function highlightDoor(doors, active) {
-  for (const door of doors) {
-    if (door === active) {
-      const pulse = 1.4 + 0.15 * Math.sin(time() * 8);
-      door.label.scale = vec2(pulse);
-      door.label.pos.y = 7 - Math.abs(Math.sin(time() * 4)) * 2;
-    } else {
-      door.label.scale = vec2(1);
-      door.label.pos.y = 7;
-    }
+// Makes a door's label grow and bob while it's the one you'd open, and puts
+// it back to normal when it isn't. Called every frame.
+export function highlightDoor(door, isActive) {
+  if (isActive) {
+    const grow = 1 + (door.maxScale - 1) * (0.8 + 0.2 * Math.sin(time() * 8));
+    door.label.scale = vec2(grow);
+    door.label.pos.y = LABEL_Y - Math.abs(Math.sin(time() * 4)) * 2;
+  } else {
+    door.label.scale = vec2(1);
+    door.label.pos.y = LABEL_Y;
   }
 }
 
-// Swings the door open, and its letter does a little hop.
+// Turns a door into something the player can use (see interact.js).
+export const doorInteraction = (door, prompt, use) => ({
+  zone: door.zone,
+  prompt,
+  use,
+  highlight: (isActive) => highlightDoor(door, isActive),
+});
+
+// Swings the door open, and its label does a little hop.
 export function openDoor(door) {
   door.leaf.use(sprite("door_open"));
-  tween(1.8, 1, 0.35, (s) => (door.label.scale = vec2(s)), easings.easeOutBack);
-  tween(0, 1, 0.35, (t) => (door.label.pos.y = 7 - 5 * Math.sin(t * Math.PI)));
+  playSound("door");
+  const hop = Math.min(1.8, door.maxScale + 0.3);
+  tween(hop, 1, 0.35, (s) => (door.label.scale = vec2(s)), easings.easeOutBack);
+  tween(0, 1, 0.35, (t) => (door.label.pos.y = LABEL_Y - 5 * Math.sin(t * Math.PI)));
 }

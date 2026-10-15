@@ -17,7 +17,7 @@ function el(tag, text, className) {
   return node;
 }
 
-function letterBadge(index) {
+export function letterBadge(index) {
   const badge = el("span", LETTERS[index], "letter");
   badge.style.color = rgb(LETTER_COLORS[index]);
   return badge;
@@ -76,7 +76,7 @@ export function showQuestion(run, room) {
 // We measure on an invisible copy of the panel, so the real one isn't touched.
 // Text wraps differently at different widths, so this runs again whenever the
 // window is resized.
-function measureTallestPanel(dungeon) {
+function measureTallestPanel(dungeon, menuPanels) {
   const panel = $("panel");
   const copy = panel.cloneNode(true);
   copy.removeAttribute("id"); // its styling comes from the "panel" class, so it still looks the same
@@ -105,12 +105,20 @@ function measureTallestPanel(dungeon) {
     });
   }
 
+  // And the menu rooms' panels (the credits list can be the tallest of all).
+  for (const content of menuPanels) {
+    fillMenu(copy, content());
+    measure();
+  }
+
   copy.remove();
   return tallest;
 }
 
-export function lockPanelHeight(dungeon) {
-  const lock = () => ($("panel").style.minHeight = `${measureTallestPanel(dungeon)}px`);
+// `menuPanels` are functions that return the content of each menu room's
+// panel, so those get measured too.
+export function lockPanelHeight(dungeon, menuPanels = []) {
+  const lock = () => ($("panel").style.minHeight = `${measureTallestPanel(dungeon, menuPanels)}px`);
   lock();
   window.addEventListener("resize", lock);
 }
@@ -121,25 +129,31 @@ export function showMessage(message) {
   $("answers").replaceChildren();
 }
 
-// Shows "Open door B" while the player stands at a door, or a hint otherwise.
-// The button works for touch screens; on a keyboard, E or Space does the same.
-export function setDoorPrompt(door, onOpen) {
-  const button = $("door-button");
-  const hint = $("door-hint");
+// True on phones and tablets (no mouse to hover with).
+export const isTouchScreen = () => window.matchMedia("(hover: none)").matches;
 
-  if (!door) {
+// The prompt row under the question. While the player stands at something
+// they can use (a door, a lever, a hero...), it shows a button like
+// "Open door B  [E / Space]"; otherwise it shows a hint. The button is for
+// mouse and touch; on a keyboard, E or Space does the same thing.
+// `content` is a list of text and elements, e.g. ["Open door ", letterBadge(1)].
+export function setPrompt(content, onUse, hint) {
+  const button = $("door-button");
+  const hintEl = $("door-hint");
+
+  if (!content) {
     button.hidden = true;
-    hint.hidden = false;
-    hint.textContent = "Walk up to a door to choose your answer.";
+    hintEl.hidden = false;
+    hintEl.textContent = hint;
     return;
   }
 
-  hint.hidden = true;
+  hintEl.hidden = true;
   button.hidden = false;
-  button.replaceChildren("Open door ", letterBadge(door.index), el("kbd", "E / Space"));
+  button.replaceChildren(...content, el("kbd", "E / Space"));
   button.onclick = () => {
     focusGame();
-    onOpen();
+    onUse();
   };
 }
 
@@ -148,18 +162,50 @@ export function hidePrompt() {
   $("door-hint").hidden = true;
 }
 
-function showOverlay(children, buttonText, onButton) {
+// Fills a panel for the menu rooms: a heading row, one line of text, and a
+// list of items (text or elements, laid out like the answers). Works on the
+// real panel or on the invisible copy lockPanelHeight() measures.
+function fillMenu(panelEl, { left = "", right = "", line, items = [] }) {
+  panelEl.querySelector("#dungeon-title").textContent = left;
+  panelEl.querySelector("#progress").textContent = right;
+  panelEl.querySelector("#question").replaceChildren(...[line].flat());
+  panelEl.querySelector("#answers").replaceChildren(...items.map((item) => {
+    const li = el("li");
+    li.append(...[item].flat());
+    return li;
+  }));
+}
+
+export const showMenuPanel = (content) => fillMenu($("panel"), content);
+
+// A link that opens in a new tab.
+export function link(text, href) {
+  const a = el("a", text);
+  a.href = href;
+  a.target = "_blank";
+  a.rel = "noopener";
+  return a;
+}
+
+// A card over the game with a title, some content and one or more buttons,
+// e.g. [{ text: "Try again", onClick }, { text: "Menu", onClick }].
+function showOverlay(children, buttons) {
   const overlay = $("overlay");
-  const button = el("button", buttonText, "big-button");
-  button.onclick = () => {
-    overlay.hidden = true;
-    focusGame();
-    onButton();
-  };
+  const row = el("div", undefined, "card-buttons");
+  const buttonEls = buttons.map(({ text, onClick }) => {
+    const button = el("button", text, "big-button");
+    button.onclick = () => {
+      overlay.hidden = true;
+      focusGame();
+      onClick();
+    };
+    return button;
+  });
+  row.append(...buttonEls);
   overlay.replaceChildren(el("div", undefined, "card"));
-  overlay.firstChild.append(...children, button);
+  overlay.firstChild.append(...children, row);
   overlay.hidden = false;
-  button.focus(); // so Enter or Space presses it right away
+  buttonEls[0].focus(); // so Enter or Space presses the first button right away
 }
 
 function answerLine(label, room, answer) {
@@ -169,7 +215,7 @@ function answerLine(label, room, answer) {
   return line;
 }
 
-export function showGameOver(run, room, chosen, onRetry) {
+export function showGameOver(run, room, chosen, { onRetry, onMenu }) {
   const correct = room.answers.find((answer) => answer.correct);
   showOverlay([
     el("h2", "You fell into a trap!"),
@@ -178,13 +224,13 @@ export function showGameOver(run, room, chosen, onRetry) {
     answerLine("Correct answer:", room, correct),
     el("p", room.explanation, "explanation"),
     el("p", `Rooms cleared: ${run.index}/${run.rooms.length}`, "score"),
-  ], "Try again", onRetry);
+  ], [{ text: "Try again", onClick: onRetry }, { text: "Menu", onClick: onMenu }]);
 }
 
-export function showVictory(run, onRetry) {
+export function showVictory(run, { onRetry, onMenu }) {
   showOverlay([
     el("h2", "Dungeon cleared!"),
     el("p", `You made it through all ${run.rooms.length} rooms of ${run.dungeon.title}.`),
     el("p", `Rooms cleared: ${run.rooms.length}/${run.rooms.length}`, "score"),
-  ], "Play again", onRetry);
+  ], [{ text: "Play again", onClick: onRetry }, { text: "Menu", onClick: onMenu }]);
 }
