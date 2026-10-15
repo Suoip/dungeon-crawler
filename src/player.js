@@ -3,7 +3,9 @@ import { puffDust } from "./effects.js";
 import { getSetting } from "./settings.js";
 import { playSound } from "./sound.js";
 
-const DUST_EVERY = 0.22; // seconds between dust puffs while running
+// In the run animation (frames 4-7 of each hero's strip), frame 4 is the one
+// where his foot is planted on the ground. That's when we play a step.
+const FOOT_DOWN_FRAME = 4;
 
 // The player, as whichever hero they picked in the Heroes room.
 export function addPlayer(x, y) {
@@ -30,7 +32,7 @@ export function addPlayer(x, y) {
 const held = (...keys) => keys.some((k) => isKeyDown(k));
 
 export function setupPlayerMovement(player) {
-  let dustTimer = 0;
+  let lastFrame = -1;
 
   // onUpdate runs every frame (about 60 times a second).
   player.onUpdate(() => {
@@ -49,16 +51,17 @@ export function setupPlayerMovement(player) {
       if (dir.x !== 0) player.flipX = dir.x < 0; // face the way he's walking
       if (player.getCurAnim().name !== "run") player.play("run");
 
-      // A small puff of dust at his feet every so often while running.
-      // dt() is the time since the last frame, so this counts down in seconds.
-      dustTimer -= dt();
-      if (dustTimer <= 0) {
+      // A footstep and a small puff of dust each time his foot lands, so the
+      // sound follows the animation instead of a fixed timer (once per stride).
+      if (player.frame === FOOT_DOWN_FRAME && lastFrame !== FOOT_DOWN_FRAME) {
         puffDust(player.pos.x, player.pos.y, 2, 5, 9); // z 9: behind him
         playSound("step");
-        dustTimer = DUST_EVERY;
       }
     } else if (player.getCurAnim().name !== "idle") {
       player.play("idle");
     }
+    // Remember the frame every update (also while standing), so the first
+    // step after starting to walk is never skipped.
+    lastFrame = player.frame;
   });
 }
