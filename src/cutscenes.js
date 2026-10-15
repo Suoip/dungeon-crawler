@@ -14,14 +14,17 @@ const FALL_SECONDS = 0.6;
 
 // Takes the controls away from the player for a cutscene. Without his body,
 // walls stop blocking him, so he can step into doorways and climb ladders.
+// (With it, the walls would push him out sideways, to the edge of the room.)
+//
+// Note: has() checks for a component; is() only checks tags.
 function takeControl(player) {
   player.frozen = true;
-  if (player.is("body")) player.unuse("body");
+  if (player.has("body")) player.unuse("body");
 }
 
 // Gives the controls back after a cutscene.
 export function giveControl(player) {
-  if (!player.is("body")) player.use(body());
+  if (!player.has("body")) player.use(body());
   player.frozen = false;
 }
 
