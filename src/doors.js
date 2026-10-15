@@ -36,10 +36,18 @@ export function addDoors(count) {
     const x = col * TILE;
     const doorX = x + TILE; // the door itself starts one tile in
 
-    add([sprite("door_frame_left"), pos(x, TOP)]);
-    add([sprite("door_frame_right"), pos(x + 3 * TILE, TOP)]);
-    add([sprite("door_frame_top"), pos(doorX, TOP - TILE)]);
-    const leaf = add([sprite("door_closed"), pos(doorX, TOP)]);
+    // Draw order (z), back to front:
+    //   0  the room's walls
+    //   1  darkness behind the door, seen once it opens
+    //   2  the knight while he walks into the doorway (see scenes.js)
+    //   3  the door and its frame, so they overlap him as he goes in
+    // The open door's middle is see-through, so without the darkness you'd see
+    // the brick wall that's drawn behind it.
+    add([rect(22, 24), pos(doorX + 7, TOP + 4), color(10, 8, 16), z(1)]);
+    add([sprite("door_frame_left"), pos(x, TOP), z(3)]);
+    add([sprite("door_frame_right"), pos(x + 3 * TILE, TOP), z(3)]);
+    add([sprite("door_frame_top"), pos(doorX, TOP - TILE), z(3)]);
+    const leaf = add([sprite("door_closed"), pos(doorX, TOP), z(3)]);
 
     const label = add([
       text(LETTERS[i], { size: 8, font: "pixel" }),
@@ -91,6 +99,9 @@ export function highlightDoor(doors, active) {
   }
 }
 
+// Swings the door open, and its letter does a little hop.
 export function openDoor(door) {
   door.leaf.use(sprite("door_open"));
+  tween(1.8, 1, 0.35, (s) => (door.label.scale = vec2(s)), easings.easeOutBack);
+  tween(0, 1, 0.35, (t) => (door.label.pos.y = 7 - 5 * Math.sin(t * Math.PI)));
 }

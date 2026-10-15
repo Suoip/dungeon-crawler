@@ -123,6 +123,15 @@ kbd {
   position: relative;
   flex: 1;
   min-height: 0; /* lets the game shrink when the panel grows */
+  overflow: hidden;
+  /* center the game canvas in whatever space is left */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#game canvas {
+  image-rendering: pixelated; /* scale up with hard pixel edges, no blur */
 }
 
 #overlay {
