@@ -35,7 +35,8 @@ const SOUNDS = {
 // Sounds not listed here play as they are. The values were picked by ear on
 // an equalizer test page.
 const EQ = {
-  step:    { lowpass: 670, shelf: -10, shelfFrom: 500 },
+  step:    { lowpass: 670, shelf: -2, shelfFrom: 500 },
+  climb:   { lowpass: 670, shelf: -2, shelfFrom: 500 },  // same as the footsteps
   door:    { lowpass: 1800, shelf: -13, shelfFrom: 1150 },
   fall:    { lowpass: 2000, shelf: -3, shelfFrom: 7000 },
   crack:   { lowpass: 1600, shelf: -10, shelfFrom: 2700 },
