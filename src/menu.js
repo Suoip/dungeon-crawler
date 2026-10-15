@@ -12,6 +12,8 @@ import { addFader, fadeIn, puffDust, shakeScreen } from "./effects.js";
 import { addLadder, addHatch, addLever, addKeycap, addShadowText } from "./props.js";
 import { playSound, setMusicPlaying } from "./sound.js";
 import { showMenuPanel, hidePrompt, link, isTouchScreen } from "./panel.js";
+import { setupAttack } from "./combat.js";
+import { BOSSES } from "./mobs.js";
 
 // The menu is a room too: its options are doors you walk through. Behind
 // HEROES, OPTIONS and CREDITS is a room one level down, with a ladder to
@@ -62,7 +64,13 @@ const creditsPanel = () => ({
   ],
 });
 
-export const MENU_PANELS = [titlePanel, heroesPanel, optionsPanel, creditsPanel];
+const bossesPanel = () => ({
+  left: "Choose a boss",
+  line: "Test room: pick which boss waits in the last room of the dungeon.",
+  items: BOSSES.map((boss) => [strong(boss.name), `: ${boss.blurb}`]),
+});
+
+export const MENU_PANELS = [titlePanel, heroesPanel, optionsPanel, creditsPanel, bossesPanel];
 
 // ---------------------------------------------------------------------------
 // The title room
@@ -70,7 +78,7 @@ export const MENU_PANELS = [titlePanel, heroesPanel, optionsPanel, creditsPanel]
 
 function registerTitle(dungeon) {
   const MENU = [
-    { label: "PLAY", prompt: "Start the game", scene: () => go("room", newRun(dungeon)) },
+    { label: "PLAY", prompt: "Start the game", scene: () => go("bosses") },
     { label: "HEROES", prompt: "Choose your hero", scene: () => go("heroes") },
     { label: "OPTIONS", prompt: "Change the options", scene: () => go("options") },
     { label: "CREDITS", prompt: "See the credits", scene: () => go("credits") },
@@ -86,19 +94,22 @@ function registerTitle(dungeon) {
     addShadowText("WHO WANTS TO BE A", 160, 60, 8, [240, 230, 210]);
     addShadowText("DUNGEON CRAWLER", 160, 76, 16, [255, 205, 70]);
 
-    addKeycap(96, 94, "W");
-    [82, 96, 110].forEach((x, i) => addKeycap(x, 109, "ASD"[i]));
-    addShadowText("MOVE", 96, 132, 8, [169, 155, 185]);
+    const LABEL = [169, 155, 185];
+    addKeycap(80, 94, "W");
+    [66, 80, 94].forEach((x, i) => addKeycap(x, 109, "ASD"[i]));
+    addShadowText("MOVE", 80, 132, 8, LABEL);
 
-    addKeycap(196, 109, "E");
-    addShadowText("/", 211, 116, 8, [169, 155, 185]);
-    addKeycap(238, 109, "SPACE");
-    addShadowText("OPEN DOOR", 222, 132, 8, [169, 155, 185]);
+    addKeycap(160, 109, "E");
+    addShadowText("USE", 160, 132, 8, LABEL);
+
+    addKeycap(240, 109, "SPACE");
+    addShadowText("ATTACK", 240, 132, 8, LABEL);
 
     const hatch = addHatch(9, 9);
     const start = besideHatch(hatch);
     const player = addPlayer(start.x, start.y);
     setupPlayerMovement(player);
+    setupAttack(player); // swing for practice; there's nothing to hit here
     const fader = addFader();
 
     hidePrompt();
@@ -128,14 +139,16 @@ function registerTitle(dungeon) {
 // ---------------------------------------------------------------------------
 
 // Every room below the title works the same way: the knight falls in, and a
-// ladder on the back wall leads back up. `setup` adds what's special about the
-// room and returns the extra things the player can use there.
-function registerSubRoom(name, panel, setup) {
+// ladder on the back wall leads back up. `setup(player, fader)` adds what's
+// special about the room and returns the extra things the player can use
+// there. The ladder is in the middle unless `ladderX` says otherwise.
+function registerSubRoom(name, panel, setup, { ladderX = LAND_X } = {}) {
   scene(name, () => {
     buildRoom();
-    const ladder = addLadder(LAND_X);
+    const ladder = addLadder(ladderX);
     const player = addPlayer(LAND_X, LAND_Y);
     setupPlayerMovement(player);
+    setupAttack(player); // swing for practice; there's nothing to hit here
     const fader = addFader();
 
     hidePrompt();
@@ -152,7 +165,7 @@ function registerSubRoom(name, panel, setup) {
     };
     const interactions = setupInteractions(
       player,
-      [climb, ...setup(player)],
+      [climb, ...setup(player, fader)],
       () => "Climb the ladder to go back up.",
     );
 
@@ -257,9 +270,29 @@ function setupCredits() {
   return [];
 }
 
+// A test room for trying out the bosses: three doors, each boss standing
+// under its own. Going through a door starts the dungeon with that boss
+// waiting in the last room.
+function setupBosses(player, fader, dungeon) {
+  const doors = addDoors(BOSSES.map((boss) => ({ text: boss.label, color: [230, 72, 46] })));
+  doors.forEach((door, i) => add([
+    sprite(BOSSES[i].id, { anim: "idle" }),
+    pos(door.centerX, 112),
+    anchor("bot"),
+  ]));
+
+  return doors.map((door, i) => doorInteraction(door, [`Fight the ${BOSSES[i].name}`], async () => {
+    await walkThroughDoor(player, door, fader);
+    go("room", newRun(dungeon, BOSSES[i].id));
+    return true; // he left the room
+  }));
+}
+
 export function registerMenuScenes(dungeon) {
   registerTitle(dungeon);
   registerSubRoom("heroes", heroesPanel, setupHeroes);
   registerSubRoom("options", optionsPanel, setupOptions);
   registerSubRoom("credits", creditsPanel, setupCredits);
+  // The ladder goes on the left here, because the middle of the wall has a door.
+  registerSubRoom("bosses", bossesPanel, (player, fader) => setupBosses(player, fader, dungeon), { ladderX: 28 });
 }

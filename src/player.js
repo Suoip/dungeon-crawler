@@ -24,7 +24,8 @@ export function addPlayer(x, y) {
     "player",
     // A plain object adds our own properties. While frozen, the keyboard does
     // nothing, so cutscenes (like walking through a door) can move him instead.
-    { frozen: false },
+    // `facing` is the direction he last walked in; his weapon swings that way.
+    { frozen: false, facing: vec2(1, 0) },
   ]);
 }
 
@@ -37,6 +38,7 @@ export function setupPlayerMovement(player) {
   // onUpdate runs every frame (about 60 times a second).
   player.onUpdate(() => {
     if (player.frozen) return;
+    player.z = 10 + player.pos.y / 1000; // lower on screen = drawn in front of mobs
 
     const dir = vec2(0, 0);
     if (held("a", "left")) dir.x -= 1;
@@ -48,6 +50,7 @@ export function setupPlayerMovement(player) {
       // unit() makes diagonal movement the same speed as straight movement.
       // Without it, moving diagonally would be about 41% faster.
       player.move(dir.unit().scale(PLAYER_SPEED));
+      player.facing = dir.unit();
       if (dir.x !== 0) player.flipX = dir.x < 0; // face the way he's walking
       if (player.getCurAnim().name !== "run") player.play("run");
 

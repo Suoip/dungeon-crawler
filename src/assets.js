@@ -6,6 +6,17 @@ import { heroSprites } from "./heroes.js";
 // assets/tileset/tile_list_v1.7.
 const tile = (x, y, width = TILE, height = TILE) => ({ x, y, width, height });
 
+// Monsters: 8 frames in a row, 4 idle then 4 run (like the heroes, minus the
+// hit frame). `w` and `h` are the size of one frame.
+const monster = (x, y, w, h) => ({
+  x, y, width: w * 8, height: h,
+  sliceX: 8,
+  anims: {
+    idle: { from: 0, to: 3, speed: 8, loop: true },
+    run: { from: 4, to: 7, speed: 10, loop: true },
+  },
+});
+
 export function loadAssets() {
   loadFont("pixel", "assets/fonts/press-start-2p-latin-400-normal.woff2", {
     filter: "nearest", // keep the pixel font sharp instead of blurry
@@ -15,6 +26,26 @@ export function loadAssets() {
     // Every hero has 9 frames side by side: 4 idle, 4 run, 1 hit.
     // sliceX cuts the strip into those 9 frames, and anims names the ranges.
     ...heroSprites(),
+
+    // Monsters and bosses.
+    tiny_zombie: monster(368, 16, 16, 16),
+    goblin: monster(368, 40, 16, 16),
+    orc_warrior: monster(368, 177, 16, 23),
+    big_demon: monster(16, 428, 32, 36),
+    ogre: monster(16, 380, 32, 36),
+    big_zombie: monster(16, 332, 32, 36),
+
+    // Weapons (they point straight up in the sprite sheet).
+    weapon_knight_sword: tile(339, 98, 10, 29),
+    weapon_knife: tile(293, 10, 6, 13),
+    weapon_red_magic_staff: tile(324, 129, 8, 30),
+    weapon_green_magic_staff: tile(340, 129, 8, 30),
+    weapon_axe: tile(341, 74, 9, 21),
+    weapon_spear: tile(309, 161, 6, 30),
+
+    // Hearts.
+    heart_full: tile(289, 370, 13, 12),
+    heart_empty: tile(321, 370, 13, 12),
 
     // Menu room props.
     floor_ladder: tile(48, 96),

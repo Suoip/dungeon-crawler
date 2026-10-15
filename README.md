@@ -11,9 +11,10 @@ A pixel-art quiz dungeon crawler that runs in the browser. Every room asks a que
 | Key | Action |
 |---|---|
 | <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> or arrow keys | Move |
-| <kbd>E</kbd> or <kbd>Space</kbd> | Open a door, pull a lever, climb a ladder, pick a hero |
+| <kbd>Space</kbd> | Attack |
+| <kbd>E</kbd> | Open a door, pull a lever, climb a ladder, pick a hero |
 
-The menu is a room too: walk through **PLAY** to start, or explore **HEROES**, **OPTIONS** and **CREDITS**. In the dungeon, stand at the door with your answer and open it. Your score is how deep you get.
+The menu is a room too: walk through **PLAY** to start, or explore **HEROES**, **OPTIONS** and **CREDITS**. In the dungeon, monsters rise from the floor and the doors stay chained until you've beaten them all. The question is shown from the start, so you can work out the answer while you fight. Then stand at the door with your answer and open it. You have 3 hearts for the whole run. Your score is how deep you get, and how fast.
 
 Touch controls aren't supported yet; it's best played with a keyboard.
 
@@ -22,7 +23,10 @@ Touch controls aren't supported yet; it's best played with a keyboard.
 - **Questions as doors:** each room shows a question with 2–4 answers, one door per answer, shuffled on every run.
 - **Suspense:** right and wrong doors look the same until you land in the next room. A safe landing shows "Correct!"; a wrong one cracks the floor into a spike pit.
 - **Learning from mistakes:** the game over card shows your answer, the correct one, and an explanation.
-- **10 playable heroes:** pick one in the Heroes room, and it's remembered.
+- **Combat:** monsters rise from the floor (zombies, then goblins, then orcs as you go deeper), and a boss waits in the last room. Each hit costs one of your 3 hearts for the whole run.
+- **Three bosses:** a demon that charges, an ogre that hits hard, and a big zombie that raises more zombies.
+- **10 playable heroes, each with their own weapon:** pick one in the Heroes room, and it's remembered.
+- **A run timer:** the faster you clear rooms, the better your time.
 - **Options as levers:** sound, music and screen shake, all remembered between visits.
 - **Sound and music made in code:** sound effects are generated with ZzFX, and the background music is a chiptune loop composed in code with the Web Audio API. There are no audio files.
 
@@ -52,6 +56,8 @@ src/
   scenes.js           the question rooms
   cutscenes.js        falling in, walking through doors, the floor collapse, ladders
   interact.js         using doors, levers, heroes and ladders
+  combat.js           swinging weapons, hearts, getting hurt
+  mobs.js             monster types, rising from the floor, chasing, boss moves
   doors.js, room.js, props.js, player.js, heroes.js   building the rooms and characters
   panel.js            the HTML panel and the game over / victory cards
   dungeon.js          loading a dungeon and shuffling a run

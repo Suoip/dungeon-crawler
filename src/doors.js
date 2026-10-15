@@ -108,6 +108,56 @@ export function highlightDoor(door, isActive) {
   }
 }
 
+// Two chains crossed over a door in an X, with a padlock in the middle. The
+// pack has no chains, so they're drawn from little squares: alternating light
+// and dark links along each diagonal. z 4 puts them in front of the door.
+export function chainDoor(door) {
+  const left = door.centerX - TILE;
+  const parts = [];
+  for (const [fromX, toX] of [[left + 3, left + 29], [left + 29, left + 3]]) {
+    for (let i = 0; i <= 12; i++) {
+      const t = i / 12;
+      const x = lerp(fromX, toX, t);
+      const y = lerp(TOP + 5, TOP + 30, t);
+      parts.push(add([rect(3, 3), pos(x - 1, y - 1), color(...(i % 2 ? [92, 88, 104] : [176, 172, 188])), opacity(1), z(4)]));
+    }
+  }
+  const lock = [
+    add([rect(6, 4), pos(door.centerX - 3, TOP + 12), color(130, 126, 140), opacity(1), z(4)]),   // shackle
+    add([rect(4, 3), pos(door.centerX - 2, TOP + 13), color(24, 20, 37), opacity(1), z(4)]),      // inside the shackle
+    add([rect(8, 7), pos(door.centerX - 4, TOP + 15), color(222, 168, 56), opacity(1), z(4)]),    // body
+    add([rect(2, 3), pos(door.centerX - 1, TOP + 17), color(90, 60, 20), opacity(1), z(4)]),      // keyhole
+  ];
+  door.locked = true;
+  door.chains = { parts, lock };
+}
+
+// The padlock pops open and the chains drop away. The door counts as open
+// straight away; `delay` only holds back the animation (so a row of doors
+// can unlock one after another).
+export function unchainDoor(door, delay = 0) {
+  if (!door.locked) return;
+  door.locked = false;
+  wait(delay, () => dropChains(door.chains));
+}
+
+function dropChains({ parts, lock }) {
+  for (const piece of lock) {
+    const start = piece.pos.clone();
+    tween(0, 1, 0.3, (t) => {
+      piece.pos = start.add(0, -6 * Math.sin(t * Math.PI) + 10 * t * t);
+      piece.opacity = 1 - t;
+    }).onEnd(() => destroy(piece));
+  }
+  for (const link of parts) {
+    const start = link.pos.clone();
+    wait(rand(0, 0.1), () => tween(0, 1, 0.35, (t) => {
+      link.pos = start.add(0, 12 * t * t);
+      link.opacity = 1 - t;
+    }, easings.easeInQuad).onEnd(() => destroy(link)));
+  }
+}
+
 // Turns a door into something the player can use (see interact.js).
 export const doorInteraction = (door, prompt, use) => ({
   zone: door.zone,

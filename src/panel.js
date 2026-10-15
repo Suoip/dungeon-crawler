@@ -1,4 +1,5 @@
 import { LETTERS, LETTER_COLORS } from "./config.js";
+import { runTime } from "./dungeon.js";
 
 // Everything outside the game canvas: the question panel above it, and the
 // game over / victory screens laid over it. This is plain HTML, not Kaplay.
@@ -29,9 +30,17 @@ function focusGame() {
   document.querySelector("#game canvas")?.focus();
 }
 
+// The top row: the dungeon's name, then "Depth 3/10 · 1:23" (depth and time).
+let shownDepth = 1;
 function setDepth(run, depth) {
+  shownDepth = Math.min(depth, run.rooms.length);
   $("dungeon-title").textContent = run.dungeon.title;
-  $("progress").textContent = `Depth ${Math.min(depth, run.rooms.length)}/${run.rooms.length}`;
+  tickTimer(run);
+}
+
+// Called a few times a second so the clock keeps moving.
+export function tickTimer(run) {
+  $("progress").textContent = `Depth ${shownDepth}/${run.rooms.length} · ${runTime(run)}`;
 }
 
 // These two fill in a panel's question line and answer list. They take the
@@ -134,8 +143,8 @@ export const isTouchScreen = () => window.matchMedia("(hover: none)").matches;
 
 // The prompt row under the question. While the player stands at something
 // they can use (a door, a lever, a hero...), it shows a button like
-// "Open door B  [E / Space]"; otherwise it shows a hint. The button is for
-// mouse and touch; on a keyboard, E or Space does the same thing.
+// "Open door B  [E]"; otherwise it shows a hint. The button is for
+// mouse and touch; on a keyboard, E does the same thing.
 // `content` is a list of text and elements, e.g. ["Open door ", letterBadge(1)].
 export function setPrompt(content, onUse, hint) {
   const button = $("door-button");
@@ -150,7 +159,7 @@ export function setPrompt(content, onUse, hint) {
 
   hintEl.hidden = true;
   button.hidden = false;
-  button.replaceChildren(...content, el("kbd", "E / Space"));
+  button.replaceChildren(...content, el("kbd", "E"));
   button.onclick = () => {
     focusGame();
     onUse();
@@ -223,7 +232,16 @@ export function showGameOver(run, room, chosen, { onRetry, onMenu }) {
     answerLine("Your answer:", room, chosen),
     answerLine("Correct answer:", room, correct),
     el("p", room.explanation, "explanation"),
-    el("p", `Rooms cleared: ${run.index}/${run.rooms.length}`, "score"),
+    el("p", `Rooms cleared: ${run.index}/${run.rooms.length} · Time: ${runTime(run)}`, "score"),
+  ], [{ text: "Try again", onClick: onRetry }, { text: "Menu", onClick: onMenu }]);
+}
+
+// When the mobs take the last heart.
+export function showDefeated(run, depth, { onRetry, onMenu }) {
+  showOverlay([
+    el("h2", "Defeated!"),
+    el("p", `The monsters got you at depth ${depth}. Fewer hits next time!`),
+    el("p", `Rooms cleared: ${run.index}/${run.rooms.length} · Time: ${runTime(run)}`, "score"),
   ], [{ text: "Try again", onClick: onRetry }, { text: "Menu", onClick: onMenu }]);
 }
 
@@ -231,6 +249,6 @@ export function showVictory(run, { onRetry, onMenu }) {
   showOverlay([
     el("h2", "Dungeon cleared!"),
     el("p", `You made it through all ${run.rooms.length} rooms of ${run.dungeon.title}.`),
-    el("p", `Rooms cleared: ${run.rooms.length}/${run.rooms.length}`, "score"),
+    el("p", `Rooms cleared: ${run.rooms.length}/${run.rooms.length} · Time: ${runTime(run)}`, "score"),
   ], [{ text: "Play again", onClick: onRetry }, { text: "Menu", onClick: onMenu }]);
 }
