@@ -65,6 +65,7 @@ body {
 
 #question .muted { color: var(--muted); font-weight: 400; }
 .correct { color: #63c74d; }
+#answers li.crossed { opacity: 0.4; text-decoration: line-through; text-decoration-color: #e6482e; text-decoration-thickness: 2px; }
 
 .letter {
   margin-right: 6px;

@@ -61,17 +61,6 @@ export function loadAssets() {
     floor_4: tile(16, 80), floor_5: tile(32, 80), floor_6: tile(48, 80),
     floor_7: tile(16, 96), floor_8: tile(32, 96),
 
-    // The back wall of a pit, seen from above. Only the top part has bricks;
-    // the rest is see-through so the darkness of the pit shows.
-    edge_down: tile(96, 128),
-
-    // 4 frames: holes in the floor, then the spikes sliding up.
-    floor_spikes: {
-      x: 16, y: 192, width: TILE * 4, height: TILE,
-      sliceX: 4,
-      anims: { up: { from: 0, to: 3, speed: 20 } },
-    },
-
     wall_top_mid: tile(32, 0),
     wall_mid: tile(32, 16),
     wall_edge_top_left: tile(31, 120),

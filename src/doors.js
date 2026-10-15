@@ -111,7 +111,8 @@ export function highlightDoor(door, isActive) {
 // Two chains crossed over a door in an X, with a padlock in the middle. The
 // pack has no chains, so they're drawn from little squares: alternating light
 // and dark links along each diagonal. z 4 puts them in front of the door.
-export function chainDoor(door) {
+// With { slam: true } they drop into place instead of just being there.
+export function chainDoor(door, { slam = false } = {}) {
   const left = door.centerX - TILE;
   const parts = [];
   for (const [fromX, toX] of [[left + 3, left + 29], [left + 29, left + 3]]) {
@@ -130,6 +131,37 @@ export function chainDoor(door) {
   ];
   door.locked = true;
   door.chains = { parts, lock };
+
+  if (slam) {
+    for (const piece of [...parts, ...lock]) {
+      const end = piece.pos.clone();
+      piece.opacity = 0;
+      tween(0, 1, 0.18, (t) => {
+        piece.pos = end.add(0, -10 * (1 - t));
+        piece.opacity = t;
+      }, easings.easeInQuad);
+    }
+  }
+}
+
+// The door won't budge: it shakes in its frame for a moment.
+export function rattleDoor(door) {
+  const x = door.leaf.pos.x;
+  return new Promise((resolve) => tween(0, 1, 0.3, (t) => {
+    door.leaf.pos.x = x + Math.round(Math.sin(t * Math.PI * 8) * 2 * (1 - t));
+  }).onEnd(() => {
+    door.leaf.pos.x = x;
+    resolve();
+  }));
+}
+
+// A wrong answer's door: its letter fades and gets a red line through it,
+// and its chains stay on for the rest of the room.
+export function crossOutDoor(door) {
+  door.wrong = true;
+  door.label.opacity = 0.35;
+  const width = door.label.width + 4;
+  add([rect(width, 2), pos(door.centerX - width / 2, LABEL_Y - 1), color(230, 72, 46), z(1)]);
 }
 
 // The padlock pops open and the chains drop away. The door counts as open

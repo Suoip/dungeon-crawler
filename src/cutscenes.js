@@ -1,7 +1,8 @@
 import { TILE, TOP, GAME_HEIGHT } from "./config.js";
-import { addPit, tileAt } from "./room.js";
+import { tileAt } from "./room.js";
+import { spawnSpot } from "./mobs.js";
 import { openDoor } from "./doors.js";
-import { sleep, animate, fadeOut, flashScreen, puffDust, shakeScreen } from "./effects.js";
+import { sleep, animate, fadeOut, puffDust, shakeScreen } from "./effects.js";
 import { playSound } from "./sound.js";
 
 // The short scripted moments where the game moves the knight by itself.
@@ -65,67 +66,43 @@ export async function fallIn(player) {
   }, easings.easeOutBack);
 }
 
-// The wrong answer: the floor cracks under him, crumbles into a spike pit, and
-// he drops in. `onSpikes` runs the moment the spikes hit him.
-export async function collapseFloor(floor, player, onSpikes = () => {}) {
-  // A pit 4 tiles wide and 3 tall around where he landed. It's built under
-  // the floor right away, but stays hidden until the floor tiles fall away.
-  const landed = tileAt(LAND_X, LAND_Y);
-  const pit = { left: landed.col - 2, top: landed.row - 1, cols: 4, rows: 3 };
-  const spikes = addPit(pit.left, pit.top, pit.cols, pit.rows);
+// The punishment for a wrong door: the floor cracks open in `count` places
+// away from the hero, spreading out tile by tile from each spot, and the
+// cursed mobs crawl out of the cracks. Returns those spots.
+export async function crackFloor(floor, player, count = 3) {
+  const spots = [];
+  for (let i = 0; i < count; i++) {
+    // Not too close to each other either, so the cracks spread out.
+    let spot = spawnSpot(player);
+    for (let tries = 0; tries < 20 && spots.some((other) => other.dist(spot) < 60); tries++) spot = spawnSpot(player);
+    spots.push(spot);
+  }
 
-  // List the floor tiles over the pit, nearest to his feet first, so the
-  // cracks spread outwards from where he hit the ground.
-  const tiles = [];
-  for (let col = pit.left; col < pit.left + pit.cols; col++) {
-    for (let row = pit.top; row < pit.top + pit.rows; row++) {
-      const distance = Math.hypot(col + 0.5 - LAND_X / TILE, row + 0.5 - (LAND_Y - TOP) / TILE);
-      tiles.push({ tile: floor.get(`${col},${row}`), distance });
+  for (const spot of spots) {
+    // The tiles around the spot, nearest first, so the crack grows outwards.
+    const center = tileAt(spot.x, spot.y - 4);
+    const tiles = [];
+    for (let col = center.col - 1; col <= center.col + 1; col++) {
+      for (let row = center.row - 1; row <= center.row + 1; row++) {
+        const tile = floor.get(`${col},${row}`);
+        const distance = Math.hypot(col - center.col, row - center.row);
+        if (tile && (distance < 1 || chance(0.6))) tiles.push({ tile, distance });
+      }
     }
+    tiles.sort((a, b) => a.distance - b.distance);
+
+    playSound("crack");
+    shakeScreen(3);
+    puffDust(spot.x, spot.y, 6, 12, 9);
+    for (const { tile } of tiles) {
+      tile.use(sprite(choose(["floor_2", "floor_4"]))); // the cracked floor tiles
+      await sleep(0.03);
+    }
+    await sleep(0.12);
   }
-  tiles.sort((a, b) => a.distance - b.distance);
-
-  await sleep(0.4); // a moment where it looks like he made it...
-
-  // Crack!
-  playSound("crack");
-  shakeScreen(3);
-  for (const { tile } of tiles) {
-    tile.use(sprite(choose(["floor_2", "floor_4"]))); // the cracked floor tiles
-    await sleep(0.03);
-  }
-  await sleep(0.3);
-
-  // Crumble: each tile sinks and fades, at slightly different times.
   playSound("crumble");
-  shakeScreen(5);
-  puffDust(LAND_X, LAND_Y, 14, 26);
-  for (const { tile } of tiles) {
-    tile.use(opacity(1));
-    const startY = tile.pos.y;
-    wait(rand(0, 0.12), () => {
-      animate(0, 1, 0.3, (t) => {
-        tile.pos.y = startY + 8 * t;
-        tile.opacity = 1 - t;
-      }, easings.easeInQuad).then(() => destroy(tile));
-    });
-  }
-  await sleep(0.2);
-
-  // He drops into the pit, and the spikes shoot up.
-  await animate(player.pos.y, player.pos.y + 10, 0.18, (y) => (player.pos.y = y), easings.easeInQuad);
-  spikes.forEach((spike) => spike.play("up"));
-  playSound("spikes");
-  playSound("hit");
-  player.play("hit");
-  player.use(color(255, 90, 90));
-  shakeScreen(6);
-  flashScreen([200, 30, 30]);
-  onSpikes();
-
-  await sleep(0.5);
-  await animate(0, 90, 0.25, (angle) => (player.angle = angle)); // tips over
-  await sleep(0.7);
+  shakeScreen(4);
+  return spots;
 }
 
 // Opens a door and walks the knight into it, then fades the screen out.

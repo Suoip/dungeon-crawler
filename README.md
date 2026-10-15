@@ -1,6 +1,6 @@
 # Who Wants To Be A Dungeon Crawler
 
-A pixel-art quiz dungeon crawler that runs in the browser. Every room asks a question, and the doors are the answers. Pick the right door and you drop one level deeper into the dungeon. Pick the wrong one and the floor gives way.
+A pixel-art quiz dungeon crawler that runs in the browser. Every room asks a question, and the doors are the answers. Pick the right door and you drop one level deeper into the dungeon. Pick the wrong one and it stays shut: the floor cracks open and cursed monsters crawl out.
 
 ![A run: the title room, walking through the PLAY door, answering correctly, then picking a wrong door and falling into a spike pit](assets/social/gameplay.gif)
 
@@ -14,19 +14,19 @@ A pixel-art quiz dungeon crawler that runs in the browser. Every room asks a que
 | <kbd>Space</kbd> | Attack |
 | <kbd>E</kbd> | Open a door, pull a lever, climb a ladder, pick a hero |
 
-The menu is a room too: walk through **PLAY** to start, or explore **HEROES**, **OPTIONS** and **CREDITS**. In the dungeon, monsters rise from the floor and the doors stay chained until you've beaten them all. The question is shown from the start, so you can work out the answer while you fight. Then stand at the door with your answer and open it. You have 3 hearts for the whole run. Your score is how deep you get, and how fast.
+The menu is a room too: walk through **PLAY** to start, or explore **HEROES**, **OPTIONS** and **CREDITS**. In the dungeon, waves of monsters rise from the floor and the doors stay chained until you've beaten them all. The question is shown from the start, so you can work out the answer while you fight. Then stand at the door with your answer and open it. A wrong door is crossed out and the chains go back on while a harder fight plays out; then you pick again from what's left. You have 3 hearts for the whole run. Your score is how deep you get, how fast, and how many questions you got right first try.
 
 Touch controls aren't supported yet; it's best played with a keyboard.
 
 ## Features
 
 - **Questions as doors:** each room shows a question with 2–4 answers, one door per answer, shuffled on every run.
-- **Suspense:** right and wrong doors look the same until you land in the next room. A safe landing shows "Correct!"; a wrong one cracks the floor into a spike pit.
-- **Learning from mistakes:** the game over card shows your answer, the correct one, and an explanation.
-- **Combat:** monsters rise from the floor (zombies, then goblins, then orcs as you go deeper), and a boss waits in the last room. Each hit costs one of your 3 hearts for the whole run.
+- **Mistakes cost time, not the run:** a wrong door won't open. The floor cracks, the room turns red, and two waves of cursed monsters (tougher, faster, tinted red) crawl out of the cracks. Then you try again, so every question gets answered in the end.
+- **Learning from mistakes:** after a question you got wrong, a card shows the right answer and an explanation, and the clock stops while you read it.
+- **Combat in waves:** monsters rise from the floor in waves (zombies, then goblins, then orcs as you go deeper), and the next wave starts as the last one is nearly beaten. A boss and its minions wait in the last room. Each hit costs one of your 3 hearts for the whole run.
 - **Three bosses:** a demon that charges, an ogre that hits hard, and a big zombie that raises more zombies.
 - **10 playable heroes, each with their own weapon:** pick one in the Heroes room, and it's remembered.
-- **A run timer:** the faster you clear rooms, the better your time.
+- **A run timer:** the faster you clear rooms, the better your time. Wrong answers make rooms take longer.
 - **Options as levers:** sound, music and screen shake, all remembered between visits.
 - **Sound and music made in code:** sound effects are generated with ZzFX, and the background music is a chiptune loop composed in code with the Web Audio API. There are no audio files.
 
@@ -54,10 +54,10 @@ src/
   config.js           shared sizes, speed and colors
   menu.js             the title room and the Heroes, Options and Credits rooms
   scenes.js           the question rooms
-  cutscenes.js        falling in, walking through doors, the floor collapse, ladders
+  cutscenes.js        falling in, walking through doors, the floor cracking, ladders
   interact.js         using doors, levers, heroes and ladders
   combat.js           swinging weapons, hearts, getting hurt
-  mobs.js             monster types, rising from the floor, chasing, boss moves
+  mobs.js             monster types, waves, rising from the floor, chasing, boss moves
   doors.js, room.js, props.js, player.js, heroes.js   building the rooms and characters
   panel.js            the HTML panel and the game over / victory cards
   dungeon.js          loading a dungeon and shuffling a run
