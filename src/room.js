@@ -1,9 +1,13 @@
 import { TILE, ROOM_COLS, ROOM_ROWS, TOP, GAME_WIDTH, GAME_HEIGHT } from "./config.js";
 
-// Draws one tile at a grid position (column, row) and returns it.
-function placeTile(name, col, row) {
-  return add([sprite(name), pos(col * TILE, TOP + row * TILE)]);
+// Draws one tile at a grid position (column, row) and returns it. Extra
+// components (like z for draw order) can be passed in too.
+function placeTile(name, col, row, ...extra) {
+  return add([sprite(name), pos(col * TILE, TOP + row * TILE), ...extra]);
 }
+
+// The grid square (column, row) that a point in the room is in.
+export const tileAt = (x, y) => ({ col: Math.floor(x / TILE), row: Math.floor((y - TOP) / TILE) });
 
 // Picks the wall piece for a grid position. The room is drawn like this:
 //   row 0      ┌───────┐   top of the wall (thin cap)
@@ -38,19 +42,16 @@ function addSolid(x, y, w, h) {
   ]);
 }
 
-// Builds the room. With { spikes: true } the whole floor is a spike trap, and
-// the spike tiles are returned so the trap scene can make them shoot up.
-export function buildRoom({ spikes = false } = {}) {
-  const spikeTiles = [];
+// Builds the room and returns its floor tiles, so a trap can crack and remove
+// some of them later. Look one up with floor.get(`${col},${row}`).
+export function buildRoom() {
+  const floor = new Map();
 
   for (let row = 0; row < ROOM_ROWS; row++) {
     for (let col = 0; col < ROOM_COLS; col++) {
       // Floor goes everywhere except the top two wall rows, because the side
       // and bottom wall strips are see-through and the floor shows behind them.
-      if (row >= 2) {
-        if (spikes) spikeTiles.push(placeTile("floor_spikes", col, row));
-        else placeTile(randomFloor(), col, row);
-      }
+      if (row >= 2) floor.set(`${col},${row}`, placeTile(randomFloor(), col, row));
 
       const wall = wallTileAt(col, row);
       if (wall) placeTile(wall, col, row);
@@ -65,5 +66,27 @@ export function buildRoom({ spikes = false } = {}) {
   addSolid(GAME_WIDTH - 5, TOP, 5, GAME_HEIGHT - TOP); // right wall strip
   addSolid(0, GAME_HEIGHT - 4, GAME_WIDTH, 4);    // bottom wall strip (4 px tall)
 
-  return spikeTiles;
+  return floor;
+}
+
+// Builds a spike pit *underneath* the floor (z -1 draws it behind the floor
+// tiles), so it's invisible until those tiles crumble away. The top row is the
+// pit's back wall, seen from above; the rows below hold the spikes.
+// Returns the spike tiles so they can be made to shoot up.
+export function addPit(left, top, cols, rows) {
+  add([
+    rect(cols * TILE, rows * TILE),
+    pos(left * TILE, TOP + top * TILE),
+    color(10, 8, 16), // almost black: the pit is deep
+    z(-1),
+  ]);
+
+  const spikes = [];
+  for (let col = left; col < left + cols; col++) {
+    placeTile("edge_down", col, top, z(-1));
+    for (let row = top + 1; row < top + rows; row++) {
+      spikes.push(placeTile("floor_spikes", col, row, z(-1)));
+    }
+  }
+  return spikes;
 }

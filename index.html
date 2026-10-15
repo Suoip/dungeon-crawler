@@ -8,15 +8,18 @@
 </head>
 <body>
   <!-- The question panel: plain HTML above the game, so text is readable on any screen -->
-  <header id="panel">
+  <header id="panel" class="panel">
     <div class="panel-top">
       <span id="dungeon-title"></span>
       <span id="progress"></span>
     </div>
     <p id="question">Loading the dungeon…</p>
     <ol id="answers"></ol>
-    <button id="door-button" hidden></button>
-    <p id="door-hint" hidden></p>
+    <!-- Always the same height, whether it shows the button, the hint or nothing -->
+    <div class="prompt-slot">
+      <button id="door-button" hidden></button>
+      <p id="door-hint" hidden></p>
+    </div>
   </header>
 
   <!-- Kaplay draws the game in here. The overlay holds the game over / victory card. -->

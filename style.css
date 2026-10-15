@@ -28,7 +28,10 @@ body {
 
 /* ---- Question panel ---- */
 
-#panel {
+/* Styled by class rather than #panel so that the invisible copy panel.js
+   measures (which has no id) looks exactly the same */
+.panel {
+  box-sizing: border-box; /* min-height includes padding, matching what panel.js measures */
   padding: 12px 16px 14px;
   border-bottom: 3px solid var(--stone);
   background: linear-gradient(var(--bg), #201a30);
@@ -60,16 +63,22 @@ body {
   font-size: 1.05rem;
 }
 
+#question .muted { color: var(--muted); font-weight: 400; }
+.correct { color: #63c74d; }
+
 .letter {
   margin-right: 6px;
   font-weight: 800;
 }
 
-#door-hint {
-  margin: 0;
-  min-height: 44px;
+.prompt-slot {
+  height: 48px;
   display: flex;
   align-items: center;
+}
+
+#door-hint {
+  margin: 0;
   color: var(--muted);
   font-size: 0.95rem;
 }

@@ -29,17 +29,90 @@ function focusGame() {
   document.querySelector("#game canvas")?.focus();
 }
 
-export function showQuestion(run, room) {
+function setDepth(run, depth) {
   $("dungeon-title").textContent = run.dungeon.title;
-  $("progress").textContent = `Room ${run.index + 1}/${run.rooms.length}`;
-  $("question").textContent = room.question;
+  $("progress").textContent = `Depth ${Math.min(depth, run.rooms.length)}/${run.rooms.length}`;
+}
 
-  const list = $("answers");
-  list.replaceChildren(...room.answers.map((answer, i) => {
+// These two fill in a panel's question line and answer list. They take the
+// elements to fill as arguments, so they work both on the real panel and on
+// the invisible copy that lockPanelHeight() measures.
+function fillQuestion(questionEl, answersEl, question, answers) {
+  questionEl.textContent = question;
+  answersEl.replaceChildren(...answers.map((answer, i) => {
     const item = el("li");
-    item.append(letterBadge(i), el("span", answer.text));
+    item.append(letterBadge(i), el("span", answer));
     return item;
   }));
+}
+
+function fillSuspense(questionEl, answersEl, letterIndex, answer) {
+  questionEl.replaceChildren(el("span", "Your answer: ", "muted"), letterBadge(letterIndex), `${answer} …`);
+  answersEl.replaceChildren();
+}
+
+// While the knight falls, show only the answer he picked, so the panel doesn't
+// give away whether it was right before he lands.
+export function showSuspense(run, depth, answered) {
+  setDepth(run, depth);
+  const { room, chosen } = answered;
+  fillSuspense($("question"), $("answers"), room.answers.indexOf(chosen), chosen.text);
+}
+
+export function showCorrect() {
+  $("question").replaceChildren(el("span", "Correct!", "correct"));
+}
+
+export function showQuestion(run, room) {
+  setDepth(run, run.index + 1);
+  fillQuestion($("question"), $("answers"), room.question, room.answers.map((answer) => answer.text));
+}
+
+// The game fills whatever space the panel leaves, so every time the panel
+// changed height, the whole game got squeezed or stretched. To stop that, we
+// work out the tallest the panel will ever need to be for this dungeon and
+// keep it at that height the whole time.
+//
+// We measure on an invisible copy of the panel, so the real one isn't touched.
+// Text wraps differently at different widths, so this runs again whenever the
+// window is resized.
+function measureTallestPanel(dungeon) {
+  const panel = $("panel");
+  const copy = panel.cloneNode(true);
+  copy.removeAttribute("id"); // its styling comes from the "panel" class, so it still looks the same
+  copy.setAttribute("aria-hidden", "true");
+  copy.style.cssText = `position: absolute; left: 0; top: 0; width: ${panel.offsetWidth}px; visibility: hidden; min-height: 0;`;
+  document.body.append(copy);
+
+  // The top row is still empty when this first runs, so fill it in too, or
+  // it would count as zero height.
+  copy.querySelector("#dungeon-title").textContent = dungeon.title;
+  copy.querySelector("#progress").textContent = `Depth ${dungeon.rooms.length}/${dungeon.rooms.length}`;
+
+  const questionEl = copy.querySelector("#question");
+  const answersEl = copy.querySelector("#answers");
+  let tallest = 0;
+  const measure = () => (tallest = Math.max(tallest, copy.offsetHeight));
+
+  for (const room of dungeon.rooms) {
+    const answers = [room.correct, ...room.wrong];
+    fillQuestion(questionEl, answersEl, room.question, answers);
+    measure();
+    // The "Your answer: …" line could be the tallest if an answer is long.
+    answers.forEach((answer, i) => {
+      fillSuspense(questionEl, answersEl, i, answer);
+      measure();
+    });
+  }
+
+  copy.remove();
+  return tallest;
+}
+
+export function lockPanelHeight(dungeon) {
+  const lock = () => ($("panel").style.minHeight = `${measureTallestPanel(dungeon)}px`);
+  lock();
+  window.addEventListener("resize", lock);
 }
 
 // Replaces the question with a message, e.g. after the last room.

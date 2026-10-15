@@ -9,7 +9,7 @@ import { GAME_WIDTH, GAME_HEIGHT, BACKGROUND, DUNGEON_URL } from "./config.js";
 import { loadAssets } from "./assets.js";
 import { loadDungeon, newRun } from "./dungeon.js";
 import { registerScenes } from "./scenes.js";
-import { showMessage } from "./panel.js";
+import { showMessage, lockPanelHeight } from "./panel.js";
 
 // The art is tiny, so the game runs at a small "virtual" resolution and Kaplay
 // scales it up to fill its box on the page.
@@ -28,6 +28,7 @@ registerScenes();
 
 try {
   const dungeon = await loadDungeon(DUNGEON_URL);
+  lockPanelHeight(dungeon); // so the game doesn't resize every time the panel changes
   onLoad(() => go("room", newRun(dungeon)));
 } catch (error) {
   showMessage(`Something went wrong loading the dungeon: ${error.message}`);
