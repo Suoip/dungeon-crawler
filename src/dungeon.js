@@ -49,6 +49,7 @@ export function newRun(dungeon, boss) {
     hearts: 3, maxHearts: 3,
     startTime: null, endTime: null, pausedFor: 0, pausedAt: null,
     firstTry: 0,
+    dropStreak: 0, // kills in a row that didn't drop a heart (see combat.js)
   };
 }
 

@@ -12,9 +12,10 @@ A pixel-art quiz dungeon crawler that runs in the browser. Every room asks a que
 |---|---|
 | <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> or arrow keys | Move |
 | <kbd>Space</kbd> | Attack |
+| <kbd>Shift</kbd> | Dash |
 | <kbd>E</kbd> | Open a door, pull a lever, climb a ladder, pick a hero |
 
-The menu is a room too: walk through **PLAY** to start, or explore **HEROES**, **OPTIONS** and **CREDITS**. In the dungeon, waves of monsters rise from the floor and the doors stay chained until you've beaten them all. The question is shown from the start, so you can work out the answer while you fight. Then stand at the door with your answer and open it. A wrong door is crossed out and the chains go back on while a harder fight plays out; then you pick again from what's left. You have 3 hearts for the whole run. Your score is how deep you get, how fast, and how many questions you got right first try.
+The menu is a room too: walk through **PLAY** to start, or explore **HEROES**, **OPTIONS** and **CREDITS**. In the dungeon, waves of monsters rise from the floor and the doors stay chained until you've beaten them all. The question is shown from the start, so you can work out the answer while you fight. Then stand at the door with your answer and open it. A wrong door is crossed out and the chains go back on while a harder fight plays out; then you pick again from what's left. You have 3 hearts for the whole run, and monsters sometimes drop one when you're missing one. Your score is how deep you get, how fast, and how many questions you got right first try.
 
 Touch controls aren't supported yet; it's best played with a keyboard.
 
@@ -23,8 +24,10 @@ Touch controls aren't supported yet; it's best played with a keyboard.
 - **Questions as doors:** each room shows a question with 2–4 answers, one door per answer, shuffled on every run.
 - **Mistakes cost time, not the run:** a wrong door won't open. The floor cracks, the room turns red, and two waves of cursed monsters (tougher, faster, tinted red) crawl out of the cracks. Then you try again, so every question gets answered in the end.
 - **Learning from mistakes:** after a question you got wrong, a card shows the right answer and an explanation, and the clock stops while you read it.
-- **Combat in waves:** monsters rise from the floor in waves (zombies, then goblins, then orcs as you go deeper), and the next wave starts as the last one is nearly beaten. A boss and its minions wait in the last room. Each hit costs one of your 3 hearts for the whole run.
-- **Three bosses:** a demon that charges, an ogre that hits hard, and a big zombie that raises more zombies.
+- **Combat in waves:** monsters rise from the floor in waves (zombies, then goblins, then orcs as you go deeper), and the next wave starts as the last one is nearly beaten. Each hit costs one of your 3 hearts for the whole run. A quick dash on a cooldown helps you get into position, and a tiny hit-stop makes every hit land with weight.
+- **Hearts to win back:** monsters can drop a heart, but only while you're missing one, so you have to keep fighting while hurt to earn it. A bad-luck counter makes sure the drops don't dry up, and a dropped heart blinks out after a few seconds.
+- **A boss fight that keeps you moving:** the boss in the last room casts a random move every couple of seconds, each with its own warning flash: a dash that leaves a trail of fire, a ring of 12 projectiles, or raising minions. Once the projectiles turn yellow, a swing bats them back at the boss. Below half health it becomes enraged: it dashes twice, fires a second ring that covers the gaps in the first, and raises tougher minions.
+- **Three bosses:** a demon that loves to dash, an ogre that vomits a lot and hits hard, and a big zombie that keeps raising the dead.
 - **10 playable heroes, each with their own weapon:** pick one in the Heroes room, and it's remembered.
 - **A run timer:** the faster you clear rooms, the better your time. Wrong answers make rooms take longer.
 - **Options as levers:** sound, music and screen shake, all remembered between visits.
@@ -56,15 +59,17 @@ src/
   scenes.js           the question rooms
   cutscenes.js        falling in, walking through doors, the floor cracking, ladders
   interact.js         using doors, levers, heroes and ladders
-  combat.js           swinging weapons, hearts, getting hurt
-  mobs.js             monster types, waves, rising from the floor, chasing, boss moves
-  doors.js, room.js, props.js, player.js, heroes.js   building the rooms and characters
+  combat.js           swinging weapons, hearts, heart drops, getting hurt
+  mobs.js             monster types, waves, rising from the floor, chasing
+  boss.js             the boss's moves: dash and fire trail, projectile rings, raising minions, rage
+  player.js           the hero: walking and dashing
+  doors.js, room.js, props.js, heroes.js   building the rooms and characters
   panel.js            the HTML panel and the game over / victory cards
   dungeon.js          loading a dungeon and shuffling a run
   sound.js, music.js  sound effects and music
   settings.js         remembered settings (localStorage)
   display.js          whole-pixel scaling
-  effects.js          fades, flashes, dust, screen shake
+  effects.js          fades, flashes, dust, screen shake, hit-stop
 data/dungeons/        dungeon files (questions, answers, explanations)
 assets/               the tileset, font, icons and preview images
 lib/zzfx.js           ZzFX sound generator

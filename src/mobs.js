@@ -1,17 +1,19 @@
 import { TILE, TOP, GAME_WIDTH, GAME_HEIGHT } from "./config.js";
-import { sleep, animate, puffDust } from "./effects.js";
+import { sleep, animate, puffDust, hitStop, addShadow, addSpawnHole, sparks } from "./effects.js";
 import { playSound } from "./sound.js";
+import { setupBoss } from "./boss.js";
 
 // The monsters. `feet` is the size of the box at their feet that collides
 // (like the hero's), `speed` is in pixels per second, `hp` is how many hits
-// it takes to beat them.
+// it takes to beat them. A boss's `favorite` is the move it casts most often
+// (see boss.js).
 export const MOB_TYPES = {
   tiny_zombie: { hp: 2, speed: 26, feet: [10, 6], size: 16 },
   goblin:      { hp: 3, speed: 52, feet: [10, 6], size: 16 },
   orc_warrior: { hp: 5, speed: 36, feet: [10, 6], size: 23 },
-  big_demon:   { hp: 16, speed: 28, feet: [22, 8], size: 36, boss: "charge" },
-  ogre:        { hp: 28, speed: 30, feet: [22, 8], size: 36, boss: "heavy", knockback: 3 },
-  big_zombie:  { hp: 16, speed: 16, feet: [22, 8], size: 36, boss: "summon" },
+  big_demon:   { hp: 24, speed: 28, feet: [22, 8], size: 36, boss: true, name: "BIG DEMON", favorite: "dash" },
+  ogre:        { hp: 42, speed: 30, feet: [22, 8], size: 36, boss: true, name: "OGRE", favorite: "vomit", knockback: 3 },
+  big_zombie:  { hp: 24, speed: 16, feet: [22, 8], size: 36, boss: true, name: "BIG ZOMBIE", favorite: "spawn" },
 };
 
 // Cursed mobs (the punishment for a wrong door) are tinted red and faster.
@@ -20,9 +22,9 @@ const CURSED_SPEED = 1.25;
 
 // For the boss-select test room.
 export const BOSSES = [
-  { id: "big_demon", label: "DEMON", name: "Big Demon", blurb: "charges in a straight line after a warning flash" },
-  { id: "ogre", label: "OGRE", name: "Ogre", blurb: "very tough, and knocks you far back" },
-  { id: "big_zombie", label: "ZOMBIE", name: "Big Zombie", blurb: "very slow, but keeps raising tiny zombies" },
+  { id: "big_demon", label: "DEMON", name: "Big Demon", blurb: "loves to dash at you, leaving fire behind" },
+  { id: "ogre", label: "OGRE", name: "Ogre", blurb: "very tough, vomits a lot, and knocks you far back" },
+  { id: "big_zombie", label: "ZOMBIE", name: "Big Zombie", blurb: "very slow, but keeps raising the dead" },
 ];
 
 // The waves of mobs a room sends at you, one list of mobs per wave. Deeper
@@ -36,10 +38,10 @@ const TIERS = [
 ];
 const tierOf = (depth) => (depth <= 3 ? 0 : depth <= 6 ? 1 : depth <= 8 ? 2 : 3);
 
-// `depth` starts at 1. The last question room has the boss, with waves of
-// minions coming at you while it's up.
+// `depth` starts at 1. The last question room has only the boss (it raises
+// its own minions, see boss.js).
 export function wavesForRoom(depth, totalRooms, boss) {
-  if (depth === totalRooms) return [[boss, G, G], [G, O], [O, O]];
+  if (depth === totalRooms) return [[boss]];
   return TIERS[tierOf(depth)];
 }
 
@@ -65,7 +67,7 @@ export function startWaves(waves, room, { cursed = false, spots = null } = {}) {
     if (room.over || next >= waves.length) return;
     const wave = waves[next++];
     room.waiting--;
-    room.onWave?.(next, waves.length, cursed);
+    if (waves.length > 1) room.onWave?.(next, waves.length, cursed); // (no "WAVE 1/1" for a lone boss)
 
     let left = wave.filter((type) => !MOB_TYPES[type].boss).length;
     let started = false;
@@ -112,11 +114,15 @@ export async function raiseMob(type, room, { at = null, delay = 0, cursed = fals
   }
   const spot = at ?? (def.boss ? vec2(GAME_WIDTH / 2, TOP + 6 * TILE) : spawnSpot(room.player));
 
+  const closeHole = addSpawnHole(spot, def.feet[0]);
   const dust = loop(0.12, () => puffDust(spot.x, spot.y, 2, def.boss ? 14 : 6, 9));
   await sleep(0.8);
   dust.cancel();
   room.rising--;
-  if (room.over) return null; // the room ended while we waited
+  if (room.over) {
+    closeHole();
+    return null; // the room ended while we waited
+  }
 
   playSound("spawn");
   const mob = add([
@@ -136,15 +142,18 @@ export async function raiseMob(type, room, { at = null, delay = 0, cursed = fals
       tint: rgb(...(cursed ? CURSED_TINT : [255, 255, 255])), // its normal color, to go back to after a flash
       active: false,            // false while rising, dying or frozen
       knockVel: vec2(0), knockTime: 0,
-      // For bosses: what they're doing right now and for how long.
-      mode: "chase", modeTime: 0, chargeDir: vec2(0),
     },
   ]);
   room.onSpawn(mob);
+  addShadow(mob, def.feet[0] + 4);
+  if (def.boss) {
+    setupBoss(mob, room);
+    setupHealthBar(mob);
+  }
   setupBrain(mob, room);
-  if (def.boss) setupHealthBar(mob);
 
   await animate(0, 1, 0.25, (t) => (mob.scale = vec2(1, t)), easings.easeOutBack);
+  closeHole();
   mob.active = true;
   return mob;
 }
@@ -154,13 +163,21 @@ export function hurtMob(mob, from, room) {
   if (!mob.active) return false;
   mob.hp--;
   playSound("mobHit");
+  hitStop(mob.hp > 0 ? 0.04 : 0.08); // a tiny freeze, so the hit feels heavy
+  // Sparks on the side of the mob that got hit.
+  const middle = mob.pos.sub(0, mob.def.size / 2);
+  const toward = from.sub(0, 10).sub(middle).unit().scale(Math.min(8, mob.def.size / 3));
+  sparks(middle.x + toward.x, middle.y + toward.y);
   mob.color = mob.cursed ? rgb(190, 40, 40) : rgb(255, 110, 110);
   wait(0.1, () => mob.exists() && (mob.color = mob.tint));
 
-  // Pushed away from whoever hit it. Bosses barely budge.
-  const away = mob.pos.sub(from).unit();
-  mob.knockVel = away.scale(mob.def.boss ? 60 : 220);
-  mob.knockTime = 0.12;
+  // Pushed away from whoever hit it. Bosses barely budge, and not at all in
+  // the middle of a move.
+  if (!(mob.def.boss && mob.busy)) {
+    const away = mob.pos.sub(from).unit();
+    mob.knockVel = away.scale(mob.def.boss ? 60 : 220);
+    mob.knockTime = 0.12;
+  }
 
   if (mob.hp > 0) return false;
   mob.active = false;
@@ -190,9 +207,7 @@ function setupBrain(mob, room) {
       return;
     }
 
-    if (mob.def.boss === "charge" && chargeBrain(mob, room.player)) return;
-    if (mob.def.boss === "summon") summonBrain(mob, room);
-
+    if (mob.def.boss && mob.bossTurn()) return; // busy casting a move
     const toPlayer = room.player.pos.sub(mob.pos);
     if (toPlayer.len() > 2) {
       mob.move(toPlayer.unit().scale(mob.speed));
@@ -202,60 +217,17 @@ function setupBrain(mob, room) {
   });
 }
 
-// The demon: every few seconds it stops, flashes red as a warning, then
-// charges in a straight line at where the player was. Returns true while
-// it's doing that (so it doesn't also chase).
-function chargeBrain(mob, player) {
-  mob.modeTime += dt();
-  if (mob.mode === "chase" && mob.modeTime > 3.5) {
-    mob.mode = "warn";
-    mob.modeTime = 0;
-    playSound("charge");
-  }
-  if (mob.mode === "warn") {
-    mob.color = Math.floor(mob.modeTime * 12) % 2 ? rgb(255, 90, 90) : mob.tint;
-    if (mob.modeTime > 0.6) {
-      mob.mode = "charge";
-      mob.modeTime = 0;
-      mob.color = mob.tint;
-      mob.chargeDir = player.pos.sub(mob.pos).unit();
-      mob.flipX = mob.chargeDir.x < 0;
-    }
-    return true;
-  }
-  if (mob.mode === "charge") {
-    mob.move(mob.chargeDir.scale(210));
-    if (mob.getCurAnim()?.name !== "run") mob.play("run");
-    if (mob.modeTime > 0.6) {
-      mob.mode = "chase";
-      mob.modeTime = 0;
-    }
-    return true;
-  }
-  return false;
-}
-
-// The big zombie: every few seconds it raises a tiny zombie nearby, up to 3
-// at a time.
-function summonBrain(mob, room) {
-  mob.modeTime += dt();
-  if (mob.modeTime < 4) return;
-  mob.modeTime = 0;
-  const minions = get("mob").filter((m) => m.type === "tiny_zombie");
-  if (minions.length >= 3) return;
-  const spot = vec2(
-    clamp(mob.pos.x + rand(-40, 40), 32, GAME_WIDTH - 32),
-    clamp(mob.pos.y + rand(-20, 30), TOP + 3 * TILE + 8, GAME_HEIGHT - 20),
-  );
-  raiseMob("tiny_zombie", room, { at: spot });
-}
-
-// A small health bar above a boss.
+// A small health bar above a boss, with a notch at half: that's where it
+// becomes enraged.
 function setupHealthBar(mob) {
   mob.onDraw(() => {
     const width = 30;
     const y = -mob.def.size - 6;
     drawRect({ pos: vec2(-width / 2 - 1, y - 1), width: width + 2, height: 5, color: rgb(24, 20, 37) });
-    drawRect({ pos: vec2(-width / 2, y), width: (width * Math.max(0, mob.hp)) / mob.def.hp, height: 3, color: rgb(230, 72, 46) });
+    drawRect({
+      pos: vec2(-width / 2, y), width: (width * Math.max(0, mob.hp)) / mob.def.hp, height: 3,
+      color: mob.raging ? rgb(255, 40, 40) : rgb(230, 72, 46),
+    });
+    drawRect({ pos: vec2(-0.5, y - 1), width: 1, height: 5, color: rgb(24, 20, 37) });
   });
 }
