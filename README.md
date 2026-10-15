@@ -100,3 +100,7 @@ Then open http://localhost:8000. In VS Code, the Live Server extension works too
 - Engine: [Kaplay](https://kaplayjs.com)
 - Sound effects: [ZzFX](https://github.com/KilledByAPixel/ZzFX) by Frank Force (MIT, see [`lib/ZZFX-LICENSE.txt`](lib/ZZFX-LICENSE.txt))
 - Built with Claude (Anthropic) as a pair programmer
+
+## License
+
+The game's code is released under the [MIT License](LICENSE). The third-party assets keep their own licenses: the tileset is CC0, the font is under the SIL Open Font License, and ZzFX is MIT (see Credits).
