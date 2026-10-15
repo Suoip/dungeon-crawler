@@ -34,6 +34,15 @@ const SOUNDS = {
   locked:   [0.15, 0.2, 400, 0, 0.02, 0.06, 3, 1, 0, 0, 0, 0, 0.03],
   charge:   [0.4, 0.1, 90, 0.1, 0.3, 0.3, 2, 1, 3, 0, 0, 0, 0, 0.5],
   wrong:    [0.4, 0, 150, 0, 0.12, 0.25, 2, 1, -3, 0, -40, 0.1],  // a low "nope" buzz that drops in pitch
+  dash:     [0.25, 0.05, 300, 0.01, 0.03, 0.12, 4, 1, -5, 0, 0, 0, 0, 0.3],
+  heal:     [0.35, 0, 600, 0.01, 0.08, 0.25, 0, 1, 0, 0, 300, 0.07],
+  bat:      [0.3, 0, 900, 0, 0.02, 0.12, 1, 1, 0, 0, 400, 0.02],
+
+  // The boss's moves
+  gurgle:   [0.35, 0.1, 110, 0.05, 0.3, 0.15, 2, 1, 0, 0, 0, 0, 0.05, 0.5, 15],
+  vomit:    [0.4, 0.1, 200, 0, 0.05, 0.25, 4, 1, -8, 0, 0, 0, 0, 1],
+  summon:   [0.3, 0, 200, 0.2, 0.2, 0.3, 1, 1, 4, 0, 0, 0, 0.08],
+  roar:     [0.6, 0.1, 80, 0.1, 0.4, 0.4, 2, 1, -1, 0, 0, 0, 0, 0.8, 0, 0.1],
 };
 
 // An equalizer (EQ) for some sounds: it changes their tone without changing
@@ -56,6 +65,10 @@ const EQ = {
   locked:  { lowpass: 2000, shelf: -6, shelfFrom: 1500 },
   charge:  { lowpass: 1500, shelf: -8, shelfFrom: 1000 },
   wrong:   { lowpass: 1500, shelf: -8, shelfFrom: 1000 },
+  dash:    { lowpass: 1800, shelf: -6, shelfFrom: 1200 },
+  gurgle:  { lowpass: 1500, shelf: -8, shelfFrom: 1000 },
+  vomit:   { lowpass: 1600, shelf: -10, shelfFrom: 1200 },
+  roar:    { lowpass: 1400, shelf: -8, shelfFrom: 900 },
 };
 
 // Each sound's filters are built once, the first time it plays, and reused.

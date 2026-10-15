@@ -1,5 +1,5 @@
 import { buildRoom } from "./room.js";
-import { addPlayer, setupPlayerMovement } from "./player.js";
+import { addPlayer, setupPlayerMovement, setupDash } from "./player.js";
 import { addDoors, doorInteraction } from "./doors.js";
 import { newRun } from "./dungeon.js";
 import { HEROES, heroById } from "./heroes.js";
@@ -95,21 +95,25 @@ function registerTitle(dungeon) {
     addShadowText("DUNGEON CRAWLER", 160, 76, 16, [255, 205, 70]);
 
     const LABEL = [169, 155, 185];
-    addKeycap(80, 94, "W");
-    [66, 80, 94].forEach((x, i) => addKeycap(x, 109, "ASD"[i]));
-    addShadowText("MOVE", 80, 132, 8, LABEL);
+    addKeycap(52, 94, "W");
+    [38, 52, 66].forEach((x, i) => addKeycap(x, 109, "ASD"[i]));
+    addShadowText("MOVE", 52, 132, 8, LABEL);
 
-    addKeycap(160, 109, "E");
-    addShadowText("USE", 160, 132, 8, LABEL);
+    addKeycap(122, 109, "E");
+    addShadowText("USE", 122, 132, 8, LABEL);
 
-    addKeycap(240, 109, "SPACE");
-    addShadowText("ATTACK", 240, 132, 8, LABEL);
+    addKeycap(194, 109, "SPACE");
+    addShadowText("ATTACK", 194, 132, 8, LABEL);
+
+    addKeycap(268, 109, "SHIFT");
+    addShadowText("DASH", 268, 132, 8, LABEL);
 
     const hatch = addHatch(9, 9);
     const start = besideHatch(hatch);
     const player = addPlayer(start.x, start.y);
     setupPlayerMovement(player);
     setupAttack(player); // swing for practice; there's nothing to hit here
+    setupDash(player);
     const fader = addFader();
 
     hidePrompt();
@@ -149,6 +153,7 @@ function registerSubRoom(name, panel, setup, { ladderX = LAND_X } = {}) {
     const player = addPlayer(LAND_X, LAND_Y);
     setupPlayerMovement(player);
     setupAttack(player); // swing for practice; there's nothing to hit here
+    setupDash(player);
     const fader = addFader();
 
     hidePrompt();

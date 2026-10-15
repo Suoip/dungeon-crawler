@@ -1,5 +1,5 @@
 import { buildRoom } from "./room.js";
-import { addPlayer, setupPlayerMovement } from "./player.js";
+import { addPlayer, setupPlayerMovement, setupDash } from "./player.js";
 import {
   addDoors, letterLabels, revealLabels, doorInteraction, highlightDoor, chainDoor, unchainDoor,
   rattleDoor, crossOutDoor,
@@ -11,7 +11,7 @@ import {
   sleep, animate, addFader, fadeIn, fadeOut, flashScreen, shakeScreen, addRedLight, showBanner,
 } from "./effects.js";
 import { wavesForRoom, cursedWaves, startWaves } from "./mobs.js";
-import { setupAttack, setupHurt, addHearts } from "./combat.js";
+import { setupAttack, setupHurt, addHearts, setupHeartDrops } from "./combat.js";
 import { playSound } from "./sound.js";
 import {
   showQuestion, showCorrect, showMessage, showExplanation, crossOutAnswer, tickTimer,
@@ -47,10 +47,12 @@ export function registerRoomScene() {
     doors.forEach((door) => chainDoor(door));
     const player = addPlayer(LAND_X, LAND_Y);
     setupPlayerMovement(player);
+    setupDash(player);
     const fader = addFader();
     const redLight = addRedLight();
     const hearts = addHearts(run);
     hearts.update();
+    const maybeDropHeart = setupHeartDrops(run, hearts, player);
 
     // The fight in this room, shared with mobs.js and combat.js.
     const fight = {
@@ -61,7 +63,8 @@ export function registerRoomScene() {
       over: false,   // the hero left the room or was defeated
       frozen: false, // monsters stop moving (e.g. after the hero is defeated)
       onSpawn: () => fight.alive++,
-      onDeath: () => {
+      onDeath: (mob) => {
+        maybeDropHeart(mob);
         fight.alive--;
         if (fight.alive === 0 && fight.rising === 0 && fight.waiting === 0) roomCleared();
       },
