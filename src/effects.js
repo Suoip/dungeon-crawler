@@ -1,4 +1,10 @@
 import { GAME_WIDTH, GAME_HEIGHT } from "./config.js";
+import { getSetting } from "./settings.js";
+
+// Kaplay's shake(), unless the player turned screen shake off in Options.
+export function shakeScreen(amount) {
+  if (getSetting("shake")) shake(amount);
+}
 
 // Small reusable pieces for cutscenes: waiting, animating, fading, dust.
 

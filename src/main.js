@@ -1,5 +1,5 @@
-// The starting point. It sets up Kaplay, loads everything, and starts the
-// first room. The real work happens in the other files in src/.
+// The starting point. It sets up Kaplay, loads everything, and opens the
+// title room. The real work happens in the other files in src/.
 //
 // Kaplay puts its functions (add, sprite, pos, ...) on the global window
 // object, so the other files can use them without importing anything. They
@@ -7,10 +7,12 @@
 
 import { GAME_WIDTH, GAME_HEIGHT, BACKGROUND, DUNGEON_URL } from "./config.js";
 import { loadAssets } from "./assets.js";
-import { loadDungeon, newRun } from "./dungeon.js";
-import { registerScenes } from "./scenes.js";
+import { loadDungeon } from "./dungeon.js";
+import { registerRoomScene } from "./scenes.js";
+import { registerMenuScenes, MENU_PANELS } from "./menu.js";
 import { showMessage, lockPanelHeight } from "./panel.js";
 import { scaleToFit } from "./display.js";
+import { unlockAudioOnFirstInput } from "./sound.js";
 
 // The art is tiny, so the game is drawn at a small resolution (320x208) and
 // display.js scales it up by a whole number to fill its box on the page.
@@ -26,12 +28,14 @@ kaplay({
 scaleToFit(document.querySelector("#game canvas"), gameBox);
 
 loadAssets();
-registerScenes();
+unlockAudioOnFirstInput();
 
 try {
   const dungeon = await loadDungeon(DUNGEON_URL);
-  lockPanelHeight(dungeon); // so the game doesn't resize every time the panel changes
-  onLoad(() => go("room", newRun(dungeon)));
+  registerRoomScene();
+  registerMenuScenes(dungeon);
+  lockPanelHeight(dungeon, MENU_PANELS); // so the game doesn't resize every time the panel changes
+  onLoad(() => go("title"));
 } catch (error) {
   showMessage(`Something went wrong loading the dungeon: ${error.message}`);
   console.error(error);

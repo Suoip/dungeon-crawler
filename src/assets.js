@@ -1,4 +1,5 @@
 import { TILE } from "./config.js";
+import { heroSprites } from "./heroes.js";
 
 // An "atlas" is one big image holding many sprites. We tell Kaplay where each
 // sprite sits inside it (x, y, width, height). The numbers come from
@@ -11,17 +12,19 @@ export function loadAssets() {
   });
 
   loadSpriteAtlas("assets/tileset/0x72_DungeonTilesetII_v1.7.png", {
-    // The knight has 9 frames side by side: 4 idle, 4 run, 1 hit.
+    // Every hero has 9 frames side by side: 4 idle, 4 run, 1 hit.
     // sliceX cuts the strip into those 9 frames, and anims names the ranges.
-    knight: {
-      x: 128, y: 100, width: 16 * 9, height: 28,
-      sliceX: 9,
-      anims: {
-        idle: { from: 0, to: 3, speed: 8, loop: true },
-        run: { from: 4, to: 7, speed: 12, loop: true },
-        hit: 8,
-      },
-    },
+    ...heroSprites(),
+
+    // Menu room props.
+    floor_ladder: tile(48, 96),
+    lever_left: tile(80, 208),
+    lever_right: tile(96, 208),
+    chest: tile(304, 416),
+    skull: tile(288, 432),
+    crate: tile(288, 408, 16, 24),
+    flask_red: tile(288, 352),
+    flask_blue: tile(304, 352),
 
     floor_1: tile(16, 64), floor_2: tile(32, 64), floor_3: tile(48, 64),
     floor_4: tile(16, 80), floor_5: tile(32, 80), floor_6: tile(48, 80),
