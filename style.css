@@ -1,0 +1,155 @@
+/* Colors pulled from the tileset so the panel feels like part of the dungeon */
+:root {
+  --bg: #181425;        /* same as the game background */
+  --stone: #3a2f4a;
+  --stone-light: #5a4d6e;
+  --text: #f4f0f8;
+  --muted: #a99bb9;
+}
+
+/* Elements with the hidden attribute stay hidden even if a rule below gives
+   them a display value */
+[hidden] { display: none !important; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+/* Panel on top, game fills whatever space is left */
+body {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---- Question panel ---- */
+
+#panel {
+  padding: 12px 16px 14px;
+  border-bottom: 3px solid var(--stone);
+  background: linear-gradient(var(--bg), #201a30);
+}
+
+.panel-top {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+#question {
+  margin: 6px 0 8px;
+  font-size: 1.2rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+#answers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 20px;
+  margin: 0 0 10px;
+  padding: 0;
+  list-style: none;
+  font-size: 1.05rem;
+}
+
+.letter {
+  margin-right: 6px;
+  font-weight: 800;
+}
+
+#door-hint {
+  margin: 0;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+button {
+  font: inherit;
+  color: var(--text);
+  background: var(--stone);
+  border: 2px solid var(--stone-light);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+button:hover { background: var(--stone-light); }
+
+#door-button {
+  min-height: 44px; /* big enough to tap with a finger */
+  padding: 6px 14px;
+  font-weight: 600;
+}
+
+#door-button .letter { margin: 0 0 0 4px; }
+
+kbd {
+  margin-left: 10px;
+  padding: 1px 6px;
+  font-family: inherit;
+  font-size: 0.75rem;
+  color: var(--muted);
+  border: 1px solid var(--stone-light);
+  border-radius: 4px;
+}
+
+/* Touch screens have no E or Space key, so don't show that hint there */
+@media (hover: none) {
+  kbd { display: none; }
+}
+
+/* ---- Game area and overlay ---- */
+
+#game {
+  position: relative;
+  flex: 1;
+  min-height: 0; /* lets the game shrink when the panel grows */
+}
+
+#overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.card {
+  max-width: 440px;
+  width: 100%;
+  padding: 20px 22px;
+  background: rgba(24, 20, 37, 0.94);
+  border: 3px solid var(--stone-light);
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.card h2 { margin: 0 0 12px; font-size: 1.4rem; }
+.card p { margin: 8px 0; line-height: 1.4; }
+.overlay-question { font-weight: 600; }
+.answer-line .muted { color: var(--muted); margin-right: 8px; }
+.explanation {
+  padding: 10px 12px;
+  background: var(--stone);
+  border-radius: 6px;
+}
+.score { color: var(--muted); }
+
+.big-button {
+  margin-top: 10px;
+  width: 100%;
+  min-height: 48px;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
