@@ -21,8 +21,6 @@ const SOUNDS = {
   letter:   [0.15, 0, 880, 0, 0.02, 0.05, 1, 1, 30],
   crack:    [0.7, 0.2, 260, 0, 0.03, 0.2, 4, 1, 0, 0, 0, 0, 0, 1.5, 0, 0.1],
   crumble:  [0.7, 0.1, 70, 0.05, 0.4, 0.5, 4, 2, 0, 0, 0, 0, 0, 2, 0, 0.2],
-  spikes:   [0.5, 0.05, 1400, 0, 0.04, 0.15, 3, 1, 20, 0, 0, 0, 0, 0, 0, 0, 0.04],
-  hit:      [0.6, 0.1, 220, 0, 0.05, 0.2, 2, 1, -12, 0, 0, 0, 0, 1],
   lever:    [0.0625, 0, 160, 0, 0.02, 0.08, 5, 0.3, 0, 0, -50, 0.03],
   poof:     [0.4, 0.05, 400, 0.02, 0.1, 0.3, 1, 1, 6, 0, 200, 0.05],
 
@@ -35,6 +33,7 @@ const SOUNDS = {
   unlock:   [0.3, 0, 600, 0, 0.03, 0.15, 3, 1, 0, 0, -200, 0.04],
   locked:   [0.15, 0.2, 400, 0, 0.02, 0.06, 3, 1, 0, 0, 0, 0, 0.03],
   charge:   [0.4, 0.1, 90, 0.1, 0.3, 0.3, 2, 1, 3, 0, 0, 0, 0, 0.5],
+  wrong:    [0.4, 0, 150, 0, 0.12, 0.25, 2, 1, -3, 0, -40, 0.1],  // a low "nope" buzz that drops in pitch
 };
 
 // An equalizer (EQ) for some sounds: it changes their tone without changing
@@ -56,6 +55,7 @@ const EQ = {
   unlock:  { lowpass: 2500, shelf: -6, shelfFrom: 1800 },
   locked:  { lowpass: 2000, shelf: -6, shelfFrom: 1500 },
   charge:  { lowpass: 1500, shelf: -8, shelfFrom: 1000 },
+  wrong:   { lowpass: 1500, shelf: -8, shelfFrom: 1000 },
 };
 
 // Each sound's filters are built once, the first time it plays, and reused.

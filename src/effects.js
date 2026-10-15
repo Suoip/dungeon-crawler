@@ -1,4 +1,4 @@
-import { GAME_WIDTH, GAME_HEIGHT } from "./config.js";
+import { GAME_WIDTH, GAME_HEIGHT, TOP, TILE } from "./config.js";
 import { getSetting } from "./settings.js";
 
 // Kaplay's shake(), unless the player turned screen shake off in Options.
@@ -59,4 +59,44 @@ export function puffDust(x, y, count = 8, spread = 14, depth = 11) {
     tween(puff.pos, target, seconds, (p) => (puff.pos = p), easings.easeOutQuad);
     animate(0.9, 0, seconds, (v) => (puff.opacity = v)).then(() => destroy(puff));
   }
+}
+
+// Red light over the whole room while it's cursed (after a wrong door). It's
+// drawn over the floor, the hero and the mobs, but under the hearts, and
+// pulses slowly.
+export function addRedLight() {
+  const light = add([rect(GAME_WIDTH, GAME_HEIGHT), color(150, 0, 20), opacity(0), z(45)]);
+  let strength = 0;
+  light.onUpdate(() => (light.opacity = strength * (0.16 + 0.05 * Math.sin(time() * 3))));
+  return {
+    on: () => animate(strength, 1, 0.6, (v) => (strength = v)),
+    off: () => animate(strength, 0, 1, (v) => (strength = v)),
+  };
+}
+
+// A short line of text that pops up over the room and fades, like "WAVE 2/3".
+export async function showBanner(message, rgb = [255, 255, 255]) {
+  const banner = add([
+    text(message, { size: 8, font: "pixel" }),
+    pos(GAME_WIDTH / 2, TOP + 3 * TILE),
+    anchor("center"),
+    color(...rgb),
+    scale(1),
+    opacity(1),
+    z(60),
+  ]);
+  // A dark copy behind it, one pixel down, so it reads on any floor.
+  const shadow = add([
+    text(message, { size: 8, font: "pixel" }),
+    pos(GAME_WIDTH / 2, TOP + 3 * TILE + 1),
+    anchor("center"),
+    color(24, 20, 37),
+    opacity(1),
+    z(59),
+  ]);
+  await animate(2, 1, 0.25, (s) => (banner.scale = vec2(s)), easings.easeOutBack);
+  await sleep(0.9);
+  await animate(1, 0, 0.4, (v) => (banner.opacity = shadow.opacity = v));
+  destroy(banner);
+  destroy(shadow);
 }

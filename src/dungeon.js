@@ -32,7 +32,9 @@ function shuffle(list) {
 // "the answer is always the left door".
 // `boss` is which boss waits in the last question room (picked in the
 // boss-select test room). Hearts carry over from room to room for the whole
-// run. The timer starts when the hero lands in the first room.
+// run. The timer starts when the hero lands in the first room, and stops
+// while an explanation card is up (reading it shouldn't cost time).
+// `firstTry` counts questions answered right with the first door picked.
 export function newRun(dungeon, boss) {
   const rooms = shuffle(dungeon.rooms).map((room) => {
     const answers = shuffle([
@@ -45,13 +47,24 @@ export function newRun(dungeon, boss) {
   return {
     dungeon, rooms, index: 0, boss,
     hearts: 3, maxHearts: 3,
-    startTime: null, endTime: null,
+    startTime: null, endTime: null, pausedFor: 0, pausedAt: null,
+    firstTry: 0,
   };
+}
+
+export function pauseClock(run) {
+  run.pausedAt = performance.now();
+}
+
+export function resumeClock(run) {
+  run.pausedFor += performance.now() - run.pausedAt;
+  run.pausedAt = null;
 }
 
 // How long the run has taken so far, as "1:23".
 export function runTime(run) {
   if (run.startTime === null) return "0:00";
-  const seconds = Math.floor(((run.endTime ?? performance.now()) - run.startTime) / 1000);
+  const now = run.endTime ?? run.pausedAt ?? performance.now();
+  const seconds = Math.floor((now - run.startTime - run.pausedFor) / 1000);
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
 }

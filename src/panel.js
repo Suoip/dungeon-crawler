@@ -55,26 +55,20 @@ function fillQuestion(questionEl, answersEl, question, answers) {
   }));
 }
 
-function fillSuspense(questionEl, answersEl, letterIndex, answer) {
-  questionEl.replaceChildren(el("span", "Your answer: ", "muted"), letterBadge(letterIndex), `${answer} …`);
-  answersEl.replaceChildren();
-}
-
-// While the knight falls, show only the answer he picked, so the panel doesn't
-// give away whether it was right before he lands.
-export function showSuspense(run, depth, answered) {
+export function showCorrect(run, depth) {
   setDepth(run, depth);
-  const { room, chosen } = answered;
-  fillSuspense($("question"), $("answers"), room.answers.indexOf(chosen), chosen.text);
-}
-
-export function showCorrect() {
   $("question").replaceChildren(el("span", "Correct!", "correct"));
+  $("answers").replaceChildren();
 }
 
 export function showQuestion(run, room) {
   setDepth(run, run.index + 1);
   fillQuestion($("question"), $("answers"), room.question, room.answers.map((answer) => answer.text));
+}
+
+// A wrong answer gets crossed out in the list, so you can see what's left.
+export function crossOutAnswer(index) {
+  $("answers").children[index]?.classList.add("crossed");
 }
 
 // The game fills whatever space the panel leaves, so every time the panel
@@ -107,11 +101,6 @@ function measureTallestPanel(dungeon, menuPanels) {
     const answers = [room.correct, ...room.wrong];
     fillQuestion(questionEl, answersEl, room.question, answers);
     measure();
-    // The "Your answer: …" line could be the tallest if an answer is long.
-    answers.forEach((answer, i) => {
-      fillSuspense(questionEl, answersEl, i, answer);
-      measure();
-    });
   }
 
   // And the menu rooms' panels (the credits list can be the tallest of all).
@@ -224,24 +213,27 @@ function answerLine(label, room, answer) {
   return line;
 }
 
-export function showGameOver(run, room, chosen, { onRetry, onMenu }) {
+// After a question they got wrong at least once, once they've found the
+// right door: the answer and why. Resolves when they press Continue.
+export function showExplanation(room) {
   const correct = room.answers.find((answer) => answer.correct);
-  showOverlay([
-    el("h2", "You fell into a trap!"),
+  return new Promise((resolve) => showOverlay([
+    el("h2", "Correct!"),
     el("p", room.question, "overlay-question"),
-    answerLine("Your answer:", room, chosen),
-    answerLine("Correct answer:", room, correct),
+    answerLine("Answer:", room, correct),
     el("p", room.explanation, "explanation"),
-    el("p", `Rooms cleared: ${run.index}/${run.rooms.length} · Time: ${runTime(run)}`, "score"),
-  ], [{ text: "Try again", onClick: onRetry }, { text: "Menu", onClick: onMenu }]);
+  ], [{ text: "Continue", onClick: resolve }]));
 }
+
+const score = (run, cleared) =>
+  el("p", `Rooms cleared: ${cleared}/${run.rooms.length} · First try: ${run.firstTry} · Time: ${runTime(run)}`, "score");
 
 // When the mobs take the last heart.
 export function showDefeated(run, depth, { onRetry, onMenu }) {
   showOverlay([
     el("h2", "Defeated!"),
     el("p", `The monsters got you at depth ${depth}. Fewer hits next time!`),
-    el("p", `Rooms cleared: ${run.index}/${run.rooms.length} · Time: ${runTime(run)}`, "score"),
+    score(run, run.index),
   ], [{ text: "Try again", onClick: onRetry }, { text: "Menu", onClick: onMenu }]);
 }
 
@@ -249,6 +241,6 @@ export function showVictory(run, { onRetry, onMenu }) {
   showOverlay([
     el("h2", "Dungeon cleared!"),
     el("p", `You made it through all ${run.rooms.length} rooms of ${run.dungeon.title}.`),
-    el("p", `Rooms cleared: ${run.rooms.length}/${run.rooms.length} · Time: ${runTime(run)}`, "score"),
+    score(run, run.rooms.length),
   ], [{ text: "Play again", onClick: onRetry }, { text: "Menu", onClick: onMenu }]);
 }

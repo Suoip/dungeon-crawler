@@ -42,8 +42,8 @@ function addSolid(x, y, w, h) {
   ]);
 }
 
-// Builds the room and returns its floor tiles, so a trap can crack and remove
-// some of them later. Look one up with floor.get(`${col},${row}`).
+// Builds the room and returns its floor tiles, so a trap can crack some of
+// them later. Look one up with floor.get(`${col},${row}`).
 export function buildRoom() {
   const floor = new Map();
 
@@ -67,26 +67,4 @@ export function buildRoom() {
   addSolid(0, GAME_HEIGHT - 4, GAME_WIDTH, 4);    // bottom wall strip (4 px tall)
 
   return floor;
-}
-
-// Builds a spike pit *underneath* the floor (z -1 draws it behind the floor
-// tiles), so it's invisible until those tiles crumble away. The top row is the
-// pit's back wall, seen from above; the rows below hold the spikes.
-// Returns the spike tiles so they can be made to shoot up.
-export function addPit(left, top, cols, rows) {
-  add([
-    rect(cols * TILE, rows * TILE),
-    pos(left * TILE, TOP + top * TILE),
-    color(10, 8, 16), // almost black: the pit is deep
-    z(-1),
-  ]);
-
-  const spikes = [];
-  for (let col = left; col < left + cols; col++) {
-    placeTile("edge_down", col, top, z(-1));
-    for (let row = top + 1; row < top + rows; row++) {
-      spikes.push(placeTile("floor_spikes", col, row, z(-1)));
-    }
-  }
-  return spikes;
 }

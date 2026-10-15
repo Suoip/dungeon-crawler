@@ -201,16 +201,6 @@ export function addHearts(run) {
       if (!heart) return;
       tween(3.2, 2, 0.3, (s) => (heart.scale = vec2(s)), easings.easeOutBack);
     },
-    // Empties every heart that's left, one after another (the spike trap
-    // is a hit nobody survives, however many hearts you had).
-    async drain() {
-      while (run.hearts > 0) {
-        run.hearts--;
-        this.update();
-        this.pop();
-        await new Promise((resolve) => wait(0.12, resolve));
-      }
-    },
   };
 }
 
