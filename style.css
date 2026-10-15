@@ -60,6 +60,9 @@ body {
   font-size: 1.05rem;
 }
 
+#question .muted { color: var(--muted); font-weight: 400; }
+.correct { color: #63c74d; }
+
 .letter {
   margin-right: 6px;
   font-weight: 800;

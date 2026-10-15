@@ -29,9 +29,27 @@ function focusGame() {
   document.querySelector("#game canvas")?.focus();
 }
 
-export function showQuestion(run, room) {
+function setDepth(run, depth) {
   $("dungeon-title").textContent = run.dungeon.title;
-  $("progress").textContent = `Room ${run.index + 1}/${run.rooms.length}`;
+  $("progress").textContent = `Depth ${Math.min(depth, run.rooms.length)}/${run.rooms.length}`;
+}
+
+// While the knight falls, show only the answer he picked, so the panel doesn't
+// give away whether it was right before he lands.
+export function showSuspense(run, depth, answered) {
+  setDepth(run, depth);
+  const { room, chosen } = answered;
+  const line = $("question");
+  line.replaceChildren(el("span", "Your answer: ", "muted"), letterBadge(room.answers.indexOf(chosen)), `${chosen.text} …`);
+  $("answers").replaceChildren();
+}
+
+export function showCorrect() {
+  $("question").replaceChildren(el("span", "Correct!", "correct"));
+}
+
+export function showQuestion(run, room) {
+  setDepth(run, run.index + 1);
   $("question").textContent = room.question;
 
   const list = $("answers");

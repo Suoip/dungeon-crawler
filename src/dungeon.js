@@ -41,5 +41,3 @@ export function newRun(dungeon) {
 
   return { dungeon, rooms, index: 0 };
 }
-
-export const currentRoom = (run) => run.rooms[run.index];

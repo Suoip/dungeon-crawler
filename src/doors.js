@@ -47,6 +47,7 @@ export function addDoors(count) {
       anchor("center"),
       color(...LETTER_COLORS[i]),
       scale(1),
+      opacity(0), // hidden until the knight lands safely (see revealLetters)
     ]);
 
     // An invisible strip of floor in front of the door. Standing on it means
@@ -57,6 +58,16 @@ export function addDoors(count) {
     ]);
 
     return { index: i, letter: LETTERS[i], leaf, label, zone, centerX: doorX + TILE };
+  });
+}
+
+// Pops the letters in one after another, left to right.
+export function revealLetters(doors) {
+  doors.forEach((door, i) => {
+    wait(i * 0.08, () => {
+      door.label.opacity = 1;
+      tween(2, 1, 0.25, (s) => (door.label.scale = vec2(s)), easings.easeOutBack);
+    });
   });
 }
 
