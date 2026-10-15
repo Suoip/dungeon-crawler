@@ -36,7 +36,8 @@ export function flashScreen(rgb, strength = 0.5, seconds = 0.5) {
 }
 
 // Little grey squares that burst out sideways from a point and fade away.
-export function puffDust(x, y, count = 8, spread = 14) {
+// By default they're drawn just in front of the knight (z 11).
+export function puffDust(x, y, count = 8, spread = 14, depth = 11) {
   for (let i = 0; i < count; i++) {
     const side = i % 2 === 0 ? -1 : 1;
     const puff = add([
@@ -45,7 +46,7 @@ export function puffDust(x, y, count = 8, spread = 14) {
       anchor("center"),
       color(190, 180, 200),
       opacity(0.9),
-      z(11), // just in front of the knight
+      z(depth),
     ]);
     const target = puff.pos.add(side * rand(spread / 2, spread), -rand(1, 6));
     const seconds = rand(0.3, 0.5);

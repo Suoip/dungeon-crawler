@@ -117,12 +117,20 @@ async function walkThroughDoor(player, door, fader) {
   openDoor(door);
   player.play("run");
 
-  // Line up with the middle of the door, then step in while fading away.
+  // Line up with the middle of the door, then step into the doorway.
   await animate(player.pos.x, door.centerX, 0.15, (x) => (player.pos.x = x));
-  await Promise.all([
-    animate(player.pos.y, TOP + 2 * TILE - 4, 0.5, (y) => (player.pos.y = y)),
-    animate(1, 0, 0.5, (v) => (player.opacity = v)),
-  ]);
+
+  const threshold = TOP + 2 * TILE; // the bottom edge of the door
+  const inside = threshold - 6;     // how far in he walks
+  await animate(player.pos.y, inside, 0.5, (y) => {
+    player.pos.y = y;
+    if (y < threshold) {
+      // Past the threshold: draw him behind the door frame (z 3) but in
+      // front of the darkness (z 1), and fade him out as he goes deeper.
+      player.z = 2;
+      player.opacity = (y - inside) / (threshold - inside);
+    }
+  });
   await fadeOut(fader);
 }
 
@@ -177,6 +185,7 @@ export function registerScenes() {
 
       if (answered) {
         showCorrect();
+        flashScreen([99, 199, 77], 0.25, 0.5); // a soft green flash, like the red one for a wrong answer
         await sleep(0.6);
       }
 

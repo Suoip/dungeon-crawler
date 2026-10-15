@@ -1,4 +1,7 @@
 import { PLAYER_SPEED } from "./config.js";
+import { puffDust } from "./effects.js";
+
+const DUST_EVERY = 0.22; // seconds between dust puffs while running
 
 export function addPlayer(x, y) {
   return add([
@@ -24,6 +27,8 @@ export function addPlayer(x, y) {
 const held = (...keys) => keys.some((k) => isKeyDown(k));
 
 export function setupPlayerMovement(player) {
+  let dustTimer = 0;
+
   // onUpdate runs every frame (about 60 times a second).
   player.onUpdate(() => {
     if (player.frozen) return;
@@ -40,6 +45,14 @@ export function setupPlayerMovement(player) {
       player.move(dir.unit().scale(PLAYER_SPEED));
       if (dir.x !== 0) player.flipX = dir.x < 0; // face the way he's walking
       if (player.getCurAnim().name !== "run") player.play("run");
+
+      // A small puff of dust at his feet every so often while running.
+      // dt() is the time since the last frame, so this counts down in seconds.
+      dustTimer -= dt();
+      if (dustTimer <= 0) {
+        puffDust(player.pos.x, player.pos.y, 2, 5, 9); // z 9: behind him
+        dustTimer = DUST_EVERY;
+      }
     } else if (player.getCurAnim().name !== "idle") {
       player.play("idle");
     }

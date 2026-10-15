@@ -10,18 +10,20 @@ import { loadAssets } from "./assets.js";
 import { loadDungeon, newRun } from "./dungeon.js";
 import { registerScenes } from "./scenes.js";
 import { showMessage, lockPanelHeight } from "./panel.js";
+import { scaleToFit } from "./display.js";
 
-// The art is tiny, so the game runs at a small "virtual" resolution and Kaplay
-// scales it up to fill its box on the page.
+// The art is tiny, so the game is drawn at a small resolution (320x208) and
+// display.js scales it up by a whole number to fill its box on the page.
+const gameBox = document.getElementById("game");
 kaplay({
   width: GAME_WIDTH,
   height: GAME_HEIGHT,
-  root: document.getElementById("game"), // draw inside this element, under the panel
-  stretch: true,     // scale up to fill the box...
-  letterbox: true,   // ...but keep the shape (bars if needed)
-  crisp: true,       // no smoothing, so pixels stay sharp
+  root: gameBox,     // draw inside this element, under the panel
+  pixelDensity: 1,   // draw exactly 320x208 pixels; display.js does the scaling
+  crisp: true,       // no smoothing, so pixels stay sharp when scaled up
   background: BACKGROUND,
 });
+scaleToFit(document.querySelector("#game canvas"), gameBox);
 
 loadAssets();
 registerScenes();
