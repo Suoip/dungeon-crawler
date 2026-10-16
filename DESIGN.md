@@ -40,25 +40,51 @@ The quiz is gone. The new game is pure linear progression.
   power comes only from the tree. Pickups might be heart drops, a time orb
   for a few extra seconds, or a burst of gold. Unlocking and improving these
   is part of the tree.
+- **The loop between strength and spawns** is what keeps people hooked.
+  Upgrades that make you stronger soon mean you clear monsters faster than
+  they appear, and you're left waiting for spawns. So you buy spawn
+  upgrades, until there are more monsters than you can handle, so you buy
+  strength again, and round it goes. The numbers are tuned so neither side
+  stalls for long.
 
 ## 3. Structure
 
 - **5 depths × 10 sub-depths = 50 rooms.**
-- **A sub-depth is one room.** It reuses the existing room, wave and
-  spawning code.
-- **Going down:** the room's way deeper is a chained door. The last mob
-  drops a key (built like the old scroll pickup, which is in git history
-  before the clean-up), picking it up unchains the door,
-  and walking through takes you to the next sub-depth.
+- **A sub-depth is one room.** It reuses the existing room and spawning
+  code.
+- **Rooms fill an XP bar**, the industry standard for these games:
+  - **On entering,** a set number of monsters rise from the floor (5 to
+    start). Upgrades raise it.
+  - **Hordes** arrive on a timer, whether or not the room is clear: 7
+    monsters every 20 s to start. The timer starts over in each room.
+    Upgrades make hordes bigger and more frequent.
+  - **There's always something to fight:** when the last monster falls,
+    one more is spawned straight away.
+  - **Each kill gives XP** toward the room's bar (and gold, separately).
+    XP only counts for that room in that run.
+  - **When the bar is full,** the door unchains and spawning stops. The
+    monsters still up stay: kill them for their gold, or leave right away
+    and save time.
+  - **No limit** on how many monsters are up at once. The balance is the
+    limit: see the loop in section 2.
+- **Early rooms get faster as you get stronger.** More monsters and more XP
+  per kill fill a bar faster, so on run 30 room 1 takes a few seconds
+  instead of the 20 it took on run 1. Time goes where the challenge is.
 - **Checkpoint per depth.** If a run ends before sub-depth 10 of a depth is
   cleared, that depth is still the deepest one unlocked, so the next run
   starts at its sub-depth 1 again. Beating sub-depth 10 unlocks the next
   depth.
-- **Sub-depth 10 is a boss.** Beating it unlocks the next depth. The three
+- **Sub-depth 10 is a boss room.** Monsters spawn as in any room. When its
+  bar is full, spawning stops, the boss appears, and **the run clock stops**:
+  you've already made it to sub-depth 10 in time, so the boss fight isn't a
+  race. Only your hearts can end it. The boss raises its own minions as it
+  fights. When it falls, it bursts into a pile of coins (its reward), and a
+  **well** (down to the underworld, to buy upgrades) and a **ladder** (up to
+  the main room) appear. Beating it unlocks the next depth. The three
   existing bosses (dash, vomit and spawn moves, plus a rage phase) are a head
   start, and two more are needed.
 - **From sub-depth 1 to 9, rooms grow in four ways:**
-  - more mobs, with more HP and more waves
+  - bigger XP bars, and monsters with more HP
   - new mob types, introduced a few at a time across a depth
   - room hazards (spikes, lava and the like) deeper in a depth
   - room layouts: pillars and walls, so rooms aren't all the same open box
@@ -72,18 +98,18 @@ Mobs: tiny zombies (chasers), skeletons (rushers: they wind up, then charge
 in a line) and slugs (splitters: each splits into two tiny slugs). Chest
 mimics are the surprise late in the depth.
 
-| Sub-depth | What's new | Rooms |
+| Sub-depth | What's new | What spawns |
 |---|---|---|
-| 1 | Tiny zombies, pots | One small wave, clearable in a few seconds |
-| 2 | | Two waves of tiny zombies |
-| 3 | Skeletons, the first pillars | Zombies with a skeleton |
-| 4 | Floor spikes | Pairs of skeletons, spikes on a timer |
-| 5 | Slugs | Slugs and zombies |
-| 6 | Crates (a few hits), bones start dropping | All three mob types mixed |
-| 7 | A chest mimic | A chest in the room that may be a mimic |
-| 8 | More spikes, tighter layouts | Bigger waves of everything |
+| 1 | Tiny zombies, pots | Tiny zombies |
+| 2 | | Tiny zombies, a bigger bar |
+| 3 | Skeletons, the first pillars | Mostly zombies, some skeletons |
+| 4 | Floor spikes | More skeletons |
+| 5 | Slugs | Zombies, skeletons and slugs |
+| 6 | Crates (a few hits), bones start dropping | All three mixed evenly |
+| 7 | A chest mimic | A mimic now and then |
+| 8 | More spikes, tighter layouts | Mostly skeletons |
 | 9 | A big sturdy breakable (many hits, lots of gold) | The hardest mix in the depth |
-| 10 | **Big Zombie** | It raises tiny zombies, which fits the crypt |
+| 10 | **Big Zombie** | Its bar fills first; then it appears and raises tiny zombies |
 
 ## The run timer
 
@@ -92,10 +118,10 @@ mimics are the surprise late in the depth.
   - flat extra time at the start of a run
   - extra time added each time you reach the next sub-depth in that run
   - more of the same kind (to be designed in section 7)
-- **What this means for rooms:** the first rooms have to be clearable in a
-  few seconds, with only a few weak mobs, so an early run gets through one
-  or two rooms. The current rooms, with several waves of tough mobs, are far
-  too long for this and will be retuned.
+- **What this means for rooms:** the first rooms' XP bars have to be small
+  enough that an early run fills one or two of them, mostly from the
+  monsters that greet you and the one-at-a-time spawns, since a 15-20 s
+  clock rarely lasts until the first horde.
 
 ## 4. The hook
 
@@ -175,6 +201,11 @@ to:
 - **Collecting:** drops land on the floor, and a small magnet pulls them in
   when you're close. The tree grows the magnet's range. Anything left behind
   when you go through the door is lost, so you choose between gold and time.
+  When a run ends (death or time), every coin still on the floor is
+  collected as you're dragged down.
+- **Gold comes as whole coins.** A kill's gold (with Greed) is rounded to
+  the nearest coin, and is always at least 1. Greed works on kills; Smash
+  works on breakables.
 - **What pays out:**
   - mob kills
   - boss kills: a big payout, including repeat kills when you farm a depth
@@ -184,13 +215,16 @@ to:
 - **Heart drops** are on from the start but rarer than today (currently 2%,
   plus 1% for every kill without a drop). The tree raises the chance.
 - **Time orbs** don't drop at all until they're unlocked in the tree, and
-  even then they're much rarer than hearts. The tree raises the chance.
+  even then they're much rarer than hearts. Orbs come from kills, and depth
+  1 has too few kills for orb upgrades to pay off, so **Orb finder and
+  Bigger orbs are an investment for depth 2**: they show up dim until depth
+  2 is reached.
 
 ## 7. The skill tree
 
 - **A web from the middle.** One web starts at a single node in the center
-  and branches outward into five branches: weapon, hearts, time, dash and
-  money. Every purchase opens up the nodes next to it.
+  and branches outward into six branches: weapon, hearts, time, dash, money
+  and horde. Every purchase opens up the nodes next to it.
 - **Most nodes have levels**, for example Sharper blade 0/10 at +1 damage
   each, getting pricier every level. Special nodes are a one-time buy.
 - **Revealed as you buy.** You see the nodes next to ones you own. Nodes
@@ -211,37 +245,56 @@ Every node costs gold. Costs are set in section 8.
 | Hearts | Extra heart | 4 | +1 heart (up to 5) |
 | Hearts | Steady nerves | 3 | Longer invincibility after a hit |
 | Hearts | Lucky hearts | 5 | Hearts drop more often. Only reachable after Extra heart, because a heart only drops when you're missing one |
-| Time | More time | 10 | +3 s at the start of a run |
-| Time | Second wind | 5 | +2 s every time you reach the next sub-depth |
+| Time | More time | 10 | +4 s at the start of a run |
+| Time | Second wind | 5 | +1.5 s every time you reach the next sub-depth |
 | Time | Time orbs | 1 | Unlocks time orbs: rare drops worth +1 s |
-| Time | Orb finder | 5 | Time orbs drop more often |
-| Time | Bigger orbs | 3 | Time orbs are worth more |
+| Time | Orb finder | 5 | Time orbs drop more often (from depth 2) |
+| Time | Bigger orbs | 3 | Time orbs are worth more (from depth 2) |
 | Dash | Dash | 1 | Unlocks the dash |
 | Dash | Quick feet | 5 | Dash cooldown 10% shorter per level |
 | Dash | Second charge | 1 | A second dash charge (it refills at half speed, see section 5) |
 | Money | Magnet | 5 | Pickups are pulled in from further away |
 | Money | Greed | 10 | +10% gold per kill |
 | Money | Smash | 3 | Breakables drop more gold |
+| Horde | Crowded rooms | 10 | +1 monster when you enter a room (start: 5) |
+| Horde | Bigger hordes | 10 | +1 monster per horde (start: 7) |
+| Horde | Restless dead | 5 | Hordes come 2 s sooner (start: every 20 s) |
+| Horde | Death calls | 5 | +5% chance that a kill spawns another monster |
+| Horde | Wisdom | 10 | +10% XP per kill |
 
-That's 19 nodes and 85 levels to buy in depth 1.
+That's 24 nodes: 116 levels to buy in depth 1, and 8 more (Orb finder and
+Bigger orbs) from depth 2. The tuned numbers (costs, and the exact effects)
+live in `src/balance.js`.
 
 ## 8. Pacing
 
-- **Every depth takes about 40 minutes**, from its first run to beating its
-  boss. 5 × 40 minutes is about 3.3 hours.
+- **Every depth takes about 40 minutes for a typical player**, from its
+  first run to beating its boss. 5 × 40 minutes is about 3.3 hours. A
+  typical player is a bit slower than perfect: about 20% slower clears, 10%
+  of the gold missed, and more hits taken. A sharp player is faster (about
+  30 minutes).
 - **The first run:** you die fast, clearing a room or two at most, but you
   earn enough for 1–2 cheap upgrades straight away. The whole loop makes
   sense within the first minute.
 - **Costs multiply per level** by a fixed factor of about ×1.4–1.6,
   different for each node.
-- **The golden rule: an efficient run always buys something.** After any
-  run played well (clearing rooms as fast as the current upgrades allow, and
-  collecting the gold), there's at least one node you can afford. Playing
-  well never ends in a run with nothing to buy. Until the tree is fully
-  bought, there must always be a reachable node whose next level costs no
-  more than an efficient run earns at that point. The simulator checks this
-  after every simulated run and fails if it's broken.
-- **Purchase rhythm:** a good run always buys something (the rule above).
+- **The golden rule: a typical careful run always buys something.** A run
+  played well (clearing rooms as fast as the current upgrades allow, and
+  collecting the gold), with average luck, always earns enough for at least
+  one node. Until the tree is fully bought, there must always be a reachable
+  node whose next level costs no more than such a run earns. Luck is real
+  (a hit costs a whole heart), so the simulator plays each run many times
+  and checks the middle result. It fails if the rule breaks, and warns when
+  a run has less than 1.3× the cheapest price to spare. An unlucky run, cut
+  short by an early hit, may still come up short.
+- **Purchase rhythm:** how many upgrades a run's gold buys.
+  - **None:** never (the golden rule).
+  - **1:** rarely.
+  - **2–4:** most runs, some at the low end and some at the high end.
+  - **5 or more:** almost never, except near the end of a depth. There, a
+    short spree is fine: cleaning up the cheaper levels skipped while going
+    for something else. It shouldn't be a big one (about 8 at most).
+  The simulator reports the share of runs in each group, and the spree.
   Bigger nodes can still take a few runs of saving up, if you choose to
   save for them.
 - **Walls** (where the cheap upgrades run out and the next room is too
@@ -249,9 +302,10 @@ That's 19 nodes and 85 levels to buy in depth 1.
   where people quit.
 - **A pacing simulator** tunes the numbers. It's a small Node script in
   `tools/` that reads the same data file as the game, plays the economy by
-  the numbers (kills per run from damage and time, buying upgrades the way
-  a player would), and reports how long depth 1 takes and where the walls
-  are. After that, the numbers are fine-tuned by playing.
+  the numbers (room times from damage and time, hits and drops rolled with
+  dice, buying upgrades the way a player would), and reports how long depth
+  1 takes, its spread, and where the walls are. After that, the numbers are
+  fine-tuned by playing.
 
 A rough estimate to size things by:
 
@@ -279,17 +333,20 @@ A rough estimate to size things by:
 - **The run results** are written on the underworld floor where YOU DIED
   and the stats are now: YOU DIED or OUT OF TIME, then GOLD EARNED, DEEPEST
   (for example 1-6) and KILLS, plus bones once they drop.
-- **Beating a depth's boss** ends the run in the treasure room, and this
-  time the gold is real: you collect the boss reward by running through it.
-  A ladder then takes you down to the underworld. The next depth is
-  unlocked.
+- **Beating a depth's boss** ends the run in the boss room: the boss bursts
+  into its pile of coins, you gather them with no rush (the clock stopped
+  when it appeared), then take the well down to the underworld or the
+  ladder up to the main room. The next depth is unlocked. (The separate
+  treasure room isn't needed any more; its coin-spill code can be reused
+  for the boss's coins.)
 - **Choosing a depth** (once there are two): a sign next to the TRY AGAIN
   ladder shows the depth, and hitting it switches to the next unlocked one,
   like the volume blocks. Not needed for the first milestone.
-- **The first death unlocks the underworld.** From then on, the title room
-  has a well that leads straight down to it, so you can reach the altar
-  without dying first. Before that first death, there's no well and no tree.
-  The first run is just you, one heart and the clock.
+- **The first visit unlocks the underworld.** Every run ends there, by
+  death or by time, so that's the end of the very first run. From then on,
+  the title room has a well that leads straight down to it, so you can reach
+  the altar without playing a run first. Before that, there's no well and
+  no tree. The first run is just you, one heart and the clock.
 - **No refunds.** Purchases are permanent. You eventually buy most of the
   tree anyway, so the choice is about order.
 - **Saving:** progress saves in the browser after every run and every
@@ -305,8 +362,10 @@ A rough estimate to size things by:
   - the dash gets charges and is unlocked in the tree
   - the room flow becomes a timed run
   - the dungeon file changes from questions to depth data
-  - the chained door becomes the exit you open with the key
-  - the treasure room's gold becomes real, collected with no time limit
+  - the chained door becomes the exit that opens when the XP bar is full
+  - the waves become spawning: monsters on entry, hordes on a timer, and
+    the XP bar that opens the door
+  - the treasure room gives way to the boss's own pile of coins
 - **Removed:**
   - **The scroll band at the top.** The game picture gets about 25% more of
     the screen. The timer, gold and hearts are drawn in the game, and the
@@ -333,8 +392,9 @@ The first milestone, one branch and PR per step:
    costs, drop rates) and the pacing simulator in `tools/`. The first cost
    table comes out of it.
 3. **The run:** the run timer, automatic swings, gold drops with a magnet,
-   the key and chained-door exit, 10 sub-depths, the boss at 10, every run
-   ending in the underworld with its results, and saving.
+   spawning and the XP bar that opens the door, 10 sub-depths, the boss at
+   10 (with the clock stopping), every run ending in the underworld with its
+   results, and saving.
 4. **The hub and the tree:** the altar, the skill tree page, buying nodes,
    the well in the title room and the first-death unlock.
 5. **Tree effects:** the dash unlock and its charges, heart drops, time

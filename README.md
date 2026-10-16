@@ -43,6 +43,7 @@ A few parts worth a look:
 - **Layered drawing:** when the knight steps into a doorway, he's drawn behind the door frame but in front of the darkness behind it, using draw order (`z`), so he really walks *into* the door.
 - **Crisp pixels** ([`src/display.js`](src/display.js)): the game is drawn at 320×208 and scaled up by a whole number of real screen pixels (accounting for `devicePixelRatio`) when that keeps most of the space, so every pixel is the same size. The strip above it is HTML, sized in game pixels and scaled together with the game as one picture, so it keeps its shape on every screen.
 - **Procedural music** ([`src/music.js`](src/music.js)): notes are written as data (`"E5 . . D5 C5"`) and scheduled ahead of time on the Web Audio clock for precise timing.
+- **A pacing simulator** ([`tools/simulate.mjs`](tools/simulate.mjs)): the numbers that shape progression live in one data file ([`src/balance.js`](src/balance.js)), and a Node script plays them. It steps through each room one swing at a time, rolls dice for hits and drops, buys upgrades between runs the way two kinds of shopper would, and reports how long a depth takes and whether every careful run can afford an upgrade. Run it with `node tools/simulate.mjs`.
 
 ## Project structure
 
@@ -66,11 +67,14 @@ src/
   panel.js            what the strip says
   dungeon.js          a run: its rooms, hearts and clock
   sound.js, music.js  sound effects and music
+  balance.js          every number that shapes the game: the clock, monsters, rooms, drops, the skill tree
   settings.js         remembered settings (localStorage)
   display.js          whole-pixel scaling
   effects.js          fades, flashes, dust, screen shake, hit-stop
 assets/               the tileset, fonts, icons and preview images
 lib/zzfx.js           ZzFX sound generator
+tools/                the pacing simulator (Node), which plays the numbers in src/balance.js
+DESIGN.md             the design plan
 ```
 
 ## Running it locally
