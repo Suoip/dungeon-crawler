@@ -1,8 +1,9 @@
 import { TILE, TOP, GAME_WIDTH } from "./config.js";
 import { playSound } from "./sound.js";
 
-// Things placed in the menu rooms: the ladder, the floor hatch, signs,
-// plaques, levers, keyboard keys and the title text.
+// Things placed in the menu rooms and the underworld: the ladder, the floor
+// hatch, the well, the altar, signs, plaques, levers, the reset button,
+// keyboard keys and the title text.
 
 // The pack's wood colors, for things we draw ourselves.
 const WOOD_DARK = [59, 30, 20];
@@ -39,6 +40,129 @@ export function addLadder(centerX) {
 export function addHatch(col, row) {
   add([sprite("floor_ladder"), pos(col * TILE, TOP + row * TILE)]);
   return { centerX: col * TILE + TILE / 2, y: TOP + row * TILE };
+}
+
+// A stone well, round and open, with the underworld's red glow pulsing deep
+// down and an ember drifting up now and then. It's the way down to the
+// underworld: after the boss, and from the title room once you've been there.
+// It stands on the floor tile at (col, row). It's solid, like the altar
+// (only its foot, so the hero can walk behind it), and it's sorted with the
+// characters, so he's drawn behind it when he's behind it. Returns its middle
+// (centerX), its opening's y, its foot's y, its depth (z) and its zone: the
+// floor in front of it. climbIntoWell (cutscenes.js) takes him down it.
+export function addWell(col, row) {
+  const x = col * TILE + TILE / 2;
+  const y = TOP + row * TILE;
+  const opening = y + 9;   // the middle of its opening
+  const foot = y + 19;     // the bottom of its front wall
+  const depth = 10 + foot / 1000;
+  const DARK = rgb(24, 20, 37);
+  const MORTAR = rgb(66, 58, 80);
+  const well = add([
+    pos(x, opening),
+    area({ shape: new Rect(vec2(-12, 3), 24, 7) }),
+    body({ isStatic: true }),
+    z(depth),
+  ]);
+  well.onDraw(() => {
+    // Its front: a round wall of stone bricks, three rows of them.
+    drawRect({ pos: vec2(-12, 0), width: 24, height: 10, color: DARK });
+    drawRect({ pos: vec2(-11, 0), width: 22, height: 9, color: rgb(112, 102, 124) });
+    drawRect({ pos: vec2(-11, 7), width: 22, height: 2, color: rgb(84, 76, 98) }); // the bottom, in shade
+    for (const rowY of [3, 6]) drawRect({ pos: vec2(-11, rowY), width: 22, height: 1, color: MORTAR });
+    for (const [jointX, jointY] of [[-6, 0], [0, 0], [6, 0], [-9, 4], [-3, 4], [3, 4], [9, 4], [-6, 7], [0, 7], [6, 7]]) {
+      drawRect({ pos: vec2(jointX, jointY), width: 1, height: 2, color: MORTAR });
+    }
+    // The rim on top, then the dark hole, its far inside wall, and the
+    // underworld's glow down at the bottom.
+    drawEllipse({ pos: vec2(0, 0), radiusX: 12, radiusY: 6, color: DARK });
+    drawEllipse({ pos: vec2(0, 0), radiusX: 11, radiusY: 5, color: rgb(156, 148, 168) });
+    drawEllipse({ pos: vec2(0, 0), radiusX: 8, radiusY: 3, color: rgb(12, 10, 20) });
+    drawRect({ pos: vec2(-6, -2), width: 12, height: 1, color: rgb(40, 34, 52) });
+    for (const [dx, dy] of [[-10, -1], [-5, -4], [5, -4], [10, -1], [-6, 3], [6, 3]]) {
+      drawRect({ pos: vec2(dx, dy), width: 1, height: 1, color: MORTAR }); // the rim's stones
+    }
+    const glow = 0.4 + Math.sin(time() * 2.5) * 0.2;
+    drawEllipse({ pos: vec2(0, 1), radiusX: 5, radiusY: 1.5, color: rgb(230, 72, 46), opacity: glow });
+  });
+  loop(0.7, () => {
+    if (!chance(0.6)) return;
+    const ember = add([rect(1, 1), pos(x + rand(-4, 4), opening), color(247, 150, 23), opacity(0.9), z(depth + 0.001)]);
+    const start = ember.pos.clone();
+    tween(0, 1, rand(0.8, 1.3), (t) => {
+      ember.pos = start.add(Math.sin(t * 7) * 1.5, -14 * t);
+      ember.opacity = 0.9 * (1 - t);
+    }).onEnd(() => destroy(ember));
+  });
+  const zone = add([pos(x - 12, foot), area({ shape: new Rect(vec2(0), 24, 12) })]);
+  return { centerX: x, opening, foot, depth, zone };
+}
+
+// The underworld's altar, where the skill tree opens: a block of stone with
+// a skull on top, a candle at each end and a sigil carved in the front.
+// (x, y) is the middle of its foot. It's solid (only its foot, like the
+// characters, so the hero can walk behind it), and the zone is the floor in
+// front of it. setLit(true) makes the sigil glow gold: there's something
+// you can buy.
+export function addAltar(x, y) {
+  let lit = false;
+  const DARK = rgb(24, 20, 37);
+  const altar = add([
+    pos(x, y),
+    area({ shape: new Rect(vec2(-15, -7), 30, 7) }),
+    body({ isStatic: true }),
+    z(10 + y / 1000), // sorted with the characters
+  ]);
+  altar.onDraw(() => {
+    drawRect({ pos: vec2(-16, -19), width: 32, height: 19, color: DARK });                // outline
+    drawRect({ pos: vec2(-15, -18), width: 30, height: 4, color: rgb(150, 98, 98) });     // the slab on top
+    drawRect({ pos: vec2(-15, -18), width: 30, height: 1, color: rgb(186, 128, 124) });   // its lit edge
+    drawRect({ pos: vec2(-13, -14), width: 26, height: 12, color: rgb(104, 62, 66) });    // the front, in shade
+    drawRect({ pos: vec2(-15, -2), width: 30, height: 2, color: rgb(78, 44, 50) });       // the plinth
+    // The sigil: a ring with a cross through it, dull until there's
+    // something to buy, then glowing gold.
+    const glow = lit ? 0.75 + Math.sin(time() * 4) * 0.25 : 1;
+    const mark = lit ? rgb(255, 205, 70) : rgb(64, 34, 40);
+    for (const [dx, dy, w, h] of [[-3, -12, 6, 1], [-3, -5, 6, 1], [-4, -11, 1, 6], [3, -11, 1, 6], [0, -13, 1, 10], [-6, -8, 13, 1]]) {
+      drawRect({ pos: vec2(dx, dy), width: w, height: h, color: mark, opacity: glow });
+    }
+    // A skull on top, with its eyes lit like the sigil.
+    const BONE = rgb(226, 214, 196);
+    drawRect({ pos: vec2(-4, -25), width: 9, height: 6, color: DARK });
+    drawRect({ pos: vec2(-3, -20), width: 7, height: 3, color: DARK });
+    drawRect({ pos: vec2(-2, -24), width: 5, height: 1, color: BONE });
+    drawRect({ pos: vec2(-3, -23), width: 7, height: 3, color: BONE });
+    drawRect({ pos: vec2(-2, -20), width: 5, height: 2, color: BONE });
+    for (const eyeX of [-2, 1]) drawRect({ pos: vec2(eyeX, -22), width: 2, height: 2, color: lit ? mark : DARK, opacity: lit ? glow : 1 });
+    for (const gapX of [-1, 1]) drawRect({ pos: vec2(gapX, -19), width: 1, height: 1, color: DARK }); // between the teeth
+    // The candles, with flames that flicker.
+    for (const side of [-1, 1]) {
+      const cx = side * 11;
+      drawRect({ pos: vec2(cx - 1, -24), width: 3, height: 7, color: DARK });
+      drawRect({ pos: vec2(cx, -23), width: 1, height: 5, color: rgb(240, 230, 210) });
+      const flicker = Math.sin(time() * 13 + side * 2) > 0.3 ? 1 : 0;
+      drawRect({ pos: vec2(cx - 0.5, -27 - flicker), width: 2, height: 3 + flicker, color: rgb(247, 150, 23) });
+      drawRect({ pos: vec2(cx, -26), width: 1, height: 2, color: rgb(255, 205, 70) });
+    }
+  });
+  const zone = add([pos(x - 14, y), area({ shape: new Rect(vec2(0), 28, 20) })]);
+  return { zone, setLit: (on) => (lit = on) };
+}
+
+// A big red button in the floor, with its name over it. press() pushes it
+// down for good; the label can be changed with setLabel.
+export function addFloorButton(x, y, title) {
+  const button = add([sprite("button_red_up"), pos(x, y), anchor("bot")]);
+  const label = add([text(title, { size: 8, font: "pixel" }), pos(x, y - 24), anchor("center"), color(240, 230, 210)]);
+  const zone = add([pos(x - 10, y - 8), area({ shape: new Rect(vec2(0), 20, 14) })]);
+  return {
+    zone,
+    press: () => button.use(sprite("button_red_down")),
+    setLabel(content, rgbColor = [240, 230, 210]) {
+      label.text = content;
+      label.use(color(...rgbColor));
+    },
+  };
 }
 
 // A wooden sign: lines of text on a small dark board, centered on (x, y).
@@ -157,7 +281,7 @@ export function addVolumeSlider(y, icon, level, player, onChange) {
     level = next;
     playSound("mobHit"); // the thunk of the bump
     tween(block.pos.x, restX(), 0.14, (x) => (block.pos.x = x), easings.easeOutQuad);
-    number.text = String(level);
+    number.setText(String(level));
     onChange(level);
   }
 }
@@ -207,7 +331,11 @@ export function addKeycap(x, y, label) {
 // Text in the pixel font with a dark shadow under it, so it stands out on
 // the floor.
 // `depth` (optional) is its z, e.g. to keep it above things on the floor.
+// Returns the text; to change what it says later, use its setText(), which
+// changes the shadow too.
 export function addShadowText(content, x, y, size, rgb, depth = 0) {
-  add([text(content, { size, font: "pixel" }), pos(x + 1, y + 1), anchor("center"), color(12, 10, 20), z(depth)]);
-  return add([text(content, { size, font: "pixel" }), pos(x, y), anchor("center"), color(...rgb), z(depth)]);
+  const shadow = add([text(content, { size, font: "pixel" }), pos(x + 1, y + 1), anchor("center"), color(12, 10, 20), z(depth)]);
+  const front = add([text(content, { size, font: "pixel" }), pos(x, y), anchor("center"), color(...rgb), z(depth)]);
+  front.setText = (content) => (front.text = shadow.text = content);
+  return front;
 }

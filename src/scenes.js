@@ -7,14 +7,14 @@ import { addPlayer, setupPlayerMovement, setupDash } from "./player.js";
 import { addDoors, doorInteraction, chainDoor, unchainDoor } from "./doors.js";
 import { setupInteractions } from "./interact.js";
 import {
-  fallIn, walkThroughDoor, giveControl, dragDown, climbLadder, climbIntoHatch, LAND_X, LAND_Y,
+  fallIn, walkThroughDoor, giveControl, dragDown, climbLadder, climbIntoWell, LAND_X, LAND_Y,
 } from "./cutscenes.js";
 import { sleep, animate, addFader, fadeIn, fadeOut, shakeScreen, flashScreen, puffDust } from "./effects.js";
 import { startSpawning, raiseMob, MOB_TYPES } from "./mobs.js";
 import { setupAutoSwing, setupHurt, addHearts, setupHeartDrops } from "./combat.js";
 import { dropCoins, collectFloor } from "./coins.js";
 import { addHud } from "./hud.js";
-import { addLadder, addHatch } from "./props.js";
+import { addLadder, addWell } from "./props.js";
 import { playSound } from "./sound.js";
 import { showDepth, hidePrompt } from "./panel.js";
 
@@ -162,15 +162,15 @@ export function registerRoomScene() {
       wait(0.8, () => {
         playSound("door");
         const ladder = addLadder(96); // clear of the clock
-        const well = addHatch(14, 7);
-        puffDust(well.centerX, well.y + 8, 10, 16);
+        const well = addWell(14, 7);
+        puffDust(well.centerX, well.foot, 10, 16);
         things.push(
           {
-            zone: add([pos(well.centerX - 10, well.y), area({ shape: new Rect(vec2(0), 20, 16) })]),
+            zone: well.zone,
             prompt: ["Go down to the underworld"],
             use: async () => {
               if (fight.over) return false;
-              await leaveBossRoom(() => climbIntoHatch(player, well, fader));
+              await leaveBossRoom(() => climbIntoWell(player, well, fader));
               go("underworld", run, { ending: "boss" });
               return true;
             },
@@ -204,7 +204,7 @@ export function registerRoomScene() {
     function bank() {
       if (run.banked) return;
       run.banked = true;
-      endRun(run.gold, run.deepest);
+      endRun(run.gold, run.deepest, bossDown);
     }
 
     // Through the door: on to the next room. Coins left on the floor stay
