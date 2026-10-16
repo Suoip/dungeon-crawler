@@ -48,7 +48,7 @@ export function addHatch(col, row) {
 export function addScrollPickup(at, player, onPickup) {
   const born = time();
   let spot = at;
-  const scroll = add([pos(at), z(9)]);
+  const scroll = add([pos(at), z(9), "scroll-pickup"]);
 
   const drawRolled = (y, size = 1) => {
     const PAPER = rgb(232, 213, 169);
