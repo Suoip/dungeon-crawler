@@ -90,11 +90,14 @@ const DASH_DISTANCE = 48; // px
 const DASH_TIME = 0.15;   // seconds
 const DASH_COOLDOWN = 1;  // seconds
 
-export function setupDash(player) {
+// `owned()` is asked on every press, so in the rooms where the dash can be
+// bought or reset (the underworld, Options) it starts or stops working at
+// once.
+export function setupDash(player, owned = () => true) {
   let readyAt = 0;
 
   onButtonPress("dash", async () => {
-    if (player.frozen || player.dashing || time() < readyAt) return;
+    if (!owned() || player.frozen || player.dashing || time() < readyAt) return;
     const keys = heldDirection();
     const way = keys.len() > 0 ? keys.unit() : player.facing;
     readyAt = time() + DASH_COOLDOWN;

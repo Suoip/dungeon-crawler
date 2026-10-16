@@ -28,14 +28,16 @@ export function giveControl(player) {
 }
 
 // Drops the knight from above the screen onto the floor. A shadow on the floor
-// grows as he gets closer, so you can see where he'll land.
-export async function fallIn(player) {
+// grows as he gets closer, so you can see where he'll land. `at` is where
+// that is (the middle of the room, unless the room has something there).
+export async function fallIn(player, at = vec2(LAND_X, LAND_Y)) {
   takeControl(player);
-  player.pos = vec2(LAND_X, -4); // just above the top of the screen
+  player.pos = vec2(at.x, -4); // just above the top of the screen
+  player.z = 10 + at.y / 1000; // in front of whatever he lands in front of
 
   const shadow = add([
     circle(7),
-    pos(LAND_X, LAND_Y - 1),
+    pos(at.x, at.y - 1),
     anchor("center"),
     color(0, 0, 0),
     opacity(0),
@@ -47,7 +49,7 @@ export async function fallIn(player) {
   // same easing so it grows in step with the fall.
   playSound("fall");
   await Promise.all([
-    animate(player.pos.y, LAND_Y, FALL_SECONDS, (y) => (player.pos.y = y), easings.easeInQuad),
+    animate(player.pos.y, at.y, FALL_SECONDS, (y) => (player.pos.y = y), easings.easeInQuad),
     animate(0, 1, FALL_SECONDS, (t) => {
       shadow.scale = vec2(lerp(0.3, 1, t), lerp(0.12, 0.4, t)); // a flat oval
       shadow.opacity = lerp(0.1, 0.45, t);
@@ -57,7 +59,7 @@ export async function fallIn(player) {
   // Thud: squash him flat and wide, then let him spring back to normal.
   playSound("land");
   shakeScreen(2);
-  puffDust(LAND_X, LAND_Y);
+  puffDust(at.x, at.y);
   animate(shadow.opacity, 0, 0.2, (v) => (shadow.opacity = v)).then(() => destroy(shadow));
   await animate(0, 1, 0.2, (t) => {
     player.scale = vec2(lerp(1.4, 1, t), lerp(0.6, 1, t));
@@ -165,18 +167,25 @@ export async function climbLadder(player, ladder, fader) {
 // hatch, so he doesn't hide it.
 export const besideHatch = (hatch) => vec2(hatch.centerX + 20, hatch.y + 14);
 
-// Down a well or hatch in the floor: he steps onto it and climbs down out of
-// sight, then the screen fades out.
-export async function climbIntoHatch(player, hatch, fader) {
+// Down the well (props.js addWell): he walks up to it, hops over the rim
+// into the opening, and sinks out of sight with the well's front wall in
+// front of him. Then the screen fades out.
+export async function climbIntoWell(player, well, fader) {
   takeControl(player);
   player.play("run");
-  await animate(player.pos, vec2(hatch.centerX, hatch.y + 12), 0.25, (p) => (player.pos = p));
-  const rungs = loop(0.14, () => playSound("climb"));
-  await animate(0, 1, 0.45, (t) => {
-    player.pos.y = hatch.y + 12 + 10 * t; // down into the hole
-    player.opacity = 1 - t;
+  await animate(player.pos, vec2(well.centerX, well.foot + 3), 0.25, (p) => (player.pos = p));
+  const from = player.pos.clone();
+  const into = vec2(well.centerX, well.opening + 3);
+  playSound("dash");
+  await animate(0, 1, 0.3, (t) => {
+    player.pos = from.lerp(into, t).sub(0, Math.sin(t * Math.PI) * 10); // the hop
+    if (t > 0.5) player.z = well.depth - 0.001; // over the rim: behind its wall now
   });
-  rungs.cancel();
+  playSound("fall");
+  await animate(0, 1, 0.45, (t) => {
+    player.pos.y = lerp(into.y, well.foot, t); // down into it, but no lower than its wall
+    player.opacity = 1 - t;
+  }, easings.easeInQuad);
   await fadeOut(fader);
 }
 

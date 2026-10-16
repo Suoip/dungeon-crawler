@@ -235,6 +235,40 @@ to:
   further out show as dim outlines.
 - No quiz lifelines.
 
+### The tree page
+
+- **Drawn in the game,** in pixel art, over the dimmed underworld, rather
+  than as an HTML page: a round frame per node with an icon from the
+  tileset (weapons, flasks, the heart, a coin, monsters) or a few hand-drawn
+  pixels where it has none (an hourglass, an orb, dash marks, a magnet).
+  Icons are never shrunk, so they stay crisp at every zoom: the long
+  weapons show just the end you know them by (a head, or a hilt), and the
+  tiny coin and skull are doubled.
+  For a node with more than one level, each level is a pip around the
+  frame, lit gold once bought. The frame's rim is gold when maxed, green
+  when you can afford the next level, light when some levels are bought
+  and grey otherwise.
+- **The layout:** Descend in the middle, the weapon branch to the left and
+  time to the right (the two longest), hearts and money above, dash and the
+  horde below. Hearts and the horde split early, so they sit across from
+  each other. At 1x the whole web fits on the screen.
+- **Mouse and keyboard.** Point at a node to read it; click to pick it and
+  click again to buy. Hold and drag to look around; the wheel zooms between
+  1x, 2x and 3x (whole sizes, so the pixels stay crisp) around the cursor.
+  The arrow keys or WASD move to the nearest node that way (the view slides
+  along to keep it on screen), E buys, + and - zoom around it, Esc closes.
+  The strip above the game says how it works while the page is open.
+- **The panel at the bottom** shows the node under the cursor, or the
+  picked one once a key is pressed: its name, its levels, what the next
+  level changes ("SWING EVERY 1.50S > 1.36S") and its price, or why it
+  can't be bought (maxed, the node before it isn't bought, or it opens at
+  depth 2).
+- **Coming soon:** until a node's effect is in the game (Quick feet,
+  Second charge and the time orbs in step 5, Smash in step 6), it's shown
+  but not on sale.
+- While the page is open, the hero waits at the altar and nothing else can
+  be used.
+
 ### Draft nodes for the first milestone (depth 1)
 
 Every node costs gold. Costs are set in section 8.
@@ -334,8 +368,10 @@ A rough estimate to size things by:
   CREDITS. Hero choice stays as a cosmetic.
 - **The underworld is the hub.** When you die, the hands drag you down into
   the underworld, as they do now.
-  - **An altar** stands in the middle of the room. Interacting with it opens
-    the skill tree page over the game.
+  - **An altar** stands in the middle of the room, below the results: a
+    stone block with a skull and two candles, and a sigil on its front that
+    glows when there's something you can afford. Interacting with it opens
+    the skill tree page over the game. The hero lands right in front of it.
   - **The two ladders stay:** TRY AGAIN starts the next run, and MENU goes
     back to the title room.
 - **Every run ends in the underworld.** On a death, the hero falls over red
@@ -358,14 +394,23 @@ A rough estimate to size things by:
   death or by time, so that's the end of the very first run. From then on,
   the title room has a well that leads straight down to it, so you can reach
   the altar without playing a run first. Before that, there's no well and
-  no tree. The first run is just you, one heart and the clock.
+  no tree. The first run is just you, one heart and the clock. The well
+  looks the same as the one the boss leaves behind: a round stone well with
+  the underworld's red glow at the bottom. It's solid: the hero walks round
+  it, and from the floor in front of it he hops over the rim and drops in.
+  Coming down it, the TRY AGAIN ladder is a PLAY ladder, and there are no
+  results. Saves from before the well existed get it if they have played
+  a run.
 - **Keyboard only.** Phones and tablets aren't supported any more: the game
   plays too differently now to keep a touch layout as well. The touch
   controls are gone, and on a phone a notice says the game needs a keyboard.
 - **No refunds.** Purchases are permanent. You eventually buy most of the
   tree anyway, so the choice is about order.
 - **Saving:** progress saves in the browser after every run and every
-  purchase. The Options room gets a reset, which asks twice.
+  purchase. The Options room gets a reset: a red button in the floor that
+  asks twice ("SURE?", then "REALLY?") before it erases the gold, the
+  upgrades and the well. Walking away from it cancels the asking. The
+  settings stay.
 
 ## 10. What we keep and what we cut
 

@@ -2,20 +2,23 @@ import { TILE, TOP, GAME_WIDTH, GAME_HEIGHT } from "./config.js";
 import { buildRoom } from "./room.js";
 import { addPlayer, setupPlayerMovement, setupDash } from "./player.js";
 import { newRun, depthLabel } from "./dungeon.js";
-import { getSave } from "./save.js";
+import { getSave, seeUnderworld } from "./save.js";
+import { heroStats } from "./stats.js";
 import { setupInteractions } from "./interact.js";
-import { fallIn, climbLadder, giveControl, LAND_X, LAND_Y } from "./cutscenes.js";
+import { fallIn, climbLadder, giveControl, LAND_X } from "./cutscenes.js";
 import { addFader, fadeIn, sleep, addRedLight } from "./effects.js";
-import { addLadder, addShadowText, addSign } from "./props.js";
+import { addLadder, addShadowText, addSign, addAltar } from "./props.js";
+import { openTree, canBuyAnything } from "./tree.js";
 import { playSound } from "./sound.js";
 import { hidePrompt, showRoomName } from "./panel.js";
 
 // Every run ends in the underworld (DESIGN.md section 9): dragged down when
 // the clock ran out or the last heart went, or down the well after beating
-// the boss. The run's results are written on the floor, and two ladders up
-// the back wall lead to the next run and back to the menu. (The skill tree's
-// altar comes here in step 4.)
-//   ending  "died", "time" or "boss"
+// the boss. The run's results are written on the floor, the altar in the
+// middle opens the skill tree (tree.js), and two ladders up the back wall
+// lead to the next run and back to the menu.
+//   ending  "died", "time" or "boss"; or "visit" when he came down the
+//           title room's well, with no run behind him (run is null)
 export function registerEndScenes() {
   scene("underworld", (run, { ending }) => underworld(run, ending));
 }
@@ -24,35 +27,64 @@ const LADDERS = [
   { x: 96, label: "TRY AGAIN", prompt: "Try again", go: () => go("room", newRun()) },
   { x: 224, label: "MENU", prompt: "Back to the menu", go: () => go("title", { from: "below" }) },
 ];
+// On a visit there's nothing to try again: the same ladder starts a run.
+const PLAY_LADDER = { label: "PLAY", prompt: "Start a run" };
+
+const ALTAR_Y = 158;  // the altar's foot, below the results
+const LAND_Y = 176;   // he lands in front of it, already at it
+
+const hasTheDash = () => heroStats(getSave().levels).unlocked.has("dash");
 
 function underworld(run, ending) {
   buildRoom();
   makeUnderworld();
+  seeUnderworld(); // from now on, the title room has its well
 
-  const ladders = LADDERS.map((ladder) => {
-    const built = addLadder(ladder.x);
-    addSign([{ text: ladder.label }], ladder.x - 1.5, 7); // over the ladder's top, so it doesn't run through the letters
-    return { ...ladder, ...built };
+  const ladders = LADDERS.map((ladder, i) => {
+    const shown = run || i > 0 ? ladder : { ...ladder, ...PLAY_LADDER };
+    const built = addLadder(shown.x);
+    addSign([{ text: shown.label }], shown.x - 1.5, 7); // over the ladder's top, so it doesn't run through the letters
+    return { ...shown, ...built };
   });
+  const altar = addAltar(LAND_X, ALTAR_Y);
+  altar.setLit(canBuyAnything());
 
   const player = addPlayer(LAND_X, LAND_Y);
   if (ending === "died") player.use(color(255, 110, 110)); // still red, down here
   setupPlayerMovement(player);
-  if (run.stats.unlocked.has("dash")) setupDash(player);
+  setupDash(player, hasTheDash); // works as soon as it's bought at the altar
   const fader = addFader();
+  let total = null; // the TOTAL line of the results, kept up to date as gold is spent
 
+  const climb = ladders.map((ladder) => ({
+    zone: ladder.zone,
+    prompt: [ladder.prompt],
+    use: async () => {
+      await climbLadder(player, ladder, fader);
+      ladder.go();
+      return true; // he left the room
+    },
+  }));
+  // The altar: the skill tree opens over the room, and he waits while it's
+  // open (the interaction stays busy until it's closed).
+  const pray = {
+    zone: altar.zone,
+    prompt: ["Open the skill tree"],
+    use: () => new Promise((done) => {
+      player.frozen = true;
+      player.play("idle");
+      openTree(() => {
+        player.frozen = false;
+        altar.setLit(canBuyAnything());
+        total?.setText(`TOTAL ${getSave().gold}`);
+        done(false); // still in the room
+      });
+    }),
+  };
   const interactions = setupInteractions(
     player,
-    ladders.map((ladder) => ({
-      zone: ladder.zone,
-      prompt: [ladder.prompt],
-      use: async () => {
-        await climbLadder(player, ladder, fader);
-        ladder.go();
-        return true; // he left the room
-      },
-    })),
-    () => "Climb a ladder: try again, or go back to the menu.",
+    [pray, ...climb],
+    () => "Use the altar to spend your gold, or climb a ladder.",
   );
 
   hidePrompt();
@@ -60,8 +92,8 @@ function underworld(run, ending) {
 
   (async () => {
     fadeIn(fader, 0.3);
-    await fallIn(player);
-    await writeResults(run, ending);
+    await fallIn(player, vec2(LAND_X, LAND_Y));
+    if (run) total = await writeResults(run, ending);
     giveControl(player);
     interactions.enable();
   })();
@@ -69,7 +101,9 @@ function underworld(run, ending) {
 
 // The run's results, written on the floor one line after another, like the
 // title: how it ended, the gold it earned and what's banked now, how deep it
-// got (1-4 is depth 1, room 4) and how many monsters fell.
+// got (1-4 is depth 1, room 4) and how many monsters fell. (Nothing on a
+// visit: there was no run.) Returns the TOTAL line, so it can follow the
+// gold spent at the altar.
 const ENDINGS = {
   died: { text: "YOU DIED", color: [230, 72, 46] },
   time: { text: "OUT OF TIME", color: [255, 205, 70] },
@@ -84,14 +118,17 @@ async function writeResults(run, ending) {
     { text: `DEEPEST ${depthLabel(reached)}` },
     { text: `KILLS ${run.kills}` },
   ];
-  // Between the lava basins on the back wall and where the hero lands.
-  let y = TOP + 3 * TILE + 10;
+  // Between the lava basins on the back wall and the altar.
+  let y = TOP + 3 * TILE + 6;
+  let total = null;
   for (const { text, size = 8, color: rgb = [240, 230, 210] } of lines) {
-    addShadowText(text, GAME_WIDTH / 2, y, size, rgb, 3);
+    const line = addShadowText(text, GAME_WIDTH / 2, y, size, rgb, 3);
+    if (text.startsWith("TOTAL")) total = line;
     playSound("letter");
-    y += size === 16 ? 20 : 11;
+    y += size === 16 ? 18 : 10;
     await sleep(0.18);
   }
+  return total;
 }
 
 // The underworld: the same kind of room, but dark red, with lava pouring

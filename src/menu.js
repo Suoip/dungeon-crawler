@@ -6,15 +6,15 @@ import { HEROES, heroById } from "./heroes.js";
 import { getSetting, setSetting } from "./settings.js";
 import { setupInteractions } from "./interact.js";
 import {
-  fallIn, walkThroughDoor, climbLadder, climbOutOfHatch, besideHatch, giveControl, LAND_X, LAND_Y,
+  fallIn, walkThroughDoor, climbLadder, climbOutOfHatch, climbIntoWell, besideHatch, giveControl, LAND_X, LAND_Y,
 } from "./cutscenes.js";
 import { addFader, fadeIn, puffDust, shakeScreen } from "./effects.js";
 import {
-  addLadder, addHatch, addLever, addKeycap, addShadowText, addPlaque, addSign, addVolumeSlider,
+  addLadder, addHatch, addWell, addLever, addKeycap, addShadowText, addPlaque, addSign, addVolumeSlider, addFloorButton,
 } from "./props.js";
 import { playSound, setEffectsVolume, setMusicVolume } from "./sound.js";
 import { hidePrompt, showRoomName } from "./panel.js";
-import { getSave } from "./save.js";
+import { getSave, resetSave } from "./save.js";
 import { heroStats } from "./stats.js";
 
 // The menu is a room too: its options are doors you walk through. Behind
@@ -90,14 +90,30 @@ function registerTitle() {
     hidePrompt();
     showRoomName("Main menu");
 
+    const things = doors.map((door, i) => doorInteraction(door, [MENU[i].prompt], async () => {
+      await walkThroughDoor(player, door, fader);
+      MENU[i].scene();
+      return true; // he left the room
+    }));
+    // Once he's been to the underworld, a well leads straight down to it, so
+    // he can spend his gold at the altar without playing a run first.
+    const hasWell = getSave().seenUnderworld;
+    if (hasWell) {
+      const well = addWell(15, 9);
+      things.push({
+        zone: well.zone,
+        prompt: ["Go down to the underworld"],
+        use: async () => {
+          await climbIntoWell(player, well, fader);
+          go("underworld", null, { ending: "visit" });
+          return true;
+        },
+      });
+    }
     const interactions = setupInteractions(
       player,
-      doors.map((door, i) => doorInteraction(door, [MENU[i].prompt], async () => {
-        await walkThroughDoor(player, door, fader);
-        MENU[i].scene();
-        return true; // he left the room
-      })),
-      () => "Walk up to a door and press E.",
+      things,
+      () => (hasWell ? "Walk up to a door or the well and press E." : "Walk up to a door and press E."),
     );
 
     (async () => {
@@ -124,7 +140,7 @@ function registerSubRoom(name, title, setup, hint) {
     const ladder = addLadder(LAND_X);
     const player = addPlayer(LAND_X, LAND_Y);
     setupPlayerMovement(player);
-    if (hasTheDash()) setupDash(player);
+    setupDash(player, hasTheDash); // until a reset in Options takes it away
     const fader = addFader();
 
     hidePrompt();
@@ -228,7 +244,45 @@ function setupOptions(player) {
       if (on) shakeScreen(3); // show what it does
       return false;
     },
-  }];
+  }, setupReset()];
+}
+
+// The reset: a red button in the floor that erases your progress (the gold,
+// the upgrades and the well; the settings stay). It asks twice first. Walk
+// away from it and it forgets you'd started asking.
+function setupReset() {
+  const button = addFloorButton(48, 184, "RESET");
+  const STEPS = [
+    { label: "RESET", color: [240, 230, 210], prompt: "Reset all progress" },
+    { label: "SURE?", color: [230, 72, 46], prompt: "Yes, erase my gold and upgrades" },
+    { label: "REALLY?", color: [230, 72, 46], prompt: "Yes, erase them for good" },
+  ];
+  let step = 0;      // how far through the asking he is; 3 = done
+  const show = () => button.setLabel(STEPS[step].label, STEPS[step].color);
+  return {
+    zone: button.zone,
+    prompt: () => (step < 3 ? [STEPS[step].prompt] : null),
+    highlight(isActive) {
+      if (isActive || step === 0 || step === 3) return;
+      step = 0; // he walked away
+      show();
+    },
+    use() {
+      if (step === 3) return false;
+      step++;
+      if (step < 3) {
+        show();
+        playSound("locked");
+        return false;
+      }
+      resetSave();
+      button.press();
+      button.setLabel("DONE", [169, 155, 185]);
+      playSound("crumble");
+      shakeScreen(4);
+      return false;
+    },
+  };
 }
 
 // The Credits room: a plaque for each credit, in two rows. Stand at one and
