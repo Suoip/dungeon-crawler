@@ -11,7 +11,8 @@ import {
 import { addFader, fadeIn, puffDust, shakeScreen } from "./effects.js";
 import { addLadder, addHatch, addLever, addKeycap, addTouchIcon, addShadowText, addPlaque } from "./props.js";
 import { playSound, setMusicPlaying } from "./sound.js";
-import { showMenuPanel, hidePrompt, link } from "./panel.js";
+import { hidePrompt, link, showRoomName, writeMenuScroll } from "./panel.js";
+import { hideScroll, openScroll, setScrollNotes } from "./scroll.js";
 import { isTouch, useHint } from "./touch.js";
 import { setupAttack } from "./combat.js";
 import { BOSSES } from "./mobs.js";
@@ -21,39 +22,15 @@ import { BOSSES } from "./mobs.js";
 // climb back up.
 
 const MENU_LABEL_COLOR = [240, 230, 210];
-const strong = (text) => Object.assign(document.createElement("strong"), { textContent: text });
 
 // ---------------------------------------------------------------------------
-// What the panel shows in each menu room. They're functions, so they always
-// show the current settings (like which hero you are).
+// Most menu rooms explain themselves, so they have no scroll: just their name
+// and a hint in the strip. The Credits room picks up a scroll on entering.
 // ---------------------------------------------------------------------------
 
-const titlePanel = () => ({
-  left: "Main menu",
-  line: "Every room asks a question, and the doors are the answers. Pick a door to begin.",
-});
-
-const heroesPanel = () => ({
-  left: "Heroes",
-  line: ["You are the ", strong(heroById(getSetting("hero")).name), "."],
-  items: [`Walk up to another hero and ${useHint()} to swap.`],
-});
-
-const onOff = (on) => (on ? "ON" : "OFF");
-const optionsPanel = () => ({
-  left: "Options",
-  line: "Flip a lever to change a setting.",
-  items: [
-    `Sound: ${onOff(getSetting("sound"))}`,
-    `Music: ${onOff(getSetting("music"))}`,
-    `Screen shake: ${onOff(getSetting("shake"))}`,
-  ],
-});
-
-const creditsPanel = () => ({
-  left: "Credits",
+const creditsScroll = () => ({
   line: "Made with these, thank you!",
-  items: [`Walk up to a plaque to read it.`],
+  items: ["Walk up to a plaque to read it."],
 });
 
 // One plaque per credit in the Credits room. `url` is what using the plaque
@@ -83,12 +60,6 @@ const CREDITS = [
   },
   { title: "Pair programmer", by: () => ["Claude (Anthropic)"] },
 ];
-
-const bossesPanel = () => ({
-  left: "Choose a boss",
-  line: "Test room: pick the boss that waits in the last room.",
-  items: BOSSES.map((boss) => strong(boss.name)),
-});
 
 // ---------------------------------------------------------------------------
 // The title room
@@ -140,7 +111,9 @@ function registerTitle(dungeon) {
     const fader = addFader();
 
     hidePrompt();
-    showMenuPanel(titlePanel());
+    hideScroll();
+    setScrollNotes();
+    showRoomName("Main menu");
 
     const interactions = setupInteractions(
       player,
@@ -168,9 +141,16 @@ function registerTitle(dungeon) {
 // Every room below the title works the same way: the knight falls in, and a
 // ladder on the back wall leads back up. `setup(player, fader)` adds what's
 // special about the room and returns the extra things the player can use
-// there. The ladder is in the middle unless `ladderX` says otherwise.
-function registerSubRoom(name, panel, setup, { ladderX = LAND_X } = {}) {
+// there. `title` goes in the strip, with `hint` (a function, so it can
+// change) next to it. The ladder is in the middle unless `ladderX` says
+// otherwise, and with `scroll` (a function giving what's written on it) the
+// room picks up a scroll as he lands.
+function registerSubRoom(name, title, setup, {
+  ladderX = LAND_X, hint = () => "Climb the ladder to go back up.", scroll = null,
+} = {}) {
   scene(name, () => {
+    hideScroll();
+    setScrollNotes();
     buildRoom();
     const ladder = addLadder(ladderX);
     const player = addPlayer(LAND_X, LAND_Y);
@@ -180,7 +160,8 @@ function registerSubRoom(name, panel, setup, { ladderX = LAND_X } = {}) {
     const fader = addFader();
 
     hidePrompt();
-    showMenuPanel(panel());
+    showRoomName(title);
+    if (scroll) writeMenuScroll(scroll());
 
     const climb = {
       zone: ladder.zone,
@@ -194,12 +175,16 @@ function registerSubRoom(name, panel, setup, { ladderX = LAND_X } = {}) {
     const interactions = setupInteractions(
       player,
       [climb, ...setup(player, fader)],
-      () => "Climb the ladder to go back up.",
+      hint,
     );
 
     (async () => {
       fadeIn(fader, 0.3);
       await fallIn(player);
+      if (scroll) {
+        playSound("unroll");
+        openScroll();
+      }
       giveControl(player);
       interactions.enable();
     })();
@@ -248,8 +233,6 @@ function setupHeroes(player) {
       puffDust(player.pos.x, player.pos.y - 8, 10, 12);
       puffDust(f.x, f.y - 8, 6, 10);
       puffDust(old.x, old.y - 8, 6, 10);
-
-      showMenuPanel(heroesPanel());
       return false; // still in the room
     },
   }));
@@ -278,15 +261,12 @@ function setupOptions() {
 
         if (setting === "music") setMusicPlaying(on);
         if (setting === "shake" && on) shakeScreen(3); // show what it does
-
-        showMenuPanel(optionsPanel());
         return false;
       },
     };
   });
 }
 
-// The credits are in the panel; the room just has a few things lying around.
 // The Credits room: a plaque for each credit, in two rows. Stand at one and
 // the scroll shows what it says; use it to open its link.
 function setupCredits(player) {
@@ -303,11 +283,11 @@ function setupCredits(player) {
     const plaque = addPlaque(x, front ? 104 : 140);
     return {
       ...plaque,
-      panel: () => ({ left: "Credits", line: credit.title, items: [credit.by()] }),
+      scroll: () => ({ line: credit.title, items: [credit.by()] }),
       credit,
     };
   });
-  showOnScrollWhileNear(player, spots, creditsPanel);
+  showOnScrollWhileNear(player, spots, creditsScroll);
 
   return spots.filter((spot) => spot.credit.url).map((spot) => ({
     zone: spot.zone,
@@ -319,10 +299,10 @@ function setupCredits(player) {
   }));
 }
 
-// While the hero stands at one of the `spots` (each { zone, panel(), and
-// optionally setLit() }), the scroll shows that spot's panel; anywhere else
-// it shows the room's own panel.
-function showOnScrollWhileNear(player, spots, roomPanel) {
+// While the hero stands at one of the `spots` (each { zone, scroll(), and
+// optionally setLit() }), the scroll shows what that spot says; anywhere
+// else it shows the room's own writing.
+function showOnScrollWhileNear(player, spots, roomScroll) {
   let shown = null;
   onUpdate(() => {
     const here = spots.find((spot) => player.isColliding(spot.zone)) ?? null;
@@ -330,7 +310,7 @@ function showOnScrollWhileNear(player, spots, roomPanel) {
     shown?.setLit?.(false);
     here?.setLit?.(true);
     shown = here;
-    showMenuPanel(here ? here.panel() : roomPanel());
+    writeMenuScroll(here ? here.scroll() : roomScroll());
   });
 }
 
@@ -344,11 +324,8 @@ function setupBosses(player, fader, dungeon) {
     pos(door.centerX, 112),
     anchor("bot"),
   ]));
-  // At a door, the scroll tells you about that boss.
-  showOnScrollWhileNear(player, doors.map((door, i) => ({
-    zone: door.zone,
-    panel: () => ({ left: "Choose a boss", line: BOSSES[i].name, items: [BOSSES[i].blurb] }),
-  })), bossesPanel);
+  // Above each door, where the scroll would be, a note about its boss.
+  setScrollNotes(doors.map((door, i) => ({ x: door.centerX, width: 74, text: BOSSES[i].blurb })));
 
   return doors.map((door, i) => doorInteraction(door, [`Fight the ${BOSSES[i].name}`], async () => {
     await walkThroughDoor(player, door, fader);
@@ -359,9 +336,14 @@ function setupBosses(player, fader, dungeon) {
 
 export function registerMenuScenes(dungeon) {
   registerTitle(dungeon);
-  registerSubRoom("heroes", heroesPanel, setupHeroes);
-  registerSubRoom("options", optionsPanel, setupOptions);
-  registerSubRoom("credits", creditsPanel, setupCredits);
+  registerSubRoom("heroes", "Heroes", setupHeroes, {
+    hint: () => `You are the ${heroById(getSetting("hero")).name}. Walk up to another hero to swap.`,
+  });
+  registerSubRoom("options", "Options", setupOptions, { hint: () => "Flip a lever to change a setting." });
+  registerSubRoom("credits", "Credits", setupCredits, { scroll: creditsScroll });
   // The ladder goes on the left here, because the middle of the wall has a door.
-  registerSubRoom("bosses", bossesPanel, (player, fader) => setupBosses(player, fader, dungeon), { ladderX: 28 });
+  registerSubRoom("bosses", "Choose a boss", (player, fader) => setupBosses(player, fader, dungeon), {
+    ladderX: 28,
+    hint: () => "Test room: pick the boss that waits in the last room.",
+  });
 }

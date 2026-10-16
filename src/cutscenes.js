@@ -2,7 +2,7 @@ import { TILE, TOP, GAME_HEIGHT } from "./config.js";
 import { tileAt } from "./room.js";
 import { spawnSpot } from "./mobs.js";
 import { openDoor } from "./doors.js";
-import { sleep, animate, fadeOut, puffDust, shakeScreen } from "./effects.js";
+import { sleep, animate, fadeOut, puffDust, shakeScreen, addSpawnHole } from "./effects.js";
 import { playSound } from "./sound.js";
 
 // The short scripted moments where the game moves the knight by itself.
@@ -103,6 +103,64 @@ export async function crackFloor(floor, player, count = 3) {
   playSound("crumble");
   shakeScreen(4);
   return spots;
+}
+
+// The hero is dead, lying on the floor: a dark hole opens under him, little
+// hands reach up out of it and grab him, and drag him down into it.
+export async function dragDown(player) {
+  // He's rotated 90° around his feet, so his body lies to the right of them.
+  const middle = player.pos.add(11, 0);
+  const closeHole = addSpawnHole(middle, 30);
+  playSound("crumble");
+  shakeScreen(3);
+  await sleep(0.3);
+
+  // Four hands, some in front of him and some behind, so they look like
+  // they're grabbing him from both sides.
+  const hands = [-11, -4, 3, 10].map((dx, i) => addHand(middle.add(dx, i % 2 ? 2 : -1), i % 2 ? 11 : 9));
+  playSound("spawn");
+  await animate(0, 1, 0.35, (t) => hands.forEach((hand) => (hand.reach = t)), easings.easeOutBack);
+  await sleep(0.25);
+  hands.forEach((hand) => (hand.grab = true)); // the fingers close
+  playSound("mobHit");
+  await sleep(0.3);
+
+  // Down he goes.
+  playSound("fall");
+  shakeScreen(4);
+  const start = player.pos.clone();
+  await animate(0, 1, 0.7, (t) => {
+    player.pos = start.add(0, 6 * t);
+    player.opacity = 1 - t;
+    player.scale = vec2(1 - 0.4 * t);
+    hands.forEach((hand) => (hand.reach = 1 - t));
+  }, easings.easeInQuad);
+  hands.forEach((hand) => destroy(hand));
+  closeHole();
+  await sleep(0.4);
+}
+
+// One grey-green hand reaching up out of the floor. `reach` (0 to 1) is how
+// far it's come out; with `grab`, its fingers bend over to hold on.
+function addHand(at, depth) {
+  const hand = add([pos(at), z(depth), { reach: 0, grab: false }]);
+  hand.onDraw(() => {
+    const arm = 9 * hand.reach;
+    if (arm < 0.5) return;
+    const SKIN = rgb(122, 150, 110);
+    const DARK = rgb(38, 50, 38);
+    drawRect({ pos: vec2(-2, -arm), width: 4, height: arm, color: DARK }); // the arm
+    drawRect({ pos: vec2(-1, -arm), width: 2, height: arm, color: SKIN });
+    const top = -arm - 3;
+    drawRect({ pos: vec2(-3, top), width: 6, height: 4, color: DARK });    // the palm
+    drawRect({ pos: vec2(-2, top + 1), width: 4, height: 2, color: SKIN });
+    for (const x of [-3, -1, 1]) {
+      // Open: fingers up. Grabbing: bent over to the side.
+      if (hand.grab) drawRect({ pos: vec2(x, top - 1), width: 2, height: 1, color: SKIN });
+      else drawRect({ pos: vec2(x + 0.5, top - 3), width: 1, height: 3, color: SKIN });
+    }
+  });
+  return hand;
 }
 
 // Opens a door and walks the knight into it, then fades the screen out.

@@ -31,12 +31,18 @@
          together as one picture (display.js), so they always keep their shape. -->
     <div id="stage">
       <!-- The question, on a scroll drawn in pixel art (scroll.js). The text is
-           plain HTML on top of it, so it stays sharp and readable. -->
-      <div id="scroll">
+           plain HTML on top of it, so it stays sharp and readable. The scroll
+           only appears once it's been found; until then its space is empty. -->
+      <div id="scroll" class="hidden">
+        <div id="scroll-paper"></div>
+        <div id="roll-left" class="roll"></div>
+        <div id="roll-right" class="roll"></div>
         <div id="scroll-text" class="scroll-text">
           <p id="question" class="scroll-line">Loading the dungeon…</p>
           <ol id="answers" class="scroll-items"></ol>
         </div>
+        <!-- Rooms without a scroll can write short notes in its space -->
+        <div id="scroll-notes"></div>
       </div>
       <!-- The strip: a hint or the "Open door" button on the left, depth and
            time (or the menu room's name) on the right -->
@@ -47,8 +53,6 @@
       </div>
       <!-- Kaplay adds its canvas here -->
     </div>
-    <!-- The game over / victory / explanation cards -->
-    <div id="overlay" hidden></div>
   </main>
 
   <!-- Touch controls (src/touch.js): only shown on touch screens. Below the

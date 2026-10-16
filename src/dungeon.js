@@ -33,7 +33,7 @@ function shuffle(list) {
 // `boss` is which boss waits in the last question room (picked in the
 // boss-select test room). Hearts carry over from room to room for the whole
 // run. The timer starts when the hero lands in the first room, and stops
-// while an explanation card is up (reading it shouldn't cost time).
+// while an explanation is up on the scroll (reading it shouldn't cost time).
 // `firstTry` counts questions answered right with the first door picked.
 export function newRun(dungeon, boss) {
   const rooms = shuffle(dungeon.rooms).map((room) => {

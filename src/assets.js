@@ -49,6 +49,18 @@ export function loadAssets() {
 
     // Menu room props.
     floor_ladder: tile(48, 96),
+
+    // Treasure for the room you win in: a chest that swings open full of
+    // gold, and a spinning coin (6x7, with 2 px between frames).
+    chest_full_open: { ...tile(304, 416, TILE * 3, TILE), sliceX: 3, anims: { open: { from: 0, to: 2, speed: 8 } } },
+    coin: { x: 289, y: 385, width: 32, height: 7, sliceX: 4, anims: { spin: { from: 0, to: 3, speed: 8, loop: true } } },
+
+    // A lava fountain for the underworld, in three pieces stacked down the
+    // back wall: the top sits on the wall's cap, the lava pours down the
+    // brick face, and the basin is on the floor in front of it.
+    wall_fountain_top: tile(64, 0),
+    wall_fountain_mid_red: { ...tile(64, 16, TILE * 3, TILE), sliceX: 3, anims: { flow: { from: 0, to: 2, speed: 6, loop: true } } },
+    wall_fountain_basin_red: { ...tile(64, 32, TILE * 3, TILE), sliceX: 3, anims: { flow: { from: 0, to: 2, speed: 6, loop: true } } },
     lever_left: tile(80, 208),
     lever_right: tile(96, 208),
     chest: tile(304, 416),

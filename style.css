@@ -102,13 +102,57 @@ button:hover { background: var(--stone-light); }
   body.touch #game { align-items: flex-start; }
 }
 
-/* The scroll: 320 x 56 game pixels, its picture drawn by scroll.js */
+/* The scroll: 320 x 56 game pixels. Its pictures (the paper and the two
+   rolls) are drawn by scroll.js. Its space is always there, even while
+   there's no scroll, so the game never changes size. */
 #scroll {
   position: relative;
   width: calc(320 * var(--gp));
   height: calc(56 * var(--gp));
+}
+
+#scroll-paper,
+.roll {
+  position: absolute;
+  top: 0;
+  height: 100%;
   background-size: 100% 100%;
   image-rendering: pixelated;
+  transition: clip-path 0.28s ease-out, left 0.28s ease-out;
+}
+
+#scroll-paper { left: 0; width: 100%; clip-path: inset(0 0 0 0); }
+.roll { width: calc(12 * var(--gp)); }
+#roll-left { left: 0; }
+#roll-right { left: calc(308 * var(--gp)); }
+.scroll-text { transition: opacity 0.12s 0.18s; } /* the writing shows as it finishes opening */
+
+/* Rolled up: both rolls side by side in the middle, no paper showing */
+#scroll.rolled #scroll-paper { clip-path: inset(0 50% 0 50%); }
+#scroll.rolled #roll-left { left: calc(148 * var(--gp)); }
+#scroll.rolled #roll-right { left: calc(160 * var(--gp)); }
+#scroll.rolled .scroll-text { opacity: 0; transition-delay: 0s; }
+
+/* Hidden: nothing at all */
+#scroll.hidden #scroll-paper,
+#scroll.hidden .roll,
+#scroll.hidden .scroll-text { visibility: hidden; }
+#scroll.hidden #scroll-paper { clip-path: inset(0 50% 0 50%); }
+#scroll.hidden #roll-left { left: calc(148 * var(--gp)); }
+#scroll.hidden #roll-right { left: calc(160 * var(--gp)); }
+
+/* For jumping straight to a state, without the animation */
+#scroll.instant * { transition: none !important; }
+
+/* Notes in the scroll's space, for rooms without a scroll (the boss room) */
+#scroll-notes p {
+  position: absolute;
+  bottom: calc(2 * var(--gp));
+  margin: 0;
+  text-align: center;
+  font-size: calc(7 * var(--gp));
+  line-height: 1.15;
+  color: var(--muted);
 }
 
 /* The writing area on the paper. scroll.js shrinks the text (--fit, in game
@@ -175,6 +219,8 @@ button:hover { background: var(--stone-light); }
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+#door-hint.correct { color: #63c74d; font-weight: 700; }
 
 #door-button {
   height: calc(11 * var(--gp));
@@ -378,46 +424,3 @@ body.touch #game { touch-action: none; }
   .touch-button { opacity: 0.8; }
 }
 
-#overlay {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 16px;
-}
-
-.card {
-  max-width: 440px;
-  width: 100%;
-  padding: 20px 22px;
-  background: rgba(24, 20, 37, 0.94);
-  border: 3px solid var(--stone-light);
-  border-radius: 8px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-}
-
-.card h2 { margin: 0 0 12px; font-size: 1.4rem; }
-.card p { margin: 8px 0; line-height: 1.4; }
-.overlay-question { font-weight: 600; }
-.answer-line .muted { color: var(--muted); margin-right: 8px; }
-.explanation {
-  padding: 10px 12px;
-  background: var(--stone);
-  border-radius: 6px;
-}
-.score { color: var(--muted); }
-
-.card-buttons {
-  display: flex;
-  gap: 10px;
-  margin-top: 10px;
-}
-
-
-.big-button {
-  flex: 1;
-  min-height: 48px;
-  font-size: 1.1rem;
-  font-weight: 700;
-}
