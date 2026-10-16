@@ -9,10 +9,11 @@ import { GAME_WIDTH, GAME_HEIGHT, BACKGROUND, DUNGEON_URL } from "./config.js";
 import { loadAssets } from "./assets.js";
 import { loadDungeon } from "./dungeon.js";
 import { registerRoomScene } from "./scenes.js";
+import { registerEndScenes } from "./endings.js";
 import { registerMenuScenes } from "./menu.js";
-import { showMessage, fitsOnScroll } from "./panel.js";
+import { showMessage, fitsOnScroll, explanationFits } from "./panel.js";
 import { scaleToFit } from "./display.js";
-import { drawScroll, fitScrollText } from "./scroll.js";
+import { drawScroll, openScroll } from "./scroll.js";
 import { unlockAudioOnFirstInput } from "./sound.js";
 import { setupTouchControls } from "./touch.js";
 
@@ -53,17 +54,19 @@ try {
   await Promise.all([document.fonts.load('400 12px "Atkinson Hyperlegible"'), document.fonts.load('700 12px "Atkinson Hyperlegible"')]);
   checkDungeonFits(dungeon);
   registerRoomScene();
+  registerEndScenes();
   registerMenuScenes(dungeon);
   onLoad(() => go("title"));
 } catch (error) {
-  fitScrollText();
   showMessage(`Something went wrong loading the dungeon: ${error.message}`);
+  openScroll(); // the scroll is hidden until something opens it
   console.error(error);
 }
 
 // Every question must fit on the scroll, even with its text at the smallest
 // size. A dungeon with a question that's too long doesn't load, and says
-// which one, so whoever made it can shorten it. The answers are shuffled
+// which one, so whoever made it can shorten it. The same goes for its
+// explanation (shown on the scroll after a wrong try). The answers are shuffled
 // every run, and a different order can wrap differently, so every order is
 // tried (at most 24, for 4 answers).
 function checkDungeonFits(dungeon) {
@@ -72,6 +75,9 @@ function checkDungeonFits(dungeon) {
   dungeon.rooms.forEach((room, i) => {
     if (!orders([room.correct, ...room.wrong]).every((answers) => fitsOnScroll(room.question, answers))) {
       throw new Error(`room ${i + 1}'s question and answers are too long for the scroll ("${room.question.slice(0, 40)}…").`);
+    }
+    if (!explanationFits(room.correct, room.explanation)) {
+      throw new Error(`room ${i + 1}'s explanation is too long for the scroll ("${room.explanation.slice(0, 40)}…").`);
     }
   });
 }

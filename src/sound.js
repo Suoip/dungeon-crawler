@@ -37,6 +37,7 @@ const SOUNDS = {
   dash:     [0.25, 0.05, 300, 0.01, 0.03, 0.12, 4, 1, -5, 0, 0, 0, 0, 0.3],
   heal:     [0.35, 0, 600, 0.01, 0.08, 0.25, 0, 1, 0, 0, 300, 0.07],
   bat:      [0.3, 0, 900, 0, 0.02, 0.12, 1, 1, 0, 0, 400, 0.02],
+  unroll:   [0.25, 0.3, 900, 0.01, 0.08, 0.12, 4, 2, 0, 0, 0, 0, 0.035, 0.6], // a papery flutter
 
   // The boss's moves
   gurgle:   [0.35, 0.1, 110, 0.05, 0.3, 0.15, 2, 1, 0, 0, 0, 0, 0.05, 0.5, 15],
@@ -69,6 +70,7 @@ const EQ = {
   gurgle:  { lowpass: 1500, shelf: -8, shelfFrom: 1000 },
   vomit:   { lowpass: 1600, shelf: -10, shelfFrom: 1200 },
   roar:    { lowpass: 1400, shelf: -8, shelfFrom: 900 },
+  unroll:  { lowpass: 3000, shelf: -6, shelfFrom: 2000 },
 };
 
 // Each sound's filters are built once, the first time it plays, and reused.

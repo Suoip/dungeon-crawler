@@ -40,6 +40,60 @@ export function addHatch(col, row) {
   return { centerX: col * TILE + TILE / 2, y: TOP + row * TILE };
 }
 
+// The question scroll, dropped by a room's last monster: a little rolled-up
+// scroll with a red ribbon, lying on the floor. It hops out of the monster,
+// then bobs gently. Walking over it picks it up: it flies up to where the
+// big scroll opens, and `onPickup` runs. Once he's close, it drifts toward
+// him, like a dropped heart.
+export function addScrollPickup(at, player, onPickup) {
+  const born = time();
+  let spot = at;
+  const scroll = add([pos(at), z(9)]);
+
+  const drawRolled = (y, size = 1) => {
+    const PAPER = rgb(232, 213, 169);
+    const DARK = rgb(58, 40, 24);
+    const ROLL = rgb(178, 128, 70);
+    const w = 12 * size;
+    const h = 6 * size;
+    drawRect({ pos: vec2(-w / 2, y - h), width: w, height: h, color: DARK });
+    drawRect({ pos: vec2(-w / 2 + size, y - h + size), width: w - 2 * size, height: h - 2 * size, color: PAPER });
+    drawRect({ pos: vec2(-w / 2, y - h), width: 2 * size, height: h, color: ROLL });       // the rolled ends
+    drawRect({ pos: vec2(w / 2 - 2 * size, y - h), width: 2 * size, height: h, color: ROLL });
+    drawRect({ pos: vec2(-size / 2, y - h), width: size, height: h, color: rgb(200, 40, 40) }); // ribbon
+  };
+
+  scroll.onDraw(() => {
+    const age = time() - born;
+    const hop = age < 0.35 ? Math.sin((age / 0.35) * Math.PI) * 10 : Math.abs(Math.sin(age * 3)) * 1.5;
+    drawEllipse({ pos: vec2(0, 0), radiusX: 5, radiusY: 1.5, color: rgb(0, 0, 0), opacity: 0.3 });
+    drawRolled(-hop - 1);
+  });
+
+  scroll.onUpdate(() => {
+    if (time() - born < 0.35 || player.frozen) return;
+    const distance = player.pos.dist(spot);
+    if (distance < 20) spot = spot.add(player.pos.sub(spot).unit().scale(Math.min(distance, 90 * dt())));
+    scroll.pos = spot;
+    if (distance >= 8) return;
+
+    // Picked up: it flies up, growing, to the top of the screen, where the
+    // big scroll opens.
+    destroy(scroll);
+    const flying = add([pos(spot), z(60), opacity(1)]);
+    let size = 1;
+    flying.onDraw(() => drawRolled(0, size));
+    const from = spot.clone();
+    tween(0, 1, 0.22, (t) => {
+      flying.pos = from.lerp(vec2(160, -6), t);
+      size = 1 + t * 1.5;
+    }, easings.easeInQuad).onEnd(() => {
+      destroy(flying);
+      onPickup();
+    });
+  });
+}
+
 // A small stone plaque standing on the floor, like a little gravestone, with
 // lines engraved on it. setLit(true) makes the engraving glow gold (while the
 // hero is reading it). Its z sorts it with the characters, so the hero can

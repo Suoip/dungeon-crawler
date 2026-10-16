@@ -4,9 +4,9 @@ import { showUseButton, hideUseButton } from "./touch.js";
 import { fitScrollText, overflows, MIN_TEXT } from "./scroll.js";
 import { onStageResize } from "./display.js";
 
-// Everything outside the game canvas: the question scroll above it, the
-// strip under the scroll (hints and the clock), and the cards laid over the
-// game (game over, victory, explanations). This is plain HTML, not Kaplay.
+// Everything outside the game canvas: what the question scroll above it says,
+// and the strip under the scroll (hints and the clock). This is plain HTML,
+// not Kaplay.
 
 const $ = (id) => document.getElementById(id);
 const rgb = ([r, g, b]) => `rgb(${r}, ${g}, ${b})`;
@@ -69,12 +69,12 @@ function fillScroll(box, line, items) {
 
 const answerItems = (texts) => texts.map((text, i) => [letterBadge(i, { onScroll: true }), el("span", text)]);
 
-// Whether a question and its answers fit on the scroll, even at the smallest
-// text size. It's checked on an invisible copy of the scroll's writing area,
-// so the real one isn't touched. Everything on the stage is sized in game
-// pixels and the font comes with the game, so the answer is the same on
-// every screen.
-export function fitsOnScroll(question, answers) {
+// Whether something fits on the scroll, even at the smallest text size.
+// It's checked on an invisible copy of the scroll's writing area, so the
+// real one isn't touched. Everything on the stage is sized in game pixels
+// and the font comes with the game, so the answer is the same on every
+// screen.
+function fits(line, items) {
   const box = $("scroll-text");
   const copy = box.cloneNode(true);
   copy.querySelectorAll("[id]").forEach((part) => part.removeAttribute("id"));
@@ -83,11 +83,18 @@ export function fitsOnScroll(question, answers) {
   copy.style.visibility = "hidden";
   copy.style.setProperty("--fit", MIN_TEXT);
   box.parentElement.append(copy);
-  fillScroll(copy, question, answerItems(answers));
-  const fits = !overflows(copy);
+  fillScroll(copy, line, items);
+  const result = !overflows(copy);
   copy.remove();
-  return fits;
+  return result;
 }
+
+// A question with its answers in this order.
+export const fitsOnScroll = (question, answers) => fits(question, answerItems(answers));
+
+// The explanation scroll for a room (with its correct answer as letter A,
+// the widest case doesn't matter much, so the first letter is fine).
+export const explanationFits = (correct, explanation) => fits(explanationLine(0, correct), [explanation]);
 
 // The scroll keeps its size in game pixels, so when the game is scaled, the
 // text is re-fitted.
@@ -98,9 +105,29 @@ export function showQuestion(run, room) {
   writeOnScroll(room.question, answerItems(room.answers.map((answer) => answer.text)));
 }
 
-export function showCorrect(run, depth) {
+// Just the depth and time in the strip (e.g. while falling into a room,
+// before its question is found).
+export function showDepth(run, depth) {
   setDepth(run, depth);
-  writeOnScroll(el("span", "Correct!", "correct"));
+}
+
+// After a question that took more than one try: the answer and why, on the
+// scroll. (The scene opens it.)
+const explanationLine = (index, text) => [el("span", "Correct! ", "correct"), "The answer is ", letterBadge(index, { onScroll: true }), el("strong", text)];
+
+export function writeExplanation(room) {
+  const index = room.answers.findIndex((answer) => answer.correct);
+  writeOnScroll(explanationLine(index, room.answers[index].text), [room.explanation]);
+}
+
+// A short message in the strip, where the hints go, e.g. "Correct!".
+export function showStripMessage(text, className = "") {
+  $("door-button").hidden = true;
+  hideUseButton();
+  const hint = $("door-hint");
+  hint.hidden = false;
+  hint.textContent = text;
+  hint.className = className;
 }
 
 // A wrong answer gets crossed out in the list, so you can see what's left.
@@ -127,6 +154,7 @@ export function setPrompt(content, onUse, hint) {
     button.hidden = true;
     hintEl.hidden = false;
     hintEl.textContent = hint;
+    hintEl.className = "";
     hideUseButton();
     return;
   }
@@ -147,10 +175,13 @@ export function hidePrompt() {
   hideUseButton();
 }
 
-// A menu room's scroll: one line of text and a list of items, with the
-// room's name at the right end of the strip.
-export function showMenuPanel({ left = "", line, items = [] }) {
-  $("progress").textContent = left;
+// The room's name, at the right end of the strip (in the menu rooms).
+export function showRoomName(name) {
+  $("progress").textContent = name;
+}
+
+// Writes on a menu room's scroll: one line of text and a list of items.
+export function writeMenuScroll({ line, items = [] }) {
   writeOnScroll(line, items);
 }
 
@@ -161,64 +192,4 @@ export function link(text, href) {
   a.target = "_blank";
   a.rel = "noopener";
   return a;
-}
-
-// A card over the game with a title, some content and one or more buttons,
-// e.g. [{ text: "Try again", onClick }, { text: "Menu", onClick }].
-function showOverlay(children, buttons) {
-  const overlay = $("overlay");
-  const row = el("div", undefined, "card-buttons");
-  const buttonEls = buttons.map(({ text, onClick }) => {
-    const button = el("button", text, "big-button");
-    button.onclick = () => {
-      overlay.hidden = true;
-      focusGame();
-      onClick();
-    };
-    return button;
-  });
-  row.append(...buttonEls);
-  overlay.replaceChildren(el("div", undefined, "card"));
-  overlay.firstChild.append(...children, row);
-  overlay.hidden = false;
-  buttonEls[0].focus(); // so Enter or Space presses the first button right away
-}
-
-function answerLine(label, room, answer) {
-  const line = el("p", undefined, "answer-line");
-  const index = room.answers.indexOf(answer);
-  line.append(el("span", label, "muted"), letterBadge(index), el("strong", answer.text));
-  return line;
-}
-
-// After a question they got wrong at least once, once they've found the
-// right door: the answer and why. Resolves when they press Continue.
-export function showExplanation(room) {
-  const correct = room.answers.find((answer) => answer.correct);
-  return new Promise((resolve) => showOverlay([
-    el("h2", "Correct!"),
-    el("p", room.question, "overlay-question"),
-    answerLine("Answer:", room, correct),
-    el("p", room.explanation, "explanation"),
-  ], [{ text: "Continue", onClick: resolve }]));
-}
-
-const score = (run, cleared) =>
-  el("p", `Rooms cleared: ${cleared}/${run.rooms.length} · First try: ${run.firstTry} · Time: ${runTime(run)}`, "score");
-
-// When the mobs take the last heart.
-export function showDefeated(run, depth, { onRetry, onMenu }) {
-  showOverlay([
-    el("h2", "Defeated!"),
-    el("p", `The monsters got you at depth ${depth}. Fewer hits next time!`),
-    score(run, run.index),
-  ], [{ text: "Try again", onClick: onRetry }, { text: "Menu", onClick: onMenu }]);
-}
-
-export function showVictory(run, { onRetry, onMenu }) {
-  showOverlay([
-    el("h2", "Dungeon cleared!"),
-    el("p", `You made it through all ${run.rooms.length} rooms of ${run.dungeon.title}.`),
-    score(run, run.rooms.length),
-  ], [{ text: "Play again", onClick: onRetry }, { text: "Menu", onClick: onMenu }]);
 }
