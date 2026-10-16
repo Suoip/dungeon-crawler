@@ -1,10 +1,12 @@
-import { GAME_WIDTH, GAME_HEIGHT } from "./config.js";
+import { GAME_WIDTH, GAME_HEIGHT, STAGE_HEIGHT } from "./config.js";
 
-// Kaplay draws the game at its real size, 320x208. This blows it up to fill
-// its box on the page, but only by a whole number (2x, 3x, 4x...). At an uneven
-// scale like 2.7x, some game pixels become 3 screen pixels wide and others 2,
-// which makes lines look uneven. Whole numbers keep every pixel the same size.
-//
+// Kaplay draws the game at its real size, 320x208. Above it sit the question
+// scroll and the strip (HTML, see index.html), and together they make the
+// stage: one picture, 320x276 game pixels. This blows the whole stage up to
+// fill its box on the page, by a whole number (2x, 3x, 4x...) where it can.
+// At an uneven scale like 2.7x, some game pixels become 3 screen pixels wide
+// and others 2, which makes lines look uneven. Whole numbers keep every pixel
+// the same size.
 //
 // But rounding down can waste a lot of space: in a window where 1.5x fits,
 // a whole number means 1x, a third smaller. So we only round down when it
@@ -21,17 +23,28 @@ import { GAME_WIDTH, GAME_HEIGHT } from "./config.js";
 const KEEP_AT_LEAST = 0.85;       // round down only if the game keeps 85% of its size
 const KEEP_AT_LEAST_SHARP = 0.97; // on sharp screens, only if it keeps 97%
 
-export function scaleToFit(canvas, box) {
+// How many CSS pixels one game pixel is right now. The HTML parts of the
+// stage are sized with it (the --gp CSS variable).
+let gamePixel = 1;
+export const getGamePixel = () => gamePixel;
+
+const resizeListeners = [];
+export const onStageResize = (listener) => resizeListeners.push(listener);
+
+export function scaleToFit(stage, canvas, box) {
   function fit() {
     const ratio = window.devicePixelRatio || 1;
     const { width, height } = box.getBoundingClientRect();
-    const fits = Math.min((width * ratio) / GAME_WIDTH, (height * ratio) / GAME_HEIGHT);
+    const fits = Math.min((width * ratio) / GAME_WIDTH, (height * ratio) / STAGE_HEIGHT);
 
     const whole = Math.floor(fits);
     const keep = ratio >= 2 ? KEEP_AT_LEAST_SHARP : KEEP_AT_LEAST;
     const scale = whole >= 1 && whole / fits >= keep ? whole : fits;
-    canvas.style.width = `${(GAME_WIDTH * scale) / ratio}px`;
-    canvas.style.height = `${(GAME_HEIGHT * scale) / ratio}px`;
+    gamePixel = scale / ratio;
+    stage.style.setProperty("--gp", `${gamePixel}px`);
+    canvas.style.width = `${GAME_WIDTH * gamePixel}px`;
+    canvas.style.height = `${GAME_HEIGHT * gamePixel}px`;
+    resizeListeners.forEach((listener) => listener());
   }
 
   fit();

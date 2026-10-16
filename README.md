@@ -43,7 +43,7 @@ A few parts worth a look:
 - **One interaction system** ([`src/interact.js`](src/interact.js)): doors, levers, heroes and ladders all work the same way. Each is a zone, a prompt and a `use()` function, and one small module handles detecting the nearest one, the on-screen prompt and the key presses.
 - **Cutscenes with `async`/`await`** ([`src/cutscenes.js`](src/cutscenes.js)): Kaplay's tweens and timers are wrapped in Promises, so sequences like "open the door, walk in, fade out" read top to bottom.
 - **Layered drawing:** when the knight steps into a doorway, he's drawn behind the door frame but in front of the darkness behind it, using draw order (`z`), so he really walks *into* the door.
-- **A stable layout** ([`src/panel.js`](src/panel.js)): the question panel above the game is locked to the height of the dungeon's tallest question, measured on an invisible copy of the panel, so the game never jumps in size during play.
+- **A question scroll that never changes size** ([`src/scroll.js`](src/scroll.js)): the question is written on a pixel-art scroll above the room. The scroll, the strip under it and the game are sized in game pixels and scaled as one picture, so they keep their shape on every screen. The text shrinks until it fits, down to a smallest readable size. Because the font comes with the game and everything is measured in game pixels, a question wraps the same way on every device.
 - **Crisp pixels** ([`src/display.js`](src/display.js)): the game is drawn at 320×208 and scaled up by a whole number of real screen pixels (accounting for `devicePixelRatio`) when that keeps most of the space, so every pixel is the same size.
 - **Safe user content:** question text is always inserted with `textContent`, never `innerHTML`, ready for user-made dungeons.
 - **Procedural music** ([`src/music.js`](src/music.js)): notes are written as data (`"E5 . . D5 C5"`) and scheduled ahead of time on the Web Audio clock for precise timing.
@@ -51,8 +51,8 @@ A few parts worth a look:
 ## Project structure
 
 ```
-index.html            the page: the question panel and the game area
-style.css             panel and card styles
+index.html            the page: the question scroll, the strip and the game area
+style.css             scroll, strip, card and touch control styles
 src/
   main.js             entry point: sets up Kaplay, loads everything, opens the title room
   config.js           shared sizes, speed and colors
@@ -66,7 +66,8 @@ src/
   player.js           the hero: walking and dashing
   touch.js            touch controls: the joystick and buttons
   doors.js, room.js, props.js, heroes.js   building the rooms and characters
-  panel.js            the HTML panel and the game over / victory cards
+  panel.js            what the scroll and strip say, and the game over / victory cards
+  scroll.js           drawing the scroll, and shrinking its text to fit
   dungeon.js          loading a dungeon and shuffling a run
   sound.js, music.js  sound effects and music
   settings.js         remembered settings (localStorage)
@@ -95,6 +96,8 @@ A dungeon is a JSON file of rooms:
 }
 ```
 
+Each question and its answers must fit on the scroll at its smallest text size, which is three lines. As a rough guide, that's about 120 characters for a question with short answers, or about 60 with answers that take a second line. There's no fixed character count: the game measures every question (in every order its answers can be shuffled) when it loads the dungeon, and refuses one that doesn't fit, naming the room.
+
 ## Running it locally
 
 The game loads its files with `fetch`, so it needs to be served rather than opened as a file. Any static server works, for example:
@@ -109,11 +112,12 @@ Then open http://localhost:8000. In VS Code, the Live Server extension works too
 
 - Game by [Salih Önder](https://salihonder.dev)
 - Art: [16x16 DungeonTileset II](https://0x72.itch.io/dungeontileset-ii) by 0x72 (CC0)
-- Font: [Press Start 2P](https://fonts.google.com/specimen/Press+Start+2P) by CodeMan38 (SIL Open Font License, see [`assets/fonts/OFL-LICENSE.txt`](assets/fonts/OFL-LICENSE.txt))
+- Pixel font: [Press Start 2P](https://fonts.google.com/specimen/Press+Start+2P) by CodeMan38 (SIL Open Font License, see [`assets/fonts/OFL-LICENSE.txt`](assets/fonts/OFL-LICENSE.txt))
+- Text font: [Atkinson Hyperlegible](https://fonts.google.com/specimen/Atkinson+Hyperlegible) by the Braille Institute (SIL Open Font License, see [`assets/fonts/ATKINSON-HYPERLEGIBLE-OFL.txt`](assets/fonts/ATKINSON-HYPERLEGIBLE-OFL.txt))
 - Engine: [Kaplay](https://kaplayjs.com)
 - Sound effects: [ZzFX](https://github.com/KilledByAPixel/ZzFX) by Frank Force (MIT, see [`lib/ZZFX-LICENSE.txt`](lib/ZZFX-LICENSE.txt))
 - Built with Claude (Anthropic) as a pair programmer
 
 ## License
 
-The game's code is released under the [MIT License](LICENSE). The third-party assets keep their own licenses: the tileset is CC0, the font is under the SIL Open Font License, and ZzFX is MIT (see Credits).
+The game's code is released under the [MIT License](LICENSE). The third-party assets keep their own licenses: the tileset is CC0, both fonts are under the SIL Open Font License, and ZzFX is MIT (see Credits).
