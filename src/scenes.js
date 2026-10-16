@@ -13,6 +13,7 @@ import {
 import { wavesForRoom, cursedWaves, startWaves } from "./mobs.js";
 import { setupAttack, setupHurt, addHearts, setupHeartDrops } from "./combat.js";
 import { playSound } from "./sound.js";
+import { useHint } from "./touch.js";
 import {
   showQuestion, showCorrect, showMessage, showExplanation, crossOutAnswer, tickTimer,
   showVictory, showDefeated, letterBadge, hidePrompt,
@@ -90,7 +91,7 @@ export function registerRoomScene() {
       })),
       () => (doors.some((door) => door.locked && !door.wrong)
         ? "The doors are chained. Defeat the monsters first!"
-        : "Walk up to a door and press E to answer."),
+        : `Walk up to a door and ${useHint()} to answer.`),
     );
 
     hidePrompt();

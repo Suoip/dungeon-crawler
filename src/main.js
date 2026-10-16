@@ -9,10 +9,11 @@ import { GAME_WIDTH, GAME_HEIGHT, BACKGROUND, DUNGEON_URL } from "./config.js";
 import { loadAssets } from "./assets.js";
 import { loadDungeon } from "./dungeon.js";
 import { registerRoomScene } from "./scenes.js";
-import { registerMenuScenes, MENU_PANELS } from "./menu.js";
+import { registerMenuScenes } from "./menu.js";
 import { showMessage, lockPanelHeight } from "./panel.js";
 import { scaleToFit } from "./display.js";
 import { unlockAudioOnFirstInput } from "./sound.js";
+import { setupTouchControls } from "./touch.js";
 
 // The art is tiny, so the game is drawn at a small resolution (320x208) and
 // display.js scales it up by a whole number to fill its box on the page.
@@ -24,17 +25,29 @@ kaplay({
   pixelDensity: 1,   // draw exactly 320x208 pixels; display.js does the scaling
   crisp: true,       // no smoothing, so pixels stay sharp when scaled up
   background: BACKGROUND,
+  // Named buttons, so the game asks "is attack pressed?" instead of "is
+  // Space pressed?". The touch controls press the same buttons (touch.js).
+  buttons: {
+    up: { keyboard: ["w", "up"] },
+    down: { keyboard: ["s", "down"] },
+    left: { keyboard: ["a", "left"] },
+    right: { keyboard: ["d", "right"] },
+    attack: { keyboard: ["space"] },
+    dash: { keyboard: ["shift"] },
+    use: { keyboard: ["e"] },
+  },
 });
 scaleToFit(document.querySelector("#game canvas"), gameBox);
 
 loadAssets();
 unlockAudioOnFirstInput();
+setupTouchControls();
 
 try {
   const dungeon = await loadDungeon(DUNGEON_URL);
   registerRoomScene();
   registerMenuScenes(dungeon);
-  lockPanelHeight(dungeon, MENU_PANELS); // so the game doesn't resize every time the panel changes
+  lockPanelHeight(dungeon); // so the game doesn't resize every time the panel changes
   onLoad(() => go("title"));
 } catch (error) {
   showMessage(`Something went wrong loading the dungeon: ${error.message}`);

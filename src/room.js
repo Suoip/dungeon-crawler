@@ -42,6 +42,31 @@ function addSolid(x, y, w, h) {
   ]);
 }
 
+// How far something can go before its feet touch a wall. `feet` is the size
+// of the box at its feet ([width, height] px, anchored at the bottom middle).
+// The walls are 5 px thick at the sides, 4 px at the bottom, and 2 tiles
+// (the brick face) at the top.
+export function roomLimits([width, height]) {
+  return {
+    left: 5 + width / 2,
+    right: GAME_WIDTH - 5 - width / 2,
+    top: TOP + 2 * TILE + height,
+    bottom: GAME_HEIGHT - 4,
+  };
+}
+
+// Puts something back inside the walls if it moved past them. It's called
+// after every move. The walls are solid, but the physics engine only pushes
+// things out of a wall after they've moved into it, and something fast on a
+// slow frame (a dash, a knockback) can move far enough to be pushed out the
+// wrong side, out of the room. This way nothing ever gets that far.
+export function keepInRoom(obj, feet) {
+  const limits = roomLimits(feet);
+  const x = clamp(obj.pos.x, limits.left, limits.right);
+  const y = clamp(obj.pos.y, limits.top, limits.bottom);
+  if (x !== obj.pos.x || y !== obj.pos.y) obj.pos = vec2(x, y);
+}
+
 // Builds the room and returns its floor tiles, so a trap can crack some of
 // them later. Look one up with floor.get(`${col},${row}`).
 export function buildRoom() {
@@ -58,13 +83,21 @@ export function buildRoom() {
     }
   }
 
-  // The colliders line up with the visible wall edges. The top one covers the
-  // whole brick face, so the knight's head can overlap the wall while his feet
-  // stop at its base. That overlap is what makes the room look 3D.
-  addSolid(0, TOP, GAME_WIDTH, 2 * TILE);         // top wall
-  addSolid(0, TOP, 5, GAME_HEIGHT - TOP);         // left wall strip (5 px wide)
-  addSolid(GAME_WIDTH - 5, TOP, 5, GAME_HEIGHT - TOP); // right wall strip
-  addSolid(0, GAME_HEIGHT - 4, GAME_WIDTH, 4);    // bottom wall strip (4 px tall)
+  // The colliders' inner edges line up with the visible wall edges. The top
+  // one covers the whole brick face, so the knight's head can overlap the
+  // wall while his feet stop at its base. That overlap is what makes the
+  // room look 3D.
+  //
+  // They also reach far outside the screen (THICK px). Something fast (a
+  // dash, a big knockback) can move several px in one frame, deep into a
+  // wall. The physics engine then pushes it out the shortest way, and with a
+  // wall only 5 px thick that could be out the far side, out of the room.
+  // With thick walls, the shortest way out is always back into the room.
+  const THICK = 64;
+  addSolid(-THICK, TOP - THICK, GAME_WIDTH + 2 * THICK, 2 * TILE + THICK);   // top wall
+  addSolid(-THICK, TOP - THICK, THICK + 5, GAME_HEIGHT - TOP + 2 * THICK);  // left wall (5 px on screen)
+  addSolid(GAME_WIDTH - 5, TOP - THICK, THICK + 5, GAME_HEIGHT - TOP + 2 * THICK); // right wall
+  addSolid(-THICK, GAME_HEIGHT - 4, GAME_WIDTH + 2 * THICK, THICK + 4);     // bottom wall (4 px on screen)
 
   return floor;
 }

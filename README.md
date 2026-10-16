@@ -17,7 +17,7 @@ A pixel-art quiz dungeon crawler that runs in the browser. Every room asks a que
 
 The menu is a room too: walk through **PLAY** to start, or explore **HEROES**, **OPTIONS** and **CREDITS**. In the dungeon, waves of monsters rise from the floor and the doors stay chained until you've beaten them all. The question is shown from the start, so you can work out the answer while you fight. Then stand at the door with your answer and open it. A wrong door is crossed out and the chains go back on while a harder fight plays out; then you pick again from what's left. You have 3 hearts for the whole run, and monsters sometimes drop one when you're missing one. Your score is how deep you get, how fast, and how many questions you got right first try.
 
-Touch controls aren't supported yet; it's best played with a keyboard.
+On phones and tablets, touch controls appear: drag anywhere on the left for a joystick, and use the Attack and Dash buttons on the right. A Use button pops up next to them whenever there's something to use. Held upright, the controls sit below the game; held sideways, they sit beside it.
 
 ## Features
 
@@ -39,6 +39,7 @@ Plain JavaScript (ES modules) with the [Kaplay](https://kaplayjs.com) game engin
 
 A few parts worth a look:
 
+- **One set of controls for keys and touch** ([`src/touch.js`](src/touch.js)): the game listens for named buttons (attack, dash, use) instead of keys. The keyboard is bound to them, and the on-screen buttons press the same ones, so no game code knows which was used. The joystick is analog: a small push walks slowly.
 - **One interaction system** ([`src/interact.js`](src/interact.js)): doors, levers, heroes and ladders all work the same way. Each is a zone, a prompt and a `use()` function, and one small module handles detecting the nearest one, the on-screen prompt and the key presses.
 - **Cutscenes with `async`/`await`** ([`src/cutscenes.js`](src/cutscenes.js)): Kaplay's tweens and timers are wrapped in Promises, so sequences like "open the door, walk in, fade out" read top to bottom.
 - **Layered drawing:** when the knight steps into a doorway, he's drawn behind the door frame but in front of the darkness behind it, using draw order (`z`), so he really walks *into* the door.
@@ -63,6 +64,7 @@ src/
   mobs.js             monster types, waves, rising from the floor, chasing
   boss.js             the boss's moves: dash and fire trail, projectile rings, raising minions, rage
   player.js           the hero: walking and dashing
+  touch.js            touch controls: the joystick and buttons
   doors.js, room.js, props.js, heroes.js   building the rooms and characters
   panel.js            the HTML panel and the game over / victory cards
   dungeon.js          loading a dungeon and shuffling a run

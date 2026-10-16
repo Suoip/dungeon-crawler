@@ -13,7 +13,13 @@ import { GAME_WIDTH, GAME_HEIGHT } from "./config.js";
 // devicePixelRatio is how many real screen pixels make up one CSS pixel (it's
 // 2 or 3 on most phones, and 1.25 or 1.5 on many laptops). We count in real
 // screen pixels so the scale is whole on the actual screen, not just in CSS.
-const KEEP_AT_LEAST = 0.85; // round down only if the game keeps 85% of its size
+//
+// On sharp screens (2 or more real pixels per CSS pixel, like phones), an
+// uneven scale makes some game pixels one tiny real pixel wider than others,
+// which you can't see. There, space matters more (a phone's screen is small),
+// so we only round down when it costs almost nothing.
+const KEEP_AT_LEAST = 0.85;       // round down only if the game keeps 85% of its size
+const KEEP_AT_LEAST_SHARP = 0.97; // on sharp screens, only if it keeps 97%
 
 export function scaleToFit(canvas, box) {
   function fit() {
@@ -22,7 +28,8 @@ export function scaleToFit(canvas, box) {
     const fits = Math.min((width * ratio) / GAME_WIDTH, (height * ratio) / GAME_HEIGHT);
 
     const whole = Math.floor(fits);
-    const scale = whole >= 1 && whole / fits >= KEEP_AT_LEAST ? whole : fits;
+    const keep = ratio >= 2 ? KEEP_AT_LEAST_SHARP : KEEP_AT_LEAST;
+    const scale = whole >= 1 && whole / fits >= keep ? whole : fits;
     canvas.style.width = `${(GAME_WIDTH * scale) / ratio}px`;
     canvas.style.height = `${(GAME_HEIGHT * scale) / ratio}px`;
   }

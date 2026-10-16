@@ -2,6 +2,7 @@ import { TILE, TOP, GAME_WIDTH, GAME_HEIGHT } from "./config.js";
 import { raiseMob, hurtMob } from "./mobs.js";
 import { sleep, during, puffDust, shakeScreen, flashScreen, showBanner, sparks } from "./effects.js";
 import { playSound } from "./sound.js";
+import { roomLimits } from "./room.js";
 
 // The boss fight. Between moves the boss walks toward the hero; every few
 // seconds it casts one of three moves at random, each with its own warning
@@ -157,14 +158,7 @@ async function dashOnce(boss, room, speed, { toWall = false } = {}) {
   boss.play("run");
   if (boss.has("body")) boss.unuse("body");
 
-  // How far its feet can go: they're feet[0] wide and feet[1] tall, and the
-  // walls are 5 px thick at the sides, 4 px at the bottom, and 2 tiles at the
-  // top.
-  const half = boss.def.feet[0] / 2;
-  const limits = {
-    left: 5 + half, right: GAME_WIDTH - 5 - half,
-    top: TOP + 2 * TILE + boss.def.feet[1], bottom: GAME_HEIGHT - 4,
-  };
+  const limits = roomLimits(boss.def.feet); // how far its feet can go
   // If it starts against a wall (after a slam) and the hero is off to that
   // side, it would hit the same wall straight away, so it dashes along it.
   const intoSide = (boss.pos.x <= limits.left + 0.5 && aim.x < 0) || (boss.pos.x >= limits.right - 0.5 && aim.x > 0);

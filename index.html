@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Who Wants To Be A Dungeon Crawler</title>
-  <meta name="description" content="A pixel-art quiz dungeon crawler in the browser. Every room asks a question, and the doors are the answers. Pick the wrong one and the floor gives way.">
+  <meta name="description" content="A pixel-art quiz dungeon crawler in the browser. Every room asks a question, and the doors are the answers. Pick the wrong one and cursed monsters crawl out of the floor.">
   <meta name="theme-color" content="#181425">
 
   <!-- The icon in the browser tab, and on a phone's home screen -->
@@ -16,7 +16,7 @@
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://dungeon-crawler.salihonder.dev/">
   <meta property="og:title" content="Who Wants To Be A Dungeon Crawler">
-  <meta property="og:description" content="Every room asks a question, and the doors are the answers. Pick the wrong one and the floor gives way.">
+  <meta property="og:description" content="Every room asks a question, and the doors are the answers. Pick the wrong one and cursed monsters crawl out of the floor.">
   <meta property="og:image" content="https://dungeon-crawler.salihonder.dev/assets/social/preview.png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
@@ -45,6 +45,25 @@
   <main id="game">
     <div id="overlay" hidden></div>
   </main>
+
+  <!-- Touch controls (src/touch.js): only shown on touch screens. Below the
+       game when the phone is upright, over its edges when it's sideways. -->
+  <div id="touch" aria-hidden="true">
+    <button id="touch-fullscreen" hidden aria-label="Fullscreen">
+      <!-- four corner brackets -->
+      <svg viewBox="0 0 20 20" fill="none" stroke-width="2.5"><path d="M2 7V2h5M13 2h5v5M18 13v5h-5M7 18H2v-5"/></svg>
+    </button>
+    <div id="stick-zone">
+      <div id="stick-base"><div id="stick-knob"></div></div>
+    </div>
+    <div id="touch-buttons">
+      <button id="touch-use" class="touch-button" hidden></button>
+      <div class="touch-row">
+        <button id="touch-dash" class="touch-button round">DASH</button>
+        <button id="touch-attack" class="touch-button round big">ATTACK</button>
+      </div>
+    </div>
+  </div>
 
   <!-- Kaplay engine, pinned to an exact version so updates can't break the game -->
   <script src="https://cdn.jsdelivr.net/npm/kaplay@3001.0.19/dist/kaplay.js"></script>
