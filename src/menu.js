@@ -9,7 +9,7 @@ import {
   fallIn, walkThroughDoor, climbLadder, climbOutOfHatch, besideHatch, giveControl, LAND_X, LAND_Y,
 } from "./cutscenes.js";
 import { addFader, fadeIn, puffDust, shakeScreen } from "./effects.js";
-import { addLadder, addHatch, addLever, addKeycap, addTouchIcon, addShadowText } from "./props.js";
+import { addLadder, addHatch, addLever, addKeycap, addTouchIcon, addShadowText, addPlaque } from "./props.js";
 import { playSound, setMusicPlaying } from "./sound.js";
 import { showMenuPanel, hidePrompt, link } from "./panel.js";
 import { isTouch, useHint } from "./touch.js";
@@ -53,20 +53,41 @@ const optionsPanel = () => ({
 const creditsPanel = () => ({
   left: "Credits",
   line: "Made with these, thank you!",
-  items: [
-    ["Game by ", link("Salih Önder", "https://salihonder.dev")],
-    ["Art: ", link("DungeonTileset II", "https://0x72.itch.io/dungeontileset-ii"), " by 0x72 (CC0)"],
-    ["Font: ", link("Press Start 2P", "https://fonts.google.com/specimen/Press+Start+2P"), " (OFL)"],
-    ["Engine: ", link("Kaplay", "https://kaplayjs.com")],
-    ["Sound: ", link("ZzFX", "https://github.com/KilledByAPixel/ZzFX"), " by Frank Force"],
-    "Pair programmer: Claude (Anthropic)",
-  ],
+  items: [`Walk up to a plaque to read it.`],
 });
+
+// One plaque per credit in the Credits room. `url` is what using the plaque
+// opens, in a new tab.
+const CREDITS = [
+  { title: "Game", by: () => [link("Salih Önder", "https://salihonder.dev")], url: "https://salihonder.dev" },
+  {
+    title: "Art",
+    by: () => [link("16x16 DungeonTileset II", "https://0x72.itch.io/dungeontileset-ii"), " by 0x72 (CC0)"],
+    url: "https://0x72.itch.io/dungeontileset-ii",
+  },
+  {
+    title: "Pixel font",
+    by: () => [link("Press Start 2P", "https://fonts.google.com/specimen/Press+Start+2P"), " by CodeMan38 (OFL)"],
+    url: "https://fonts.google.com/specimen/Press+Start+2P",
+  },
+  {
+    title: "Text font",
+    by: () => [link("Atkinson Hyperlegible", "https://fonts.google.com/specimen/Atkinson+Hyperlegible"), " by the Braille Institute (OFL)"],
+    url: "https://fonts.google.com/specimen/Atkinson+Hyperlegible",
+  },
+  { title: "Engine", by: () => [link("Kaplay", "https://kaplayjs.com")], url: "https://kaplayjs.com" },
+  {
+    title: "Sound effects",
+    by: () => [link("ZzFX", "https://github.com/KilledByAPixel/ZzFX"), " by Frank Force (MIT)"],
+    url: "https://github.com/KilledByAPixel/ZzFX",
+  },
+  { title: "Pair programmer", by: () => ["Claude (Anthropic)"] },
+];
 
 const bossesPanel = () => ({
   left: "Choose a boss",
-  line: "Test room: pick which boss waits in the last room of the dungeon.",
-  items: BOSSES.map((boss) => [strong(boss.name), `: ${boss.blurb}`]),
+  line: "Test room: pick the boss that waits in the last room.",
+  items: BOSSES.map((boss) => strong(boss.name)),
 });
 
 // ---------------------------------------------------------------------------
@@ -266,15 +287,51 @@ function setupOptions() {
 }
 
 // The credits are in the panel; the room just has a few things lying around.
-function setupCredits() {
+// The Credits room: a plaque for each credit, in two rows. Stand at one and
+// the scroll shows what it says; use it to open its link.
+function setupCredits(player) {
   add([sprite("chest"), pos(48, 64)]);
   add([sprite("crate"), pos(256, 56)]);
   add([sprite("crate"), pos(272, 64)]);
-  add([sprite("skull"), pos(80, 150)]);
-  add([sprite("skull"), pos(244, 168)]);
-  add([sprite("flask_red"), pos(40, 120)]);
-  add([sprite("flask_blue"), pos(270, 120)]);
-  return [];
+  add([sprite("skull"), pos(244, 176)]);
+  add([sprite("flask_red"), pos(24, 150)]);
+  add([sprite("flask_blue"), pos(284, 150)]);
+
+  const spots = CREDITS.map((credit, i) => {
+    const front = i < 4;
+    const x = front ? 64 + i * 64 : 96 + (i - 4) * 64;
+    const plaque = addPlaque(x, front ? 104 : 140);
+    return {
+      ...plaque,
+      panel: () => ({ left: "Credits", line: credit.title, items: [credit.by()] }),
+      credit,
+    };
+  });
+  showOnScrollWhileNear(player, spots, creditsPanel);
+
+  return spots.filter((spot) => spot.credit.url).map((spot) => ({
+    zone: spot.zone,
+    prompt: [`Visit ${spot.credit.title === "Game" ? "salihonder.dev" : "the link"}`],
+    use: () => {
+      window.open(spot.credit.url, "_blank", "noopener");
+      return false;
+    },
+  }));
+}
+
+// While the hero stands at one of the `spots` (each { zone, panel(), and
+// optionally setLit() }), the scroll shows that spot's panel; anywhere else
+// it shows the room's own panel.
+function showOnScrollWhileNear(player, spots, roomPanel) {
+  let shown = null;
+  onUpdate(() => {
+    const here = spots.find((spot) => player.isColliding(spot.zone)) ?? null;
+    if (here === shown) return;
+    shown?.setLit?.(false);
+    here?.setLit?.(true);
+    shown = here;
+    showMenuPanel(here ? here.panel() : roomPanel());
+  });
 }
 
 // A test room for trying out the bosses: three doors, each boss standing
@@ -287,6 +344,11 @@ function setupBosses(player, fader, dungeon) {
     pos(door.centerX, 112),
     anchor("bot"),
   ]));
+  // At a door, the scroll tells you about that boss.
+  showOnScrollWhileNear(player, doors.map((door, i) => ({
+    zone: door.zone,
+    panel: () => ({ left: "Choose a boss", line: BOSSES[i].name, items: [BOSSES[i].blurb] }),
+  })), bossesPanel);
 
   return doors.map((door, i) => doorInteraction(door, [`Fight the ${BOSSES[i].name}`], async () => {
     await walkThroughDoor(player, door, fader);

@@ -40,6 +40,27 @@ export function addHatch(col, row) {
   return { centerX: col * TILE + TILE / 2, y: TOP + row * TILE };
 }
 
+// A small stone plaque standing on the floor, like a little gravestone, with
+// lines engraved on it. setLit(true) makes the engraving glow gold (while the
+// hero is reading it). Its z sorts it with the characters, so the hero can
+// walk in front of it and behind it.
+export function addPlaque(x, y) {
+  const depth = z(10 + y / 1000);
+  const STONE_DARK = [40, 34, 52];
+  add([rect(18, 4), pos(x - 9, y - 4), color(...STONE_DARK), depth]);           // its base
+  add([rect(14, 15), pos(x - 7, y - 18), color(...STONE_DARK), depth]);         // outline
+  add([rect(10, 2), pos(x - 5, y - 20), color(...STONE_DARK), depth]);          // rounded top
+  add([rect(12, 14), pos(x - 6, y - 17), color(120, 112, 134), depth]);         // the stone
+  add([rect(8, 2), pos(x - 4, y - 19), color(120, 112, 134), depth]);
+  add([rect(2, 13), pos(x - 6, y - 17), color(150, 144, 160), depth]);          // lit edge
+  const lines = [y - 15, y - 12, y - 9].map((lineY) =>
+    add([rect(6, 1), pos(x - 3, lineY), color(...STONE_DARK), depth]));
+
+  const zone = add([pos(x - 10, y - 2), area({ shape: new Rect(vec2(0), 20, 12) })]);
+  const setLit = (on) => lines.forEach((line) => (line.color = on ? rgb(255, 205, 70) : rgb(...STONE_DARK)));
+  return { zone, setLit };
+}
+
 // A lever standing on the floor. Left = off, right = on.
 export function addLever(x, y, title, isOn) {
   const lever = add([sprite(isOn ? "lever_right" : "lever_left"), pos(x, y), anchor("bot")]);

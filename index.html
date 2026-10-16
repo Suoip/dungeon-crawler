@@ -26,23 +26,28 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <!-- The question panel: plain HTML above the game, so text is readable on any screen -->
-  <header id="panel" class="panel">
-    <div class="panel-top">
-      <span id="dungeon-title"></span>
-      <span id="progress"></span>
-    </div>
-    <p id="question">Loading the dungeon…</p>
-    <ol id="answers"></ol>
-    <!-- Always the same height, whether it shows the button, the hint or nothing -->
-    <div class="prompt-slot">
-      <button id="door-button" hidden></button>
-      <p id="door-hint" hidden></p>
-    </div>
-  </header>
-
-  <!-- Kaplay draws the game in here. The overlay holds the game over / victory card. -->
   <main id="game">
+    <!-- The stage: the scroll, the strip under it, and Kaplay's canvas, scaled
+         together as one picture (display.js), so they always keep their shape. -->
+    <div id="stage">
+      <!-- The question, on a scroll drawn in pixel art (scroll.js). The text is
+           plain HTML on top of it, so it stays sharp and readable. -->
+      <div id="scroll">
+        <div id="scroll-text" class="scroll-text">
+          <p id="question" class="scroll-line">Loading the dungeon…</p>
+          <ol id="answers" class="scroll-items"></ol>
+        </div>
+      </div>
+      <!-- The strip: a hint or the "Open door" button on the left, depth and
+           time (or the menu room's name) on the right -->
+      <div id="strip">
+        <button id="door-button" hidden></button>
+        <p id="door-hint" hidden></p>
+        <span id="progress"></span>
+      </div>
+      <!-- Kaplay adds its canvas here -->
+    </div>
+    <!-- The game over / victory / explanation cards -->
     <div id="overlay" hidden></div>
   </main>
 

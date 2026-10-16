@@ -23,9 +23,9 @@ const CURSED_SPEED = 1.25;
 
 // For the boss-select test room.
 export const BOSSES = [
-  { id: "big_demon", label: "DEMON", name: "Big Demon", blurb: "loves to dash at you, leaving fire behind" },
-  { id: "ogre", label: "OGRE", name: "Ogre", blurb: "very tough, vomits a lot, and knocks you far back" },
-  { id: "big_zombie", label: "ZOMBIE", name: "Big Zombie", blurb: "very slow, but keeps raising the dead" },
+  { id: "big_demon", label: "DEMON", name: "Big Demon", blurb: "Loves to dash at you, leaving a trail of fire behind it." },
+  { id: "ogre", label: "OGRE", name: "Ogre", blurb: "Very tough. Vomits a lot, and knocks you far back." },
+  { id: "big_zombie", label: "ZOMBIE", name: "Big Zombie", blurb: "Very slow, but keeps raising the dead." },
 ];
 
 // The waves of mobs a room sends at you, one list of mobs per wave. Deeper

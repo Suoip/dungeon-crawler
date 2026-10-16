@@ -44,13 +44,12 @@ export function setupTouchControls() {
   holdToPress($("touch-dash"), "dash");
   setupFullscreen();
 
-  // In landscape the controls lie over the game, starting under the panel.
-  const panel = $("panel");
-  const placeBelowPanel = () =>
-    document.documentElement.style.setProperty("--panel-bottom", `${panel.getBoundingClientRect().bottom}px`);
-  placeBelowPanel();
-  new ResizeObserver(placeBelowPanel).observe(panel);
-  window.addEventListener("resize", placeBelowPanel);
+  // Sideways, the joystick area is the empty space left of the stage.
+  const stage = $("stage");
+  const measureSide = () =>
+    document.documentElement.style.setProperty("--side-space", `${stage.getBoundingClientRect().left}px`);
+  measureSide();
+  new ResizeObserver(measureSide).observe(stage);
 }
 
 // A button that presses one of Kaplay's named buttons while a finger is on it.

@@ -10,18 +10,21 @@ import { loadAssets } from "./assets.js";
 import { loadDungeon } from "./dungeon.js";
 import { registerRoomScene } from "./scenes.js";
 import { registerMenuScenes } from "./menu.js";
-import { showMessage, lockPanelHeight } from "./panel.js";
+import { showMessage, fitsOnScroll } from "./panel.js";
 import { scaleToFit } from "./display.js";
+import { drawScroll, fitScrollText } from "./scroll.js";
 import { unlockAudioOnFirstInput } from "./sound.js";
 import { setupTouchControls } from "./touch.js";
 
 // The art is tiny, so the game is drawn at a small resolution (320x208) and
-// display.js scales it up by a whole number to fill its box on the page.
+// display.js scales it up (with the scroll above it) to fill its box on the
+// page.
 const gameBox = document.getElementById("game");
+const stage = document.getElementById("stage");
 kaplay({
   width: GAME_WIDTH,
   height: GAME_HEIGHT,
-  root: gameBox,     // draw inside this element, under the panel
+  root: stage,       // draw inside the stage, under the scroll
   pixelDensity: 1,   // draw exactly 320x208 pixels; display.js does the scaling
   crisp: true,       // no smoothing, so pixels stay sharp when scaled up
   background: BACKGROUND,
@@ -37,7 +40,8 @@ kaplay({
     use: { keyboard: ["e"] },
   },
 });
-scaleToFit(document.querySelector("#game canvas"), gameBox);
+drawScroll();
+scaleToFit(stage, document.querySelector("#game canvas"), gameBox);
 
 loadAssets();
 unlockAudioOnFirstInput();
@@ -45,11 +49,29 @@ setupTouchControls();
 
 try {
   const dungeon = await loadDungeon(DUNGEON_URL);
+  // The scroll's text is measured in the game's own font, so wait for it.
+  await Promise.all([document.fonts.load('400 12px "Atkinson Hyperlegible"'), document.fonts.load('700 12px "Atkinson Hyperlegible"')]);
+  checkDungeonFits(dungeon);
   registerRoomScene();
   registerMenuScenes(dungeon);
-  lockPanelHeight(dungeon); // so the game doesn't resize every time the panel changes
   onLoad(() => go("title"));
 } catch (error) {
+  fitScrollText();
   showMessage(`Something went wrong loading the dungeon: ${error.message}`);
   console.error(error);
+}
+
+// Every question must fit on the scroll, even with its text at the smallest
+// size. A dungeon with a question that's too long doesn't load, and says
+// which one, so whoever made it can shorten it. The answers are shuffled
+// every run, and a different order can wrap differently, so every order is
+// tried (at most 24, for 4 answers).
+function checkDungeonFits(dungeon) {
+  const orders = (list) => (list.length <= 1 ? [list]
+    : list.flatMap((item, i) => orders([...list.slice(0, i), ...list.slice(i + 1)]).map((rest) => [item, ...rest])));
+  dungeon.rooms.forEach((room, i) => {
+    if (!orders([room.correct, ...room.wrong]).every((answers) => fitsOnScroll(room.question, answers))) {
+      throw new Error(`room ${i + 1}'s question and answers are too long for the scroll ("${room.question.slice(0, 40)}…").`);
+    }
+  });
 }
