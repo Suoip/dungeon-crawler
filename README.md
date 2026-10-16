@@ -2,7 +2,7 @@
 
 A pixel-art quiz dungeon crawler that runs in the browser. Every room asks a question, and the doors are the answers. Pick the right door and you drop one level deeper into the dungeon. Pick the wrong one and it stays shut: the floor cracks open and cursed monsters crawl out.
 
-![A run: the title room, walking through the PLAY door, answering correctly, then picking a wrong door and falling into a spike pit](assets/social/gameplay.gif)
+![Highlights of a run: fighting the first room's monsters, picking up the scroll they drop, a wrong door turning into cursed waves, the explanation scroll after the right door, the ogre boss's projectile ring, and the treasure room](assets/social/gameplay.gif)
 
 **[▶ Play it in your browser](https://dungeon-crawler.salihonder.dev)**
 
