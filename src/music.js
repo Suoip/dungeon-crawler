@@ -94,12 +94,15 @@ function schedule() {
   }
 }
 
-export function startMusic(audioContext) {
+const MUSIC_VOLUME = 0.09; // the music's overall volume at the default level (was 0.3)
+
+// `gain` is the player's volume setting (1 = the default level).
+export function startMusic(audioContext, gain = 1) {
   if (timer) return; // already playing
   ctx = audioContext;
 
   output = ctx.createGain();
-  output.gain.value = 0.09; // the music's overall volume (was 0.3)
+  output.gain.value = MUSIC_VOLUME * gain;
   output.connect(ctx.destination);
 
   // Echo: a delayed copy of the sound, fed back into itself so each repeat
@@ -122,4 +125,12 @@ export function stopMusic() {
   clearInterval(timer);
   timer = null;
   output?.disconnect();
+}
+
+export const isMusicPlaying = () => timer !== null;
+
+// Changes the volume while it plays, with a very short ramp so it doesn't click.
+export function setMusicGain(gain) {
+  if (!output) return;
+  output.gain.setTargetAtTime(MUSIC_VOLUME * gain, ctx.currentTime, 0.02);
 }

@@ -6,8 +6,8 @@
 const KEY = "dungeon-crawler-settings";
 
 const DEFAULTS = {
-  sound: true,
-  music: true,
+  sound: 5,            // sound effects volume, 0 (off) to 10; 5 is the mix as designed
+  music: 5,            // music volume, the same way
   shake: true,         // screen shake (some players get dizzy from it)
   hero: "knight_m",
 };
@@ -17,6 +17,11 @@ try {
   settings = { ...DEFAULTS, ...JSON.parse(localStorage.getItem(KEY) ?? "{}") };
 } catch {
   // Nothing saved, or storage isn't available: keep the defaults.
+}
+// Sound and music used to be just on or off. On becomes the default volume,
+// off becomes 0.
+for (const name of ["sound", "music"]) {
+  if (typeof settings[name] === "boolean") settings[name] = settings[name] ? DEFAULTS[name] : 0;
 }
 
 export const getSetting = (name) => settings[name];

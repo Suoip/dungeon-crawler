@@ -1,4 +1,5 @@
 import { TILE, TOP } from "./config.js";
+import { playSound } from "./sound.js";
 
 // Things placed in the menu rooms: the ladder, the floor hatch, levers,
 // keyboard keys and the title text.
@@ -115,6 +116,79 @@ export function addPlaque(x, y) {
   return { zone, setLit };
 }
 
+// A volume slider on the floor: a rail with 11 notches (0 to 10) and a
+// stone block on it as the knob. The hero moves the block by hitting it with
+// his weapon: one notch per hit, away from him. Hit from the left, it slides
+// right (louder); from the right, it slides left (quieter). `icon`
+// ("speaker" or "note") is drawn at the left end, the number at the right
+// end. `onChange(level)` runs on every notch.
+const NOTCH = 16; // px between notches
+export function addVolumeSlider(y, icon, level, onChange) {
+  const left = 80;                    // where notch 0 is
+  const right = left + 10 * NOTCH;    // and notch 10
+  const notchX = (n) => left + n * NOTCH;
+  const DARK = [24, 20, 37];
+
+  // The rail: a groove in the floor with a tick at every notch (longer
+  // ones at 0, 5 and 10).
+  add([rect(right - left + 14, 6), pos(left - 7, y - 3), color(...DARK), z(1)]);
+  add([rect(right - left + 12, 2), pos(left - 6, y - 1), color(58, 47, 74), z(1)]);
+  for (let n = 0; n <= 10; n++) {
+    const long = n % 5 === 0;
+    add([rect(1, long ? 5 : 3), pos(notchX(n), y + 4), color(...(long ? [169, 155, 185] : [90, 77, 110])), z(1)]);
+  }
+  addVolumeIcon(left - 24, y, icon);
+  const number = addShadowText(String(level), right + 22, y, 8, [240, 230, 210], 1);
+
+  // The block. It's solid, so he stops against it instead of walking
+  // through, and "strikeable": combat.js calls struck() when a swing hits it.
+  const block = add([
+    pos(notchX(level), y + 3),
+    area({ shape: new Rect(vec2(-7, -6), 14, 6) }),
+    body({ isStatic: true }),
+    z(10 + (y + 3) / 1000),
+    "strikeable",
+    { hitHeight: 8, hitSize: 9, struck },
+  ]);
+  block.onDraw(() => {
+    drawRect({ pos: vec2(-8, -15), width: 16, height: 15, color: rgb(...DARK) });      // outline
+    drawRect({ pos: vec2(-7, -14), width: 14, height: 9, color: rgb(150, 144, 160) });  // the top, lit
+    drawRect({ pos: vec2(-7, -5), width: 14, height: 4, color: rgb(104, 96, 120) });    // the front, in shade
+    drawRect({ pos: vec2(-7, -14), width: 14, height: 1, color: rgb(190, 184, 200) });  // a highlight
+    drawRect({ pos: vec2(-1, -12), width: 2, height: 5, color: rgb(255, 205, 70) });    // a gold mark, to line up with the ticks
+  });
+
+  const restX = () => notchX(level);
+
+  function struck(player) {
+    const way = player.pos.x < block.pos.x ? 1 : -1; // away from him
+    const next = level + way;
+    if (next < 0 || next > 10) {
+      playSound("locked"); // already at the end: it just rattles
+      tween(0, 1, 0.2, (t) => (block.pos.x = restX() + Math.sin(t * Math.PI * 4) * 2 * (1 - t)));
+      return;
+    }
+    level = next;
+    playSound("mobHit"); // the thunk of the hit
+    tween(block.pos.x, restX(), 0.14, (x) => (block.pos.x = x), easings.easeOutQuad);
+    number.text = String(level);
+    onChange(level);
+  }
+}
+
+// The symbols at the start of the volume sliders, drawn in pixels:
+//   speaker  a little loudspeaker with sound waves (sound effects)
+//   note     a music note (music)
+function addVolumeIcon(x, y, kind) {
+  const LIGHT = [240, 230, 210];
+  const SHADOW = [12, 10, 20];
+  const parts = kind === "speaker"
+    ? [[-6, -2, 3, 4], [-3, -4, 2, 8], [-1, -6, 2, 12], [3, -2, 1, 4], [5, -4, 1, 2], [5, 2, 1, 2], [6, -2, 1, 4]]
+    : [[1, -7, 2, 10], [3, -7, 4, 2], [5, -5, 2, 2], [-3, 1, 5, 4], [-4, 2, 1, 2]];
+  for (const [dx, dy, w, h] of parts) add([rect(w, h), pos(x + dx + 1, y + dy + 1), color(...SHADOW), z(1)]);
+  for (const [dx, dy, w, h] of parts) add([rect(w, h), pos(x + dx, y + dy), color(...LIGHT), z(1)]);
+}
+
 // A lever standing on the floor. Left = off, right = on.
 export function addLever(x, y, title, isOn) {
   const lever = add([sprite(isOn ? "lever_right" : "lever_left"), pos(x, y), anchor("bot")]);
@@ -163,7 +237,8 @@ export function addTouchIcon(x, y, kind) {
 
 // Text in the pixel font with a dark shadow under it, so it stands out on
 // the floor.
-export function addShadowText(content, x, y, size, rgb) {
-  add([text(content, { size, font: "pixel" }), pos(x + 1, y + 1), anchor("center"), color(12, 10, 20)]);
-  return add([text(content, { size, font: "pixel" }), pos(x, y), anchor("center"), color(...rgb)]);
+// `depth` (optional) is its z, e.g. to keep it above things on the floor.
+export function addShadowText(content, x, y, size, rgb, depth = 0) {
+  add([text(content, { size, font: "pixel" }), pos(x + 1, y + 1), anchor("center"), color(12, 10, 20), z(depth)]);
+  return add([text(content, { size, font: "pixel" }), pos(x, y), anchor("center"), color(...rgb), z(depth)]);
 }

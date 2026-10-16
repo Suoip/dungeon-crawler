@@ -9,8 +9,10 @@ import {
   fallIn, walkThroughDoor, climbLadder, climbOutOfHatch, besideHatch, giveControl, LAND_X, LAND_Y,
 } from "./cutscenes.js";
 import { addFader, fadeIn, puffDust, shakeScreen } from "./effects.js";
-import { addLadder, addHatch, addLever, addKeycap, addTouchIcon, addShadowText, addPlaque } from "./props.js";
-import { playSound, setMusicPlaying } from "./sound.js";
+import {
+  addLadder, addHatch, addLever, addKeycap, addTouchIcon, addShadowText, addPlaque, addVolumeSlider,
+} from "./props.js";
+import { playSound, setEffectsVolume, setMusicVolume } from "./sound.js";
 import { hidePrompt, link, showRoomName, writeMenuScroll } from "./panel.js";
 import { hideScroll, openScroll, setScrollNotes } from "./scroll.js";
 import { isTouch, useHint } from "./touch.js";
@@ -238,33 +240,34 @@ function setupHeroes(player) {
   }));
 }
 
-// Three levers: Sound, Music and Screen shake.
+// The volume mixer: a slider for the sound effects and one for the music,
+// each a stone block you knock along a rail with your weapon (0 to 10, 5 by
+// default), and a lever for screen shake.
 function setupOptions() {
-  const LEVERS = [
-    { setting: "sound", title: "SOUND", x: 96 },
-    { setting: "music", title: "MUSIC", x: 160 },
-    { setting: "shake", title: "SHAKE", x: 224 },
-  ];
-
-  return LEVERS.map(({ setting, title, x }) => {
-    const lever = addLever(x, 112, title, getSetting(setting));
-    const name = setting === "shake" ? "screen shake" : setting;
-    return {
-      zone: lever.zone,
-      prompt: () => [`Turn ${name} ${getSetting(setting) ? "off" : "on"}`],
-      use() {
-        const on = !getSetting(setting);
-        if (!on) playSound("lever"); // turning sound off: play it while we still can
-        setSetting(setting, on);
-        if (on) playSound("lever");
-        lever.show(on);
-
-        if (setting === "music") setMusicPlaying(on);
-        if (setting === "shake" && on) shakeScreen(3); // show what it does
-        return false;
-      },
-    };
+  addVolumeSlider(84, "speaker", getSetting("sound"), (level) => {
+    setSetting("sound", level);
+    setEffectsVolume(level);
+    playSound("letter"); // a blip, at the new volume
   });
+  addVolumeSlider(124, "note", getSetting("music"), (level) => {
+    setSetting("music", level);
+    setMusicVolume(level); // you hear it change right away
+    playSound("lever");    // the block clicking into its notch
+  });
+
+  const lever = addLever(272, 184, "SHAKE", getSetting("shake"));
+  return [{
+    zone: lever.zone,
+    prompt: () => [`Turn screen shake ${getSetting("shake") ? "off" : "on"}`],
+    use() {
+      const on = !getSetting("shake");
+      setSetting("shake", on);
+      playSound("lever");
+      lever.show(on);
+      if (on) shakeScreen(3); // show what it does
+      return false;
+    },
+  }];
 }
 
 // The Credits room: a plaque for each credit, in two rows. Stand at one and
@@ -339,7 +342,7 @@ export function registerMenuScenes(dungeon) {
   registerSubRoom("heroes", "Heroes", setupHeroes, {
     hint: () => `You are the ${heroById(getSetting("hero")).name}. Walk up to another hero to swap.`,
   });
-  registerSubRoom("options", "Options", setupOptions, { hint: () => "Flip a lever to change a setting." });
+  registerSubRoom("options", "Options", setupOptions, { hint: () => "Hit a block to knock it along its rail and change the volume." });
   registerSubRoom("credits", "Credits", setupCredits, { scroll: creditsScroll });
   // The ladder goes on the left here, because the middle of the wall has a door.
   registerSubRoom("bosses", "Choose a boss", (player, fader) => setupBosses(player, fader, dungeon), {
