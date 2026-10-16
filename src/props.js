@@ -45,15 +45,14 @@ export function addHatch(col, row) {
 // Each line is { text, color, umlautAt }: the color is optional, and
 // umlautAt (also optional) is the position of a letter that gets two dots
 // drawn over it, because the pixel font's capital Ö looks like a small ö.
-// A sign that doesn't fit where it's asked for slides over until it's
-// between the left edge and `right` (the screen's right edge, unless
-// something covers it). Returns the sign; destroy it to take it down.
+// A sign that doesn't fit where it's asked for slides over until it's on
+// the screen. Returns the sign; destroy it to take it down.
 const SIGN_LINE = 10;  // px per line of text
 const LETTER = 8;      // the pixel font is 8 px a letter
-export function addSign(lines, x, y, { depth = 2, right = GAME_WIDTH } = {}) {
+export function addSign(lines, x, y, { depth = 2 } = {}) {
   const width = Math.max(...lines.map((line) => line.text.length)) * LETTER + 6;
   const height = lines.length * SIGN_LINE;
-  const centerX = Math.max(width / 2 + 2, Math.min(x, right - width / 2 - 2)); // the left edge wins if it's too wide
+  const centerX = Math.max(width / 2 + 2, Math.min(x, GAME_WIDTH - width / 2 - 2)); // the left edge wins if it's too wide
   const sign = add([pos(centerX, y), scale(1), z(depth)]);
   sign.add([rect(width + 2, height + 2), pos(-width / 2 - 1, -height / 2 - 1), color(24, 20, 37)]);
   sign.add([rect(width, height), pos(-width / 2, -height / 2), color(92, 52, 30)]);
@@ -90,13 +89,14 @@ export function addPlaque(x, y) {
 }
 
 // A volume slider on the floor: a rail with 11 notches (0 to 10) and a
-// stone block on it as the knob. The hero moves the block by hitting it with
-// his weapon: one notch per hit, away from him. Hit from the left, it slides
-// right (louder); from the right, it slides left (quieter). `icon`
-// ("speaker" or "note") is drawn at the left end, the number at the right
-// end. `onChange(level)` runs on every notch.
+// stone block on it as the knob. The hero moves the block by walking into
+// it: one notch per bump, away from him. Bumped from the left, it slides
+// right (louder); from the right, it slides left (quieter). To move it
+// again, he steps back and bumps it again. `icon` ("speaker" or "note") is
+// drawn at the left end, the number at the right end. `onChange(level)`
+// runs on every notch.
 const NOTCH = 16; // px between notches
-export function addVolumeSlider(y, icon, level, onChange) {
+export function addVolumeSlider(y, icon, level, player, onChange) {
   const left = 80;                    // where notch 0 is
   const right = left + 10 * NOTCH;    // and notch 10
   const notchX = (n) => left + n * NOTCH;
@@ -113,15 +113,12 @@ export function addVolumeSlider(y, icon, level, onChange) {
   addVolumeIcon(left - 24, y, icon);
   const number = addShadowText(String(level), right + 22, y, 8, [240, 230, 210], 1);
 
-  // The block. It's solid, so he stops against it instead of walking
-  // through, and "strikeable": combat.js calls struck() when a swing hits it.
+  // The block. It's solid, so he stops against it instead of walking through.
   const block = add([
     pos(notchX(level), y + 3),
     area({ shape: new Rect(vec2(-7, -6), 14, 6) }),
     body({ isStatic: true }),
     z(10 + (y + 3) / 1000),
-    "strikeable",
-    { hitHeight: 8, hitSize: 9, struck },
   ]);
   block.onDraw(() => {
     drawRect({ pos: vec2(-8, -15), width: 16, height: 15, color: rgb(...DARK) });      // outline
@@ -133,7 +130,23 @@ export function addVolumeSlider(y, icon, level, onChange) {
 
   const restX = () => notchX(level);
 
-  function struck(player) {
+  // A bump: he's right up against its side, in line with it, walking into
+  // it. One notch, then nothing more until he stops walking into it (lets go
+  // of the key, or steps back): holding the key down doesn't keep pushing.
+  let armed = true;
+  block.onUpdate(() => {
+    const dx = block.pos.x - player.pos.x;
+    const inLine = Math.abs(player.pos.y - block.pos.y) < 6;
+    const walkingToward = !player.frozen && player.getCurAnim()?.name === "run"
+      && Math.sign(player.facing.x) === Math.sign(dx) && Math.abs(player.facing.x) > 0.5;
+    if (!walkingToward || !inLine) armed = true;
+    if (armed && walkingToward && inLine && Math.abs(dx) < 14) {
+      armed = false;
+      bump();
+    }
+  });
+
+  function bump() {
     const way = player.pos.x < block.pos.x ? 1 : -1; // away from him
     const next = level + way;
     if (next < 0 || next > 10) {
@@ -142,7 +155,7 @@ export function addVolumeSlider(y, icon, level, onChange) {
       return;
     }
     level = next;
-    playSound("mobHit"); // the thunk of the hit
+    playSound("mobHit"); // the thunk of the bump
     tween(block.pos.x, restX(), 0.14, (x) => (block.pos.x = x), easings.easeOutQuad);
     number.text = String(level);
     onChange(level);
@@ -189,23 +202,6 @@ export function addKeycap(x, y, label) {
   add([rect(width - 2, 10, { radius: 1 }), pos(left + 1, y + 1), color(214, 206, 224)]);  // top
   add([text(label, { size: 8, font: "pixel" }), pos(x, y + 6), anchor("center"), color(40, 34, 56)]);
   return width;
-}
-
-// The touch controls, drawn small for the title room: the joystick (a ring
-// with a knob in it) or one of the round buttons, like the real ones.
-export function addTouchIcon(x, y, kind) {
-  if (kind === "stick") {
-    add([circle(11), pos(x, y), anchor("center"), color(24, 20, 37)]);
-    add([circle(10), pos(x, y), anchor("center"), color(90, 77, 110)]);
-    add([circle(5), pos(x + 3, y - 2), anchor("center"), color(24, 20, 37)]);
-    add([circle(4), pos(x + 3, y - 2), anchor("center"), color(214, 206, 224)]);
-    return;
-  }
-  const radius = kind === "attack" ? 11 : kind === "use" ? 9 : 9;
-  const ring = { attack: [230, 72, 46], use: [255, 205, 70], dash: [120, 110, 140] }[kind];
-  add([circle(radius + 1), pos(x, y + 1), anchor("center"), color(18, 15, 28)]); // its shadow, so it looks raised
-  add([circle(radius), pos(x, y), anchor("center"), color(...ring)]);
-  add([circle(radius - 2), pos(x, y), anchor("center"), color(58, 47, 74)]);
 }
 
 // Text in the pixel font with a dark shadow under it, so it stands out on

@@ -1,0 +1,64 @@
+import { BALANCE } from "./balance.js";
+
+// The skill tree's rules, shared by the game and the pacing simulator
+// (tools/model.mjs), so the two can never disagree about what an upgrade
+// does or what it costs.
+
+// What the hero is like with these upgrades. `levels` is { nodeId: level }
+// (see save.js). Every node's effect is applied once per level bought.
+export function heroStats(levels) {
+  const { hero, run, drops, spawning } = BALANCE;
+  const stats = {
+    hearts: hero.hearts,
+    damage: hero.damage,
+    swingEvery: hero.swingEvery,
+    reach: hero.reach,
+    arc: hero.arc,
+    invincibleFor: hero.invincibleFor,
+    magnetRange: hero.magnetRange,
+    startTime: run.startTime,
+    timePerSubDepth: 0,
+    heartChance: drops.heart.chance,
+    timeOrbChance: drops.timeOrb.chance,
+    timeOrbSeconds: drops.timeOrb.seconds,
+    dashCooldown: hero.dash.cooldown,
+    dashCharges: 1,
+    goldBonus: 0,
+    breakableBonus: 0,
+    onEnter: spawning.onEnter,
+    horde: spawning.horde,
+    hordeEvery: spawning.hordeEvery,
+    deathCall: 0,
+    xpBonus: 0,
+    unlocked: new Set(),
+  };
+  for (const node of BALANCE.tree) {
+    const level = levels[node.id] ?? 0;
+    for (let i = 0; i < level; i++) {
+      const { stat, add, mul, unlock } = node.effect;
+      if (unlock) stats.unlocked.add(unlock);
+      else if (add !== undefined) stats[stat] += add;
+      else stats[stat] *= mul;
+    }
+  }
+  stats.hordeEvery = Math.max(spawning.hordeEveryAtLeast, stats.hordeEvery);
+  return stats;
+}
+
+// What level `level` (counting from 0) of a node costs, rounded to a tidy
+// number: whole gold under 100, then two significant figures (130, 2100...).
+export function costOf(node, level) {
+  const raw = node.cost * node.growth ** level;
+  if (raw < 100) return Math.round(raw);
+  const step = 10 ** (Math.floor(Math.log10(raw)) - 1);
+  return Math.round(raw / step) * step;
+}
+
+// How much tougher and richer monsters are in sub-depth `sub` (1 to 10).
+export const subDepthScale = (sub) => ({
+  hp: BALANCE.growth.hp ** (sub - 1),
+  gold: BALANCE.growth.gold ** (sub - 1),
+});
+
+// The game drops whole coins: gold is rounded to the nearest coin, at least 1.
+export const coins = (gold) => Math.max(1, Math.round(gold));

@@ -1,8 +1,8 @@
 # Who Wants To Be A Dungeon Crawler
 
-A pixel-art dungeon crawler that runs in the browser. Waves of monsters rise from the floor of every room, and the door deeper stays chained until they're all beaten. Ten rooms down, a boss waits.
+A pixel-art dungeon crawler that runs in the browser, built as a timed incremental game. Runs are short: the clock starts at 18 seconds and you have one heart. Monsters rise from the floor of every room, every kill fills the room's XP bar, and a full bar unchains the door deeper. Ten rooms down, a boss waits.
 
-![A room of the game: the knight swinging at goblins and an orc in front of the chained door, with two of three hearts left](assets/social/screenshot.png)
+![Room 1-3 of the game: the knight mid-swing at a skeleton, a damage number popping up, with the clock at 27, the XP bar part-filled toward the chained door, 47 gold and one of three hearts left](assets/social/screenshot.png)
 
 **[▶ Play it in your browser](https://dungeon-crawler.salihonder.dev)**
 
@@ -10,25 +10,27 @@ A pixel-art dungeon crawler that runs in the browser. Waves of monsters rise fro
 
 | Key | Action |
 |---|---|
-| <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> or arrow keys | Move |
-| <kbd>Space</kbd> | Attack |
-| <kbd>Shift</kbd> | Dash |
+| <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> or arrow keys | Move (the hero swings on their own, the way they're facing) |
 | <kbd>E</kbd> | Open a door, pull a lever, climb a ladder, pick a hero, visit a credit's link |
+| <kbd>Shift</kbd> | Dash, once it's unlocked |
 
-The menu is a room too: walk through **PLAY** to start, or explore **HEROES**, **OPTIONS** and **CREDITS**. In the dungeon, waves of monsters rise from the floor and the door on the back wall stays chained until you've beaten them all. Then walk through it and drop into the next room, ten rooms deep, with the boss in the last one. You have 3 hearts for the whole run, and monsters sometimes drop one when you're missing one. There are no pop-up screens: a run ends in a room too, either in the treasure room or down in the underworld, with your stats written on the floor and ladders to try again or go back to the menu.
+The menu is a room too: walk through **PLAY** to start, or explore **HEROES**, **OPTIONS** and **CREDITS**. In the dungeon, the hero swings automatically, so you only move: face the monsters to hit them, and keep away from them. Monsters rise as you land, more keep coming, and every kill fills the XP bar at the top of the room. When it's full, the door unchains and you drop into the next room. The clock at the top left only runs while you're in control. When it reaches 0, or a monster gets you, the run is over: little hands reach up out of the floor and drag you down to the underworld, where the run's results are written on the floor. Gold you pick up is banked between runs.
 
-On phones and tablets, touch controls appear: drag anywhere on the left for a joystick, and use the Attack and Dash buttons on the right. A Use button pops up next to them whenever there's something to use. Held upright, the controls sit below the game; held sideways, they sit beside it.
+In the tenth room, once its bar is full, the Big Zombie appears and the clock stops. Beat it, and it bursts into a pile of coins and leaves a well down to the underworld and a ladder up to the menu.
+
+The game needs a keyboard. On phones and tablets, a notice says so.
 
 ## Features
 
-- **Ten rooms deep:** each room is a fight, and its door only unchains once every wave is beaten. Deeper rooms send more waves, and tougher monsters in them.
-- **Endings you walk around in:** get through the last door into the treasure room, where heaps of gold flow out of the corners toward the middle (and scatter when you run through them), and your stats are written on the floor. Lose your last heart and little hands reach up out of the floor and drag your body down into the underworld, a red room with lava fountains, where your stats wait for you. Both have ladders to try again or return to the menu.
-- **Combat in waves:** monsters rise from the floor in waves (zombies, then goblins, then orcs as you go deeper), and the next wave starts as the last one is nearly beaten. Each hit costs one of your 3 hearts for the whole run. A quick dash on a cooldown helps you get into position, and a tiny hit-stop makes every hit land with weight.
-- **Hearts to win back:** monsters can drop a heart, but only while you're missing one, so you have to keep fighting while hurt to earn it. A bad-luck counter makes sure the drops don't dry up, and a dropped heart blinks out after a few seconds.
-- **A boss fight that keeps you moving:** the Big Zombie in the last room casts a random move every couple of seconds, each with its own warning flash: a dash that leaves a trail of fire, a ring of 12 projectiles, or raising minions. Once the projectiles turn yellow, a swing bats them back at the boss. Below half health it becomes enraged: it dashes twice, fires a second ring that covers the gaps in the first, and raises tougher minions.
+- **Rooms that fill an XP bar:** monsters rise as you land, a horde arrives every 20 seconds whether or not the room is clear, and when the last monster falls, another rises at once. Every kill fills the room's bar, split in two halves on either side of the door, and a full bar unchains it. The monsters still up stay, for their gold, if you want it.
+- **A clock that ends the run:** 18 seconds at the start, counting down only while you're in control, red and ticking for the last five. Each hit costs a whole heart, and you start with one.
+- **The crypt's monsters:** tiny zombies chase you, skeletons rattle as a warning and then charge in a straight line, and slugs split into two tiny slugs when they fall. Deeper rooms bring more of them, with more health. Every hit's damage pops up as a number, and a tiny hit-stop makes it land with weight.
+- **Gold on the floor:** kills drop coins, and a small magnet pulls in the ones you get close to. Coins left behind when you go through the door are lost; when a run ends, the ones still on the floor are yours.
+- **The underworld:** every run ends there, dragged down by the hands, with the results on the floor (how it ended, the gold earned and banked, how deep it got, the kills) and ladders to try again or return to the menu.
+- **Hearts to win back:** with more than one heart, monsters can drop a heart while you're missing one. A bad-luck counter makes sure the drops don't dry up, and a dropped heart blinks out after a few seconds.
+- **A boss fight that keeps you moving:** the Big Zombie appears in the last room once its bar is full, and the clock stops for it. It casts a random move every couple of seconds, each with its own warning flash: a dash that leaves a trail of fire, a ring of 12 projectiles, or raising tiny zombies. Once the projectiles turn yellow, a swing bats them back at it. Below half health it becomes enraged: it dashes twice and fires a second ring that covers the gaps in the first.
 - **10 playable heroes, each with their own weapon:** pick one in the Heroes room, and it's remembered.
-- **A run timer:** the faster you clear rooms, the better your time.
-- **A volume mixer you walk around in:** sound effects and music each have a slider on the floor, a stone block you knock along a rail from 0 to 10, one notch per hit of your weapon, so you can set your own mix of effects and music. Screen shake is a lever. All of it is remembered between visits.
+- **A volume mixer you walk around in:** sound effects and music each have a slider on the floor, a stone block you bump along a rail from 0 to 10, one notch per bump, so you can set your own mix of effects and music. Screen shake is a lever. All of it is remembered between visits.
 - **Sound and music made in code:** sound effects are generated with ZzFX, and the background music is a chiptune loop composed in code with the Web Audio API. There are no audio files.
 
 ## How it works
@@ -37,7 +39,6 @@ Plain JavaScript (ES modules) with the [Kaplay](https://kaplayjs.com) game engin
 
 A few parts worth a look:
 
-- **One set of controls for keys and touch** ([`src/touch.js`](src/touch.js)): the game listens for named buttons (attack, dash, use) instead of keys. The keyboard is bound to them, and the on-screen buttons press the same ones, so no game code knows which was used. The joystick is analog: a small push walks slowly.
 - **One interaction system** ([`src/interact.js`](src/interact.js)): doors, levers, heroes, ladders and plaques all work the same way. Each is a zone, a prompt and a `use()` function, and one small module handles detecting the nearest one, the on-screen prompt and the key presses.
 - **Cutscenes with `async`/`await`** ([`src/cutscenes.js`](src/cutscenes.js)): Kaplay's tweens and timers are wrapped in Promises, so sequences like "open the door, walk in, fade out" read top to bottom.
 - **Layered drawing:** when the knight steps into a doorway, he's drawn behind the door frame but in front of the darkness behind it, using draw order (`z`), so he really walks *into* the door.
@@ -49,23 +50,26 @@ A few parts worth a look:
 
 ```
 index.html            the page: the strip and the game area
-style.css             strip and touch control styles
+style.css             strip styles, and the notice for phones
 src/
   main.js             entry point: sets up Kaplay, loads everything, opens the title room
   config.js           shared sizes, speed and colors
   menu.js             the title room and the Heroes, Options and Credits rooms
   scenes.js           the dungeon's rooms
-  endings.js          the two rooms a run can end in: the treasure room, and the underworld
+  endings.js          the underworld, where every run ends, with its results
   cutscenes.js        falling in, walking through doors, ladders, being dragged down
   interact.js         using doors, levers, heroes, ladders and plaques
-  combat.js           swinging weapons, hearts, heart drops, getting hurt
-  mobs.js             monster types, waves, rising from the floor, chasing
+  combat.js           the automatic swing, hearts, heart drops, getting hurt
+  mobs.js             monster types, spawning, rising from the floor, chasing, the skeleton's charge
+  coins.js            coins on the floor and the magnet
+  hud.js              the clock, the XP bar, the gold, and damage numbers
   boss.js             the boss's moves: dash and fire trail, projectile rings, raising minions, rage
   player.js           the hero: walking and dashing
-  touch.js            touch controls: the joystick and buttons
   doors.js, room.js, props.js, heroes.js   building the rooms and characters
   panel.js            what the strip says
-  dungeon.js          a run: its rooms, hearts and clock
+  dungeon.js          a run: its hero, hearts, clock and gold
+  stats.js            what the skill tree's upgrades do to the hero, and what they cost
+  save.js             banked gold and bought upgrades (localStorage)
   sound.js, music.js  sound effects and music
   balance.js          every number that shapes the game: the clock, monsters, rooms, drops, the skill tree
   settings.js         remembered settings (localStorage)

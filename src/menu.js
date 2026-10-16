@@ -1,4 +1,3 @@
-import { GAME_WIDTH } from "./config.js";
 import { buildRoom } from "./room.js";
 import { addPlayer, setupPlayerMovement, setupDash } from "./player.js";
 import { addDoors, doorInteraction } from "./doors.js";
@@ -11,12 +10,12 @@ import {
 } from "./cutscenes.js";
 import { addFader, fadeIn, puffDust, shakeScreen } from "./effects.js";
 import {
-  addLadder, addHatch, addLever, addKeycap, addTouchIcon, addShadowText, addPlaque, addSign, addVolumeSlider,
+  addLadder, addHatch, addLever, addKeycap, addShadowText, addPlaque, addSign, addVolumeSlider,
 } from "./props.js";
 import { playSound, setEffectsVolume, setMusicVolume } from "./sound.js";
 import { hidePrompt, showRoomName } from "./panel.js";
-import { isTouch, useHint, coveredOnRight } from "./touch.js";
-import { setupAttack } from "./combat.js";
+import { getSave } from "./save.js";
+import { heroStats } from "./stats.js";
 
 // The menu is a room too: its options are doors you walk through. Behind
 // HEROES, OPTIONS and CREDITS is a room one level down, with a ladder to
@@ -42,6 +41,9 @@ const CREDITS = [
   { title: "PAIR PROGRAMMER", lines: ["Claude (Anthropic)"] },
 ];
 
+// Whether the dash has been bought in the tree (it starts locked).
+const hasTheDash = () => heroStats(getSave().levels).unlocked.has("dash");
+
 // ---------------------------------------------------------------------------
 // The title room
 // ---------------------------------------------------------------------------
@@ -60,35 +62,29 @@ function registerTitle() {
     buildRoom();
     const doors = addDoors(MENU.map((item) => ({ text: item.label, color: MENU_LABEL_COLOR })));
 
-    // The title, and the controls: drawn as keyboard keys, or on a touch
-    // screen as the joystick and buttons.
+    // The title, and the controls, drawn as keyboard keys. Only what you
+    // have: the hero swings on his own, and DASH shows up once the dash is
+    // bought.
     addShadowText("WHO WANTS TO BE A", 160, 60, 8, [240, 230, 210]);
     addShadowText("DUNGEON CRAWLER", 160, 76, 16, [255, 205, 70]);
 
+    const hasDash = hasTheDash();
     const LABEL = [169, 155, 185];
-    if (isTouch()) {
-      addTouchIcon(52, 112, "stick");
-      addTouchIcon(122, 112, "use");
-      addTouchIcon(194, 112, "attack");
-      addTouchIcon(268, 112, "dash");
-    } else {
-      addKeycap(52, 94, "W");
-      [38, 52, 66].forEach((x, i) => addKeycap(x, 109, "ASD"[i]));
-      addKeycap(122, 109, "E");
-      addKeycap(194, 109, "SPACE");
-      addKeycap(268, 109, "SHIFT");
-    }
-    addShadowText("MOVE", 52, 132, 8, LABEL);
-    addShadowText("USE", 122, 132, 8, LABEL);
-    addShadowText("ATTACK", 194, 132, 8, LABEL);
-    addShadowText("DASH", 268, 132, 8, LABEL);
+    const columns = hasDash ? [70, 160, 250] : [110, 210];
+    const [moveX, useX, dashX] = columns;
+    addKeycap(moveX, 94, "W");
+    [-14, 0, 14].forEach((dx, i) => addKeycap(moveX + dx, 109, "ASD"[i]));
+    addKeycap(useX, 109, "E");
+    if (hasDash) addKeycap(dashX, 109, "SHIFT");
+    addShadowText("MOVE", moveX, 132, 8, LABEL);
+    addShadowText("USE", useX, 132, 8, LABEL);
+    if (hasDash) addShadowText("DASH", dashX, 132, 8, LABEL);
 
     const hatch = addHatch(9, 9);
     const start = besideHatch(hatch);
     const player = addPlayer(start.x, start.y);
     setupPlayerMovement(player);
-    setupAttack(player); // swing for practice; there's nothing to hit here
-    setupDash(player);
+    if (hasDash) setupDash(player);
     const fader = addFader();
 
     hidePrompt();
@@ -101,7 +97,7 @@ function registerTitle() {
         MENU[i].scene();
         return true; // he left the room
       })),
-      () => `Walk up to a door and ${useHint()}.`,
+      () => "Walk up to a door and press E.",
     );
 
     (async () => {
@@ -128,8 +124,7 @@ function registerSubRoom(name, title, setup, hint) {
     const ladder = addLadder(LAND_X);
     const player = addPlayer(LAND_X, LAND_Y);
     setupPlayerMovement(player);
-    setupAttack(player); // swing for practice; there's nothing to hit here
-    setupDash(player);
+    if (hasTheDash()) setupDash(player);
     const fader = addFader();
 
     hidePrompt();
@@ -207,15 +202,15 @@ function setupHeroes(player) {
 }
 
 // The volume mixer: a slider for the sound effects and one for the music,
-// each a stone block you knock along a rail with your weapon (0 to 10, 5 by
+// each a stone block you bump along a rail by walking into it (0 to 10, 5 by
 // default), and a lever for screen shake.
-function setupOptions() {
-  addVolumeSlider(84, "speaker", getSetting("sound"), (level) => {
+function setupOptions(player) {
+  addVolumeSlider(84, "speaker", getSetting("sound"), player, (level) => {
     setSetting("sound", level);
     setEffectsVolume(level);
     playSound("letter"); // a blip, at the new volume
   });
-  addVolumeSlider(124, "note", getSetting("music"), (level) => {
+  addVolumeSlider(124, "note", getSetting("music"), player, (level) => {
     setSetting("music", level);
     setMusicVolume(level); // you hear it change right away
     playSound("lever");    // the block clicking into its notch
@@ -286,8 +281,7 @@ function showSignWhileNear(player, spots) {
     ];
     const height = lines.length * 10;
     const popped = addSign(lines, here.x, here.y - 26 - height / 2, {
-      depth: 60,                            // over everything
-      right: GAME_WIDTH - coveredOnRight(), // clear of the touch buttons, sideways
+      depth: 60, // over everything
     });
     tween(0.6, 1, 0.18, (size) => (popped.scale = vec2(size)), easings.easeOutBack);
     sign = popped;
@@ -298,6 +292,6 @@ export function registerMenuScenes() {
   registerTitle();
   registerSubRoom("heroes", "Heroes", setupHeroes,
     () => `You are the ${heroById(getSetting("hero")).name}. Walk up to another hero to swap.`);
-  registerSubRoom("options", "Options", setupOptions, () => "Hit a block to knock it along its rail and change the volume.");
+  registerSubRoom("options", "Options", setupOptions, () => "Walk into a block to bump it along its rail and change the volume.");
   registerSubRoom("credits", "Credits", setupCredits, () => "Made with these, thank you! Walk up to a plaque to read it.");
 }

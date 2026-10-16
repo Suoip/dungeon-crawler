@@ -1,9 +1,8 @@
-import { ROOMS } from "./config.js";
-import { runTime } from "./dungeon.js";
-import { showUseButton, hideUseButton } from "./touch.js";
+import { depthLabel } from "./dungeon.js";
 
 // The strip above the game: hints, the button for what you're standing at,
-// and the depth and clock. This is plain HTML, not Kaplay.
+// and which room you're in. This is plain HTML, not Kaplay. (The run's clock,
+// XP bar and gold are in the room itself, see hud.js.)
 
 const $ = (id) => document.getElementById(id);
 
@@ -21,24 +20,16 @@ function focusGame() {
   document.querySelector("#game canvas")?.focus();
 }
 
-// The right end of the strip: "Depth 3/10 · 1:23" in the dungeon, or the
-// menu room's name in the menu.
-let shownDepth = 1;
-export function showDepth(run, depth) {
-  shownDepth = Math.min(depth, ROOMS);
-  tickTimer(run);
-}
-
-// Called a few times a second so the clock keeps moving.
-export function tickTimer(run) {
-  $("progress").textContent = `Depth ${shownDepth}/${ROOMS} · ${runTime(run)}`;
+// The right end of the strip: "Depth 1-3" in the dungeon (depth 1,
+// sub-depth 3), or the menu room's name in the menu.
+export function showDepth(sub) {
+  $("progress").textContent = `Depth ${depthLabel(sub)}`;
 }
 
 // While the player stands at something they can use (a door, a lever, a
 // hero...), the strip shows a button like "Go deeper  [E]"; otherwise it
-// shows a hint. The button is for mouse and touch; on a keyboard, E does the
-// same thing. On touch screens the same action also shows on the Use button
-// by the thumbs (touch.js). `content` is a list of bits of text, e.g.
+// shows a hint. The button is for the mouse; on a keyboard, E does the same
+// thing. `content` is a list of bits of text, e.g.
 // ["Become the ", "Elf"].
 export function setPrompt(content, onUse, hint) {
   const button = $("door-button");
@@ -48,7 +39,6 @@ export function setPrompt(content, onUse, hint) {
     button.hidden = true;
     hintEl.hidden = false;
     hintEl.textContent = hint;
-    hideUseButton();
     return;
   }
 
@@ -59,13 +49,11 @@ export function setPrompt(content, onUse, hint) {
     focusGame();
     onUse();
   };
-  showUseButton(content, onUse);
 }
 
 export function hidePrompt() {
   $("door-button").hidden = true;
   $("door-hint").hidden = true;
-  hideUseButton();
 }
 
 // The room's name, at the right end of the strip (in the menu rooms).

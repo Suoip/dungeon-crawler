@@ -145,11 +145,15 @@ to:
   positioning and dodging.
 - **Swings go where you're facing.** You aim by moving, which takes some
   skill. A retreat means turning back to fight.
+- **The swing starts slow:** one every 1.5 s. Quicker swing brings it down
+  to about 0.6 s late in the game, so getting faster is a reward you feel,
+  and one more way to grow the hero.
 - **One weapon, upgraded through the tree:** damage, swing speed, reach and
   arc. More weapons can come later (the tileset has a dozen).
 - **The dash is the main skill, but you start without it.** It's unlocked
-  in the tree. After that it's your one button: Space or Shift on a
-  keyboard, the Dash button on phones.
+  in the tree. After that it's your one button: Shift. (Space does nothing
+  now that swings are automatic.) The controls on the title floor show only
+  what you have: DASH appears once it's unlocked.
   - **Movement only.** A dash doesn't protect you and doesn't hurt mobs.
   - **Its length never changes.** The tree upgrades only its cooldown, and
     adds a second charge.
@@ -239,7 +243,7 @@ Every node costs gold. Costs are set in section 8.
 |---|---|---|---|
 | Center | Descend | 1 | The root. Owned from the start |
 | Weapon | Sharper blade | 10 | +1 damage per level |
-| Weapon | Quicker swing | 5 | Swings come 8% faster per level |
+| Weapon | Quicker swing | 10 | Swings come 9% faster per level: from one every 1.5 s to about 0.6 s |
 | Weapon | Longer reach | 5 | +10% reach per level |
 | Weapon | Wider arc | 3 | The swing covers a wider angle |
 | Hearts | Extra heart | 4 | +1 heart (up to 5) |
@@ -257,13 +261,15 @@ Every node costs gold. Costs are set in section 8.
 | Money | Greed | 10 | +10% gold per kill |
 | Money | Smash | 3 | Breakables drop more gold |
 | Horde | Crowded rooms | 10 | +1 monster when you enter a room (start: 5) |
-| Horde | Bigger hordes | 10 | +1 monster per horde (start: 7) |
-| Horde | Restless dead | 5 | Hordes come 2 s sooner (start: every 20 s) |
+| Horde | Bigger hordes | 10 | +1 monster per horde (start: 7; from depth 2) |
+| Horde | Restless dead | 5 | Hordes come 2 s sooner (start: every 20 s; from depth 2) |
 | Horde | Death calls | 5 | +5% chance that a kill spawns another monster |
 | Horde | Wisdom | 10 | +10% XP per kill |
 
-That's 24 nodes: 116 levels to buy in depth 1, and 8 more (Orb finder and
-Bigger orbs) from depth 2. The tuned numbers (costs, and the exact effects)
+That's 24 nodes: 106 levels to buy in depth 1, and 23 more from depth 2
+(Orb finder, Bigger orbs, Bigger hordes and Restless dead). Depth 1's rooms
+fill their bars before most hordes arrive, so the horde upgrades pay off
+from depth 2. The tuned numbers (costs, and the exact effects)
 live in `src/balance.js`.
 
 ## 8. Pacing
@@ -273,9 +279,15 @@ live in `src/balance.js`.
   typical player is a bit slower than perfect: about 20% slower clears, 10%
   of the gold missed, and more hits taken. A sharp player is faster (about
   30 minutes).
-- **The first run:** you die fast, clearing a room or two at most, but you
-  earn enough for 1–2 cheap upgrades straight away. The whole loop makes
-  sense within the first minute.
+- **The first run:** you die fast, but you earn enough for 1–2 cheap
+  upgrades straight away. The whole loop makes sense within the first
+  minute.
+- **No upgrades, no room 2.** Without upgrades, room 1's bar can't be
+  filled, however well you play: the first clock is 15 s, the tiny zombies
+  take 3 hits, and the bar is big enough. Room 2 opens up after about 6–8
+  upgrades, around the fourth or fifth run. The simulator checks both: room
+  1 must stay out of reach of a sharp player with no upgrades, with a
+  margin to spare.
 - **Costs multiply per level** by a fixed factor of about ×1.4–1.6,
   different for each node.
 - **The golden rule: a typical careful run always buys something.** A run
@@ -347,6 +359,9 @@ A rough estimate to size things by:
   the title room has a well that leads straight down to it, so you can reach
   the altar without playing a run first. Before that, there's no well and
   no tree. The first run is just you, one heart and the clock.
+- **Keyboard only.** Phones and tablets aren't supported any more: the game
+  plays too differently now to keep a touch layout as well. The touch
+  controls are gone, and on a phone a notice says the game needs a keyboard.
 - **No refunds.** Purchases are permanent. You eventually buy most of the
   tree anyway, so the choice is about order.
 - **Saving:** progress saves in the browser after every run and every
@@ -354,7 +369,7 @@ A rough estimate to size things by:
 
 ## 10. What we keep and what we cut
 
-- **Kept:** movement, touch controls, scaling, hearts, mobs and waves,
+- **Kept:** movement, scaling, hearts, mobs and waves,
   bosses, effects, sound and music, props, the title, Options and Credits
   rooms, settings, and the underworld (now the hub).
 - **Reworked:**

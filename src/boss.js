@@ -48,7 +48,7 @@ export function setupBoss(boss, room) {
   let nextCast = null;
 
   boss.bossTurn = () => {
-    if (!boss.raging && boss.hp <= boss.def.hp / 2) enrage(boss);
+    if (!boss.raging && boss.hp <= boss.maxHp / 2) enrage(boss);
     if (boss.busy) return true;
     if (nextCast === null) {
       // Its first turn: it introduces itself.
@@ -125,10 +125,14 @@ const MOVES = {
     await sleep(0.3);
   },
 
-  // Raises 3 minions around itself. Enraged, they're tougher ones.
+  // Raises 3 minions around itself. A boss with its own `minions` (the Big
+  // Zombie's tiny zombies, which fit the crypt) raises those in both phases;
+  // the others raise tougher ones once enraged.
   async spawn(boss, room) {
     if (!(await windUp(boss, room, "spawn", 0.6, "summon"))) return;
-    const types = boss.raging ? ["goblin", "goblin", "orc_warrior"] : ["tiny_zombie", "tiny_zombie", "tiny_zombie"];
+    const own = boss.def.minions;
+    const types = own ? [0, 1, 2].map((i) => own[i % own.length])
+      : boss.raging ? ["goblin", "goblin", "orc_warrior"] : ["tiny_zombie", "tiny_zombie", "tiny_zombie"];
     const turn = rand(0, 120);
     boss.minionsLeft += types.length;
     types.forEach((type, i) => {
@@ -303,7 +307,7 @@ function addShot(boss, room, dir) {
 
     if (!inRoom(shot.pos)) return pop(shot);
     if (shot.batted && boss.exists() && boss.active && shot.pos.dist(boss.pos) < 16) {
-      hurtMob(boss, shot.pos, room);
+      hurtMob(boss, shot.pos, room, room.stats?.damage ?? 1); // as hard as a swing
       pop(shot);
     }
   });
