@@ -1,10 +1,10 @@
 import { setPrompt, hidePrompt } from "./panel.js";
 
-// Doors, levers, heroes and the ladder all work the same way: stand next to
-// one, and the panel offers it; press E (or tap a button) to use
+// Doors, levers, heroes, ladders and plaques all work the same way: stand
+// next to one, and the strip offers it; press E (or tap a button) to use
 // it. This handles that for any list of "things", each an object with:
 //   zone        an invisible area in front of it; standing in it = "I'm here"
-//   prompt      what the panel button says, e.g. ["Open door ", badge], or a
+//   prompt      what the strip's button says, e.g. ["Go deeper"], or a
 //               function returning that (for prompts that change, like a lever's)
 //   use()       what happens. It can be async (a cutscene). If it resolves to
 //               true, the player has left the room, so everything stays locked.
@@ -36,7 +36,7 @@ export function setupInteractions(player, things, hint) {
     const here = things.find((thing) => player.isColliding(thing.zone)) ?? null;
     for (const thing of things) thing.highlight?.(thing === here);
 
-    // Only touch the panel when what you're standing at changes, not 60
+    // Only touch the strip when what you're standing at changes, not 60
     // times a second.
     if (here !== active) {
       active = here;
@@ -51,9 +51,9 @@ export function setupInteractions(player, things, hint) {
       active = null;
       setPrompt(null, useActive, hint());
     },
-    // Something changed (like the doors unlocking): redo the prompt or hint.
+    // Something changed (like the door unlocking): redo the prompt or hint.
     refresh() {
-      active = undefined; // "unknown", so the next frame updates the panel
+      active = undefined; // "unknown", so the next frame updates the strip
     },
   };
 }

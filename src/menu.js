@@ -1,3 +1,4 @@
+import { GAME_WIDTH } from "./config.js";
 import { buildRoom } from "./room.js";
 import { addPlayer, setupPlayerMovement, setupDash } from "./player.js";
 import { addDoors, doorInteraction } from "./doors.js";
@@ -10,14 +11,12 @@ import {
 } from "./cutscenes.js";
 import { addFader, fadeIn, puffDust, shakeScreen } from "./effects.js";
 import {
-  addLadder, addHatch, addLever, addKeycap, addTouchIcon, addShadowText, addPlaque, addVolumeSlider,
+  addLadder, addHatch, addLever, addKeycap, addTouchIcon, addShadowText, addPlaque, addSign, addVolumeSlider,
 } from "./props.js";
 import { playSound, setEffectsVolume, setMusicVolume } from "./sound.js";
-import { hidePrompt, link, showRoomName, writeMenuScroll } from "./panel.js";
-import { hideScroll, openScroll, setScrollNotes } from "./scroll.js";
-import { isTouch, useHint } from "./touch.js";
+import { hidePrompt, showRoomName } from "./panel.js";
+import { isTouch, useHint, coveredOnRight } from "./touch.js";
 import { setupAttack } from "./combat.js";
-import { BOSSES } from "./mobs.js";
 
 // The menu is a room too: its options are doors you walk through. Behind
 // HEROES, OPTIONS and CREDITS is a room one level down, with a ladder to
@@ -25,51 +24,31 @@ import { BOSSES } from "./mobs.js";
 
 const MENU_LABEL_COLOR = [240, 230, 210];
 
-// ---------------------------------------------------------------------------
-// Most menu rooms explain themselves, so they have no scroll: just their name
-// and a hint in the strip. The Credits room picks up a scroll on entering.
-// ---------------------------------------------------------------------------
-
-const creditsScroll = () => ({
-  line: "Made with these, thank you!",
-  items: ["Walk up to a plaque to read it."],
-});
-
-// One plaque per credit in the Credits room. `url` is what using the plaque
-// opens, in a new tab.
+// One plaque per credit in the Credits room. Standing at one shows its
+// sign; `url` is what using the plaque opens, in a new tab.
 const CREDITS = [
-  { title: "Game", by: () => [link("Salih Önder", "https://salihonder.dev")], url: "https://salihonder.dev" },
+  // The pixel font's capital Ö looks like a small ö, so this one is an O
+  // with its dots drawn on by hand (see addSign).
+  { title: "GAME", lines: [{ text: "Salih Onder", umlautAt: 6 }], url: "https://salihonder.dev" },
+  { title: "ART", lines: ["16x16 DungeonTileset II", "by 0x72 (CC0)"], url: "https://0x72.itch.io/dungeontileset-ii" },
+  { title: "PIXEL FONT", lines: ["Press Start 2P", "by CodeMan38 (OFL)"], url: "https://fonts.google.com/specimen/Press+Start+2P" },
   {
-    title: "Art",
-    by: () => [link("16x16 DungeonTileset II", "https://0x72.itch.io/dungeontileset-ii"), " by 0x72 (CC0)"],
-    url: "https://0x72.itch.io/dungeontileset-ii",
-  },
-  {
-    title: "Pixel font",
-    by: () => [link("Press Start 2P", "https://fonts.google.com/specimen/Press+Start+2P"), " by CodeMan38 (OFL)"],
-    url: "https://fonts.google.com/specimen/Press+Start+2P",
-  },
-  {
-    title: "Text font",
-    by: () => [link("Atkinson Hyperlegible", "https://fonts.google.com/specimen/Atkinson+Hyperlegible"), " by the Braille Institute (OFL)"],
+    title: "TEXT FONT",
+    lines: ["Atkinson Hyperlegible", "by the Braille Institute (OFL)"],
     url: "https://fonts.google.com/specimen/Atkinson+Hyperlegible",
   },
-  { title: "Engine", by: () => [link("Kaplay", "https://kaplayjs.com")], url: "https://kaplayjs.com" },
-  {
-    title: "Sound effects",
-    by: () => [link("ZzFX", "https://github.com/KilledByAPixel/ZzFX"), " by Frank Force (MIT)"],
-    url: "https://github.com/KilledByAPixel/ZzFX",
-  },
-  { title: "Pair programmer", by: () => ["Claude (Anthropic)"] },
+  { title: "ENGINE", lines: ["Kaplay"], url: "https://kaplayjs.com" },
+  { title: "SOUND EFFECTS", lines: ["ZzFX", "by Frank Force (MIT)"], url: "https://github.com/KilledByAPixel/ZzFX" },
+  { title: "PAIR PROGRAMMER", lines: ["Claude (Anthropic)"] },
 ];
 
 // ---------------------------------------------------------------------------
 // The title room
 // ---------------------------------------------------------------------------
 
-function registerTitle(dungeon) {
+function registerTitle() {
   const MENU = [
-    { label: "PLAY", prompt: "Start the game", scene: () => go("bosses") },
+    { label: "PLAY", prompt: "Start the game", scene: () => go("room", newRun()) },
     { label: "HEROES", prompt: "Choose your hero", scene: () => go("heroes") },
     { label: "OPTIONS", prompt: "Change the options", scene: () => go("options") },
     { label: "CREDITS", prompt: "See the credits", scene: () => go("credits") },
@@ -113,8 +92,6 @@ function registerTitle(dungeon) {
     const fader = addFader();
 
     hidePrompt();
-    hideScroll();
-    setScrollNotes();
     showRoomName("Main menu");
 
     const interactions = setupInteractions(
@@ -141,20 +118,14 @@ function registerTitle(dungeon) {
 // ---------------------------------------------------------------------------
 
 // Every room below the title works the same way: the knight falls in, and a
-// ladder on the back wall leads back up. `setup(player, fader)` adds what's
+// ladder on the back wall leads back up. `setup(player)` adds what's
 // special about the room and returns the extra things the player can use
 // there. `title` goes in the strip, with `hint` (a function, so it can
-// change) next to it. The ladder is in the middle unless `ladderX` says
-// otherwise, and with `scroll` (a function giving what's written on it) the
-// room picks up a scroll as he lands.
-function registerSubRoom(name, title, setup, {
-  ladderX = LAND_X, hint = () => "Climb the ladder to go back up.", scroll = null,
-} = {}) {
+// change) next to it. The ladder is in the middle of the back wall.
+function registerSubRoom(name, title, setup, hint) {
   scene(name, () => {
-    hideScroll();
-    setScrollNotes();
     buildRoom();
-    const ladder = addLadder(ladderX);
+    const ladder = addLadder(LAND_X);
     const player = addPlayer(LAND_X, LAND_Y);
     setupPlayerMovement(player);
     setupAttack(player); // swing for practice; there's nothing to hit here
@@ -163,7 +134,6 @@ function registerSubRoom(name, title, setup, {
 
     hidePrompt();
     showRoomName(title);
-    if (scroll) writeMenuScroll(scroll());
 
     const climb = {
       zone: ladder.zone,
@@ -176,17 +146,13 @@ function registerSubRoom(name, title, setup, {
     };
     const interactions = setupInteractions(
       player,
-      [climb, ...setup(player, fader)],
+      [climb, ...setup(player)],
       hint,
     );
 
     (async () => {
       fadeIn(fader, 0.3);
       await fallIn(player);
-      if (scroll) {
-        playSound("unroll");
-        openScroll();
-      }
       giveControl(player);
       interactions.enable();
     })();
@@ -271,7 +237,7 @@ function setupOptions() {
 }
 
 // The Credits room: a plaque for each credit, in two rows. Stand at one and
-// the scroll shows what it says; use it to open its link.
+// its sign pops up above it; use it to open its link.
 function setupCredits(player) {
   add([sprite("chest"), pos(48, 64)]);
   add([sprite("crate"), pos(256, 56)]);
@@ -283,18 +249,14 @@ function setupCredits(player) {
   const spots = CREDITS.map((credit, i) => {
     const front = i < 4;
     const x = front ? 64 + i * 64 : 96 + (i - 4) * 64;
-    const plaque = addPlaque(x, front ? 104 : 140);
-    return {
-      ...plaque,
-      scroll: () => ({ line: credit.title, items: [credit.by()] }),
-      credit,
-    };
+    const y = front ? 104 : 140;
+    return { ...addPlaque(x, y), x, y, credit };
   });
-  showOnScrollWhileNear(player, spots, creditsScroll);
+  showSignWhileNear(player, spots);
 
   return spots.filter((spot) => spot.credit.url).map((spot) => ({
     zone: spot.zone,
-    prompt: [`Visit ${spot.credit.title === "Game" ? "salihonder.dev" : "the link"}`],
+    prompt: [`Visit ${spot.credit.title === "GAME" ? "salihonder.dev" : "the link"}`],
     use: () => {
       window.open(spot.credit.url, "_blank", "noopener");
       return false;
@@ -302,51 +264,40 @@ function setupCredits(player) {
   }));
 }
 
-// While the hero stands at one of the `spots` (each { zone, scroll(), and
-// optionally setLit() }), the scroll shows what that spot says; anywhere
-// else it shows the room's own writing.
-function showOnScrollWhileNear(player, spots, roomScroll) {
+// While the hero stands at one of the credit plaques, its engraving glows
+// and its sign pops up above it: the title in gold, then who made it.
+function showSignWhileNear(player, spots) {
   let shown = null;
+  let sign = null;
   onUpdate(() => {
-    const here = spots.find((spot) => player.isColliding(spot.zone)) ?? null;
+    // (Not while he's falling in: he drops through a plaque's spot on the way.)
+    const here = player.frozen ? null : spots.find((spot) => player.isColliding(spot.zone)) ?? null;
     if (here === shown) return;
-    shown?.setLit?.(false);
-    here?.setLit?.(true);
+    shown?.setLit(false);
+    sign?.destroy();
+    sign = null;
     shown = here;
-    writeMenuScroll(here ? here.scroll() : roomScroll());
+    if (!here) return;
+
+    here.setLit(true);
+    const lines = [
+      { text: here.credit.title, color: [255, 205, 70] },
+      ...here.credit.lines.map((line) => (typeof line === "string" ? { text: line } : line)),
+    ];
+    const height = lines.length * 10;
+    const popped = addSign(lines, here.x, here.y - 26 - height / 2, {
+      depth: 60,                            // over everything
+      right: GAME_WIDTH - coveredOnRight(), // clear of the touch buttons, sideways
+    });
+    tween(0.6, 1, 0.18, (size) => (popped.scale = vec2(size)), easings.easeOutBack);
+    sign = popped;
   });
 }
 
-// A test room for trying out the bosses: three doors, each boss standing
-// under its own. Going through a door starts the dungeon with that boss
-// waiting in the last room.
-function setupBosses(player, fader, dungeon) {
-  const doors = addDoors(BOSSES.map((boss) => ({ text: boss.label, color: [230, 72, 46] })));
-  doors.forEach((door, i) => add([
-    sprite(BOSSES[i].id, { anim: "idle" }),
-    pos(door.centerX, 112),
-    anchor("bot"),
-  ]));
-  // Above each door, where the scroll would be, a note about its boss.
-  setScrollNotes(doors.map((door, i) => ({ x: door.centerX, width: 74, text: BOSSES[i].blurb })));
-
-  return doors.map((door, i) => doorInteraction(door, [`Fight the ${BOSSES[i].name}`], async () => {
-    await walkThroughDoor(player, door, fader);
-    go("room", newRun(dungeon, BOSSES[i].id));
-    return true; // he left the room
-  }));
-}
-
-export function registerMenuScenes(dungeon) {
-  registerTitle(dungeon);
-  registerSubRoom("heroes", "Heroes", setupHeroes, {
-    hint: () => `You are the ${heroById(getSetting("hero")).name}. Walk up to another hero to swap.`,
-  });
-  registerSubRoom("options", "Options", setupOptions, { hint: () => "Hit a block to knock it along its rail and change the volume." });
-  registerSubRoom("credits", "Credits", setupCredits, { scroll: creditsScroll });
-  // The ladder goes on the left here, because the middle of the wall has a door.
-  registerSubRoom("bosses", "Choose a boss", (player, fader) => setupBosses(player, fader, dungeon), {
-    ladderX: 28,
-    hint: () => "Test room: pick the boss that waits in the last room.",
-  });
+export function registerMenuScenes() {
+  registerTitle();
+  registerSubRoom("heroes", "Heroes", setupHeroes,
+    () => `You are the ${heroById(getSetting("hero")).name}. Walk up to another hero to swap.`);
+  registerSubRoom("options", "Options", setupOptions, () => "Hit a block to knock it along its rail and change the volume.");
+  registerSubRoom("credits", "Credits", setupCredits, () => "Made with these, thank you! Walk up to a plaque to read it.");
 }

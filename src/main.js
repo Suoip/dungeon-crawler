@@ -5,27 +5,24 @@
 // object, so the other files can use them without importing anything. They
 // only call them inside functions, which run after kaplay() below.
 
-import { GAME_WIDTH, GAME_HEIGHT, BACKGROUND, DUNGEON_URL } from "./config.js";
+import { GAME_WIDTH, GAME_HEIGHT, BACKGROUND } from "./config.js";
 import { loadAssets } from "./assets.js";
-import { loadDungeon } from "./dungeon.js";
 import { registerRoomScene } from "./scenes.js";
 import { registerEndScenes } from "./endings.js";
 import { registerMenuScenes } from "./menu.js";
-import { showMessage, fitsOnScroll, explanationFits } from "./panel.js";
 import { scaleToFit } from "./display.js";
-import { drawScroll, openScroll } from "./scroll.js";
 import { unlockAudioOnFirstInput } from "./sound.js";
 import { setupTouchControls } from "./touch.js";
 
 // The art is tiny, so the game is drawn at a small resolution (320x208) and
-// display.js scales it up (with the scroll above it) to fill its box on the
+// display.js scales it up (with the strip above it) to fill its box on the
 // page.
 const gameBox = document.getElementById("game");
 const stage = document.getElementById("stage");
 kaplay({
   width: GAME_WIDTH,
   height: GAME_HEIGHT,
-  root: stage,       // draw inside the stage, under the scroll
+  root: stage,       // draw inside the stage, under the strip
   pixelDensity: 1,   // draw exactly 320x208 pixels; display.js does the scaling
   crisp: true,       // no smoothing, so pixels stay sharp when scaled up
   background: BACKGROUND,
@@ -41,43 +38,13 @@ kaplay({
     use: { keyboard: ["e"] },
   },
 });
-drawScroll();
 scaleToFit(stage, document.querySelector("#game canvas"), gameBox);
 
 loadAssets();
 unlockAudioOnFirstInput();
 setupTouchControls();
 
-try {
-  const dungeon = await loadDungeon(DUNGEON_URL);
-  // The scroll's text is measured in the game's own font, so wait for it.
-  await Promise.all([document.fonts.load('400 12px "Atkinson Hyperlegible"'), document.fonts.load('700 12px "Atkinson Hyperlegible"')]);
-  checkDungeonFits(dungeon);
-  registerRoomScene();
-  registerEndScenes();
-  registerMenuScenes(dungeon);
-  onLoad(() => go("title"));
-} catch (error) {
-  showMessage(`Something went wrong loading the dungeon: ${error.message}`);
-  openScroll(); // the scroll is hidden until something opens it
-  console.error(error);
-}
-
-// Every question must fit on the scroll, even with its text at the smallest
-// size. A dungeon with a question that's too long doesn't load, and says
-// which one, so whoever made it can shorten it. The same goes for its
-// explanation (shown on the scroll after a wrong try). The answers are shuffled
-// every run, and a different order can wrap differently, so every order is
-// tried (at most 24, for 4 answers).
-function checkDungeonFits(dungeon) {
-  const orders = (list) => (list.length <= 1 ? [list]
-    : list.flatMap((item, i) => orders([...list.slice(0, i), ...list.slice(i + 1)]).map((rest) => [item, ...rest])));
-  dungeon.rooms.forEach((room, i) => {
-    if (!orders([room.correct, ...room.wrong]).every((answers) => fitsOnScroll(room.question, answers))) {
-      throw new Error(`room ${i + 1}'s question and answers are too long for the scroll ("${room.question.slice(0, 40)}…").`);
-    }
-    if (!explanationFits(room.correct, room.explanation)) {
-      throw new Error(`room ${i + 1}'s explanation is too long for the scroll ("${room.explanation.slice(0, 40)}…").`);
-    }
-  });
-}
+registerRoomScene();
+registerEndScenes();
+registerMenuScenes();
+onLoad(() => go("title"));

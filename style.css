@@ -13,10 +13,10 @@
 
 /* Atkinson Hyperlegible: a font made by the Braille Institute to be as easy
    to read as possible. It comes with the game (assets/fonts) instead of
-   using each device's own font, so text is the same width everywhere and a
-   question that fits the scroll on one screen fits on all of them. Two
-   files per weight: basic Latin, and extra Latin letters (like Turkish ş,
-   ğ, İ), which the browser only downloads if a page needs them. */
+   using each device's own font, so the strip's text is the same width
+   everywhere. Two files per weight: basic Latin, and extra Latin letters
+   (like Turkish ş, ğ, İ), which the browser only downloads if a page needs
+   them. */
 @font-face {
   font-family: "Atkinson Hyperlegible";
   font-weight: 400;
@@ -69,7 +69,7 @@ button {
 
 button:hover { background: var(--stone-light); }
 
-/* ---- The stage: the scroll, the strip, and the game, as one picture ---- */
+/* ---- The stage: the strip and the game, as one picture ---- */
 
 #game {
   position: relative;
@@ -83,8 +83,8 @@ button:hover { background: var(--stone-light); }
 }
 
 /* Everything on the stage is sized in game pixels: --gp is how many CSS
-   pixels one game pixel is right now (display.js sets it). So the scroll and
-   the strip grow and shrink together with the game, and keep their shape. */
+   pixels one game pixel is right now (display.js sets it). So the strip
+   grows and shrinks together with the game, and keeps its shape. */
 #stage {
   --gp: 3px;
   display: flex;
@@ -102,103 +102,7 @@ button:hover { background: var(--stone-light); }
   body.touch #game { align-items: flex-start; }
 }
 
-/* The scroll: 320 x 56 game pixels. Its pictures (the paper and the two
-   rolls) are drawn by scroll.js. Its space is always there, even while
-   there's no scroll, so the game never changes size. */
-#scroll {
-  position: relative;
-  width: calc(320 * var(--gp));
-  height: calc(56 * var(--gp));
-}
-
-#scroll-paper,
-.roll {
-  position: absolute;
-  top: 0;
-  height: 100%;
-  background-size: 100% 100%;
-  image-rendering: pixelated;
-  transition: clip-path 0.28s ease-out, left 0.28s ease-out;
-}
-
-#scroll-paper { left: 0; width: 100%; clip-path: inset(0 0 0 0); }
-.roll { width: calc(12 * var(--gp)); }
-#roll-left { left: 0; }
-#roll-right { left: calc(308 * var(--gp)); }
-.scroll-text { transition: opacity 0.12s 0.18s; } /* the writing shows as it finishes opening */
-
-/* Rolled up: both rolls side by side in the middle, no paper showing */
-#scroll.rolled #scroll-paper { clip-path: inset(0 50% 0 50%); }
-#scroll.rolled #roll-left { left: calc(148 * var(--gp)); }
-#scroll.rolled #roll-right { left: calc(160 * var(--gp)); }
-#scroll.rolled .scroll-text { opacity: 0; transition-delay: 0s; }
-
-/* Hidden: nothing at all */
-#scroll.hidden #scroll-paper,
-#scroll.hidden .roll,
-#scroll.hidden .scroll-text { visibility: hidden; }
-#scroll.hidden #scroll-paper { clip-path: inset(0 50% 0 50%); }
-#scroll.hidden #roll-left { left: calc(148 * var(--gp)); }
-#scroll.hidden #roll-right { left: calc(160 * var(--gp)); }
-
-/* For jumping straight to a state, without the animation */
-#scroll.instant * { transition: none !important; }
-
-/* Notes in the scroll's space, for rooms without a scroll (the boss room) */
-#scroll-notes p {
-  position: absolute;
-  bottom: calc(2 * var(--gp));
-  margin: 0;
-  text-align: center;
-  font-size: calc(7 * var(--gp));
-  line-height: 1.15;
-  color: var(--muted);
-}
-
-/* The writing area on the paper. scroll.js shrinks the text (--fit, in game
-   pixels) until it fits inside. (Classes rather than ids, so the invisible
-   copy panel.js measures looks exactly the same.) */
-.scroll-text {
-  position: absolute;
-  left: calc(19 * var(--gp));
-  top: calc(7 * var(--gp));
-  width: calc(282 * var(--gp));
-  height: calc(42 * var(--gp));
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  color: #3b2a1a;
-  font-size: calc(var(--fit, 12) * var(--gp));
-  line-height: 1.2;
-}
-
-.scroll-line {
-  margin: 0 0 0.2em;
-  font-weight: 700;
-}
-
-.scroll-items {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.05em 1.1em;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  font-size: 0.95em;
-}
-
-.scroll-text a { color: #5a3a1a; }
-.scroll-text a:hover { color: #9a4a1a; }
-.scroll-text .correct { color: #2e7d1e; }
-.scroll-items li.crossed { opacity: 0.45; text-decoration: line-through; text-decoration-color: #b8321e; text-decoration-thickness: 0.12em; }
-
-.letter {
-  margin-right: 0.35em;
-  font-weight: 800;
-}
-
-/* The strip under the scroll: a hint or the "Open door" button on the left,
+/* The strip above the game: a hint or the button for what you're standing at on the left,
    depth and time on the right. Its text has a smallest size, so it stays
    readable on phones. */
 #strip {
@@ -220,8 +124,6 @@ button:hover { background: var(--stone-light); }
   text-overflow: ellipsis;
 }
 
-#door-hint.correct { color: #63c74d; font-weight: 700; }
-
 #door-button {
   height: calc(11 * var(--gp));
   padding: 0 calc(5 * var(--gp));
@@ -230,8 +132,6 @@ button:hover { background: var(--stone-light); }
   font-size: inherit;
   font-weight: 600;
 }
-
-#door-button .letter { margin: 0 0 0 0.25em; }
 
 #progress {
   margin-left: auto;
@@ -391,8 +291,6 @@ body.touch #game { touch-action: none; }
   line-height: 1.4;
 }
 
-#touch-use .letter { margin: 0 0 0 4px; }
-
 /* Sideways: the controls lie over the edges of the game, and are
    see-through so the game shows behind them */
 @media (orientation: landscape) {
@@ -409,8 +307,10 @@ body.touch #game { touch-action: none; }
   }
 
   /* The empty space left of the stage (touch.js measures it), so the
-     joystick never covers the scroll or the room; at least a quarter of the
-     screen, so there's always room for a thumb */
+     joystick mostly stays off the room; at least a quarter of the screen,
+     so there's always room for a thumb. On wide phones that quarter reaches
+     over the room's left edge, so the strip is lifted above the touch
+     controls: its button still gets the tap. */
   #stick-zone {
     width: max(var(--side-space, 30%), 25%);
     pointer-events: auto;
@@ -419,6 +319,11 @@ body.touch #game { touch-action: none; }
   #touch-buttons {
     right: 12px;
     pointer-events: auto;
+  }
+
+  body.touch #strip {
+    position: relative;
+    z-index: 1;
   }
 
   .touch-button { opacity: 0.8; }

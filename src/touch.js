@@ -9,6 +9,8 @@
 // Kaplay's pressButton() / releaseButton(). The joystick is different because
 // it isn't just on or off: it's analog, so it's read with joystickDirection().
 
+import { GAME_WIDTH } from "./config.js";
+
 const $ = (id) => document.getElementById(id);
 
 const STICK_RADIUS = 44; // px the knob can move from the middle
@@ -138,10 +140,10 @@ function setupFullscreen() {
 }
 
 // The Use button only shows while there's something to use. It's labelled
-// like the panel's button (e.g. "Open door B") and does the same thing.
+// like the strip's button (e.g. "Go deeper") and does the same thing.
 export function showUseButton(content, onUse) {
   const button = $("touch-use");
-  button.replaceChildren(...content.map((part) => (typeof part === "string" ? part : part.cloneNode(true))));
+  button.replaceChildren(...content);
   button.onpointerdown = (event) => {
     event.preventDefault();
     onUse();
@@ -151,4 +153,17 @@ export function showUseButton(content, onUse) {
 
 export function hideUseButton() {
   $("touch-use").hidden = true;
+}
+
+// Sideways, the buttons lie over the right edge of the room. This is how
+// much of it they cover, in game pixels (0 if they don't), so things drawn
+// in the room, like the credit signs, can stay clear of them.
+export function coveredOnRight() {
+  if (!document.body.classList.contains("touch")) return 0;
+  const room = document.querySelector("#game canvas").getBoundingClientRect();
+  const buttons = $("touch-buttons").getBoundingClientRect();
+  const besideRoom = buttons.top < room.bottom && buttons.bottom > room.top;
+  if (!besideRoom || buttons.left >= room.right) return 0;
+  const gamePixel = room.width / GAME_WIDTH;
+  return Math.ceil((room.right - buttons.left) / gamePixel) + 4; // and a little gap
 }

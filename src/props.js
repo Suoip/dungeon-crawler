@@ -1,8 +1,8 @@
-import { TILE, TOP } from "./config.js";
+import { TILE, TOP, GAME_WIDTH } from "./config.js";
 import { playSound } from "./sound.js";
 
-// Things placed in the menu rooms: the ladder, the floor hatch, levers,
-// keyboard keys and the title text.
+// Things placed in the menu rooms: the ladder, the floor hatch, signs,
+// plaques, levers, keyboard keys and the title text.
 
 // The pack's wood colors, for things we draw ourselves.
 const WOOD_DARK = [59, 30, 20];
@@ -41,58 +41,31 @@ export function addHatch(col, row) {
   return { centerX: col * TILE + TILE / 2, y: TOP + row * TILE };
 }
 
-// The question scroll, dropped by a room's last monster: a little rolled-up
-// scroll with a red ribbon, lying on the floor. It hops out of the monster,
-// then bobs gently. Walking over it picks it up: it flies up to where the
-// big scroll opens, and `onPickup` runs. Once he's close, it drifts toward
-// him, like a dropped heart.
-export function addScrollPickup(at, player, onPickup) {
-  const born = time();
-  let spot = at;
-  const scroll = add([pos(at), z(9), "scroll-pickup"]);
-
-  const drawRolled = (y, size = 1) => {
-    const PAPER = rgb(232, 213, 169);
-    const DARK = rgb(58, 40, 24);
-    const ROLL = rgb(178, 128, 70);
-    const w = 12 * size;
-    const h = 6 * size;
-    drawRect({ pos: vec2(-w / 2, y - h), width: w, height: h, color: DARK });
-    drawRect({ pos: vec2(-w / 2 + size, y - h + size), width: w - 2 * size, height: h - 2 * size, color: PAPER });
-    drawRect({ pos: vec2(-w / 2, y - h), width: 2 * size, height: h, color: ROLL });       // the rolled ends
-    drawRect({ pos: vec2(w / 2 - 2 * size, y - h), width: 2 * size, height: h, color: ROLL });
-    drawRect({ pos: vec2(-size / 2, y - h), width: size, height: h, color: rgb(200, 40, 40) }); // ribbon
-  };
-
-  scroll.onDraw(() => {
-    const age = time() - born;
-    const hop = age < 0.35 ? Math.sin((age / 0.35) * Math.PI) * 10 : Math.abs(Math.sin(age * 3)) * 1.5;
-    drawEllipse({ pos: vec2(0, 0), radiusX: 5, radiusY: 1.5, color: rgb(0, 0, 0), opacity: 0.3 });
-    drawRolled(-hop - 1);
+// A wooden sign: lines of text on a small dark board, centered on (x, y).
+// Each line is { text, color, umlautAt }: the color is optional, and
+// umlautAt (also optional) is the position of a letter that gets two dots
+// drawn over it, because the pixel font's capital Ö looks like a small ö.
+// A sign that doesn't fit where it's asked for slides over until it's
+// between the left edge and `right` (the screen's right edge, unless
+// something covers it). Returns the sign; destroy it to take it down.
+const SIGN_LINE = 10;  // px per line of text
+const LETTER = 8;      // the pixel font is 8 px a letter
+export function addSign(lines, x, y, { depth = 2, right = GAME_WIDTH } = {}) {
+  const width = Math.max(...lines.map((line) => line.text.length)) * LETTER + 6;
+  const height = lines.length * SIGN_LINE;
+  const centerX = Math.max(width / 2 + 2, Math.min(x, right - width / 2 - 2)); // the left edge wins if it's too wide
+  const sign = add([pos(centerX, y), scale(1), z(depth)]);
+  sign.add([rect(width + 2, height + 2), pos(-width / 2 - 1, -height / 2 - 1), color(24, 20, 37)]);
+  sign.add([rect(width, height), pos(-width / 2, -height / 2), color(92, 52, 30)]);
+  lines.forEach((line, i) => {
+    const lineY = -height / 2 + i * SIGN_LINE + 6;
+    const rgb = line.color ?? [240, 230, 210];
+    sign.add([text(line.text, { size: 8, font: "pixel" }), pos(0, lineY), anchor("center"), color(...rgb)]);
+    if (line.umlautAt === undefined) return;
+    const letterX = -(line.text.length * LETTER) / 2 + line.umlautAt * LETTER; // the letter's left edge
+    for (const dx of [1, 4]) sign.add([rect(2, 1), pos(letterX + dx, lineY - 6), color(...rgb)]);
   });
-
-  scroll.onUpdate(() => {
-    if (time() - born < 0.35 || player.frozen) return;
-    const distance = player.pos.dist(spot);
-    if (distance < 20) spot = spot.add(player.pos.sub(spot).unit().scale(Math.min(distance, 90 * dt())));
-    scroll.pos = spot;
-    if (distance >= 8) return;
-
-    // Picked up: it flies up, growing, to the top of the screen, where the
-    // big scroll opens.
-    destroy(scroll);
-    const flying = add([pos(spot), z(60), opacity(1)]);
-    let size = 1;
-    flying.onDraw(() => drawRolled(0, size));
-    const from = spot.clone();
-    tween(0, 1, 0.22, (t) => {
-      flying.pos = from.lerp(vec2(160, -6), t);
-      size = 1 + t * 1.5;
-    }, easings.easeInQuad).onEnd(() => {
-      destroy(flying);
-      onPickup();
-    });
-  });
+  return sign;
 }
 
 // A small stone plaque standing on the floor, like a little gravestone, with

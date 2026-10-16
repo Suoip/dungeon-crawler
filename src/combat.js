@@ -216,7 +216,7 @@ export function addHearts(run) {
   ]));
 
   // On the last heart: it beats, and a dark red glow breathes in from the
-  // edges of the screen (z 44: over the room, under the cursed red light).
+  // edges of the screen (z 44: over the room and everyone in it).
   let beating = false;
   hearts[0].onUpdate(() => {
     if (run.hearts === 1) {
