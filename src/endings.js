@@ -1,24 +1,23 @@
-import { TILE, TOP, GAME_WIDTH, GAME_HEIGHT, ROOMS } from "./config.js";
-import { buildRoom, roomLimits } from "./room.js";
+import { TILE, TOP, GAME_WIDTH, GAME_HEIGHT } from "./config.js";
+import { buildRoom } from "./room.js";
 import { addPlayer, setupPlayerMovement, setupDash } from "./player.js";
-import { newRun, runTime } from "./dungeon.js";
+import { newRun, depthLabel } from "./dungeon.js";
+import { getSave } from "./save.js";
 import { setupInteractions } from "./interact.js";
 import { fallIn, climbLadder, giveControl, LAND_X, LAND_Y } from "./cutscenes.js";
 import { addFader, fadeIn, sleep, addRedLight } from "./effects.js";
 import { addLadder, addShadowText, addSign } from "./props.js";
-import { setupAttack } from "./combat.js";
 import { playSound } from "./sound.js";
 import { hidePrompt, showRoomName } from "./panel.js";
 
-// The two ways a run can end, both of them rooms you walk around in (no
-// pop-up screens):
-//   won         through the last room's door, into the treasure room
-//   underworld  dragged down after the monsters took the last heart
-// Both write the run's stats on the floor, and have two ladders up the back
-// wall: one to try again, one back to the menu.
+// Every run ends in the underworld (DESIGN.md section 9): dragged down when
+// the clock ran out or the last heart went, or down the well after beating
+// the boss. The run's results are written on the floor, and two ladders up
+// the back wall lead to the next run and back to the menu. (The skill tree's
+// altar comes here in step 4.)
+//   ending  "died", "time" or "boss"
 export function registerEndScenes() {
-  scene("won", (run) => endRoom(run, { won: true }));
-  scene("underworld", (run, { depth }) => endRoom(run, { won: false, depth }));
+  scene("underworld", (run, { ending }) => underworld(run, ending));
 }
 
 const LADDERS = [
@@ -26,9 +25,9 @@ const LADDERS = [
   { x: 224, label: "MENU", prompt: "Back to the menu", go: () => go("title", { from: "below" }) },
 ];
 
-function endRoom(run, { won, depth }) {
+function underworld(run, ending) {
   buildRoom();
-  if (!won) makeUnderworld();
+  makeUnderworld();
 
   const ladders = LADDERS.map((ladder) => {
     const built = addLadder(ladder.x);
@@ -37,11 +36,9 @@ function endRoom(run, { won, depth }) {
   });
 
   const player = addPlayer(LAND_X, LAND_Y);
-  if (won) addTreasure(player);
-  else player.use(color(255, 110, 110)); // still red, down here
+  if (ending === "died") player.use(color(255, 110, 110)); // still red, down here
   setupPlayerMovement(player);
-  setupDash(player);
-  setupAttack(player); // swing for fun; there's nothing to hit
+  if (run.stats.unlocked.has("dash")) setupDash(player);
   const fader = addFader();
 
   const interactions = setupInteractions(
@@ -59,127 +56,42 @@ function endRoom(run, { won, depth }) {
   );
 
   hidePrompt();
-  showRoomName(won ? "The treasure room" : "The underworld");
+  showRoomName("The underworld");
 
   (async () => {
     fadeIn(fader, 0.3);
     await fallIn(player);
-    if (won) openChests();
-    await writeStats(run, won, depth);
+    await writeResults(run, ending);
     giveControl(player);
     interactions.enable();
   })();
 }
 
-// The stats, written on the floor one line after another, like the title.
-async function writeStats(run, won, depth) {
-  const lines = won
-    ? [
-      { text: "YOU WON!", size: 16, color: [255, 205, 70] },
-      { text: `TIME ${runTime(run)}` },
-      { text: `HEARTS LEFT ${run.hearts}/${run.maxHearts}` },
-    ]
-    : [
-      { text: "YOU DIED", size: 16, color: [230, 72, 46] },
-      { text: `DEPTH ${depth}/${ROOMS}` },
-      { text: `TIME ${runTime(run)}` },
-    ];
-
-  let y = TOP + 4 * TILE + 4;
+// The run's results, written on the floor one line after another, like the
+// title: how it ended, the gold it earned and what's banked now, how deep it
+// got (1-4 is depth 1, room 4) and how many monsters fell.
+const ENDINGS = {
+  died: { text: "YOU DIED", color: [230, 72, 46] },
+  time: { text: "OUT OF TIME", color: [255, 205, 70] },
+  boss: { text: "DEPTH CLEARED", color: [99, 199, 77] },
+};
+async function writeResults(run, ending) {
+  const reached = ending === "boss" ? run.deepest : Math.min(Math.floor(run.deepest) + 1, 10);
+  const lines = [
+    { text: ENDINGS[ending].text, size: 16, color: ENDINGS[ending].color },
+    { text: `GOLD EARNED ${run.gold}`, color: [255, 205, 70] },
+    { text: `TOTAL ${getSave().gold}` },
+    { text: `DEEPEST ${depthLabel(reached)}` },
+    { text: `KILLS ${run.kills}` },
+  ];
+  // Between the lava basins on the back wall and where the hero lands.
+  let y = TOP + 3 * TILE + 10;
   for (const { text, size = 8, color: rgb = [240, 230, 210] } of lines) {
-    addShadowText(text, GAME_WIDTH / 2, y, size, rgb, 3); // above the coins
+    addShadowText(text, GAME_WIDTH / 2, y, size, rgb, 3);
     playSound("letter");
-    y += size === 16 ? 24 : 14;
+    y += size === 16 ? 20 : 11;
     await sleep(0.18);
   }
-}
-
-// The treasure room: heaps of gold in all four corners, each with an open
-// chest on top, spilling out across the floor toward the middle. The coins
-// lie on the floor (z 2, under everyone): walking through them kicks them
-// aside with a jingle, and twinkles blink on and off across the gold.
-let chests = [];
-function addTreasure(player) {
-  const middle = vec2(GAME_WIDTH / 2, TOP + 7 * TILE);
-  const CORNERS = [vec2(20, TOP + 3 * TILE), vec2(GAME_WIDTH - 20, TOP + 3 * TILE), vec2(20, GAME_HEIGHT - 10), vec2(GAME_WIDTH - 20, GAME_HEIGHT - 10)];
-  const limits = roomLimits([6, 4]);
-  const coins = [];
-  const addCoin = (at) => {
-    const spot = vec2(clamp(at.x, limits.left, limits.right), clamp(at.y, limits.top, limits.bottom));
-    const spinning = chance(0.06); // a few spin, flashing their shine now and then
-    const coin = add([
-      // Coins lying still show a gold side (frame 1 is the white shine, and
-      // 2 is edge-on, both mid-spin).
-      sprite("coin", spinning ? { anim: "spin" } : { frame: choose([0, 0, 0, 3]) }),
-      pos(spot), anchor("bot"), z(2 + spot.y / 1000),
-    ]);
-    if (spinning) coin.animSpeed = rand(0.6, 1.2); // so they don't all spin in step
-    coins.push({ coin, vel: vec2(0) });
-  };
-
-  for (const corner of CORNERS) {
-    // The heap in the corner: coins piled close together.
-    for (let i = 0; i < 80; i++) addCoin(corner.add(rand(-1, 1) * rand(0, 15), rand(-1, 1) * rand(0, 9)));
-    // Gold spilling out of it in every direction into the room: lots close
-    // to the heap, thinning out the further it goes. The four spills meet
-    // along the walls and in the middle, but mostly leave the stats clear.
-    const sx = corner.x < middle.x ? 1 : -1;
-    const sy = corner.y < middle.y ? 1 : -1;
-    for (let i = 0; i < 100; i++) {
-      const angle = rand(0, Math.PI / 2);
-      const reach = 130 * Math.random() ** 1.4;
-      const at = corner.add(sx * Math.cos(angle) * reach, sy * Math.sin(angle) * reach * 0.75);
-      const onStats = at.x > 90 && at.x < 230 && at.y > TOP + 56 && at.y < TOP + 130;
-      if (onStats && chance(0.85)) continue;
-      addCoin(at);
-    }
-  }
-
-  // An open chest on top of each heap, spilling the gold.
-  chests = CORNERS.map((corner) => {
-    const at = corner.add(corner.x < middle.x ? 8 : -8, corner.y < middle.y ? 6 : -2);
-    return add([sprite("chest_full_open"), pos(at), anchor("bot"), z(9)]);
-  });
-
-  // Walking through the gold kicks it aside.
-  let jingledAt = 0;
-  onUpdate(() => {
-    const moving = !player.frozen && player.getCurAnim()?.name === "run";
-    for (const c of coins) {
-      if (moving && c.coin.pos.dist(player.pos) < 7) {
-        c.vel = c.coin.pos.sub(player.pos).unit().scale(rand(50, 110)).add(rand(-20, 20), rand(-20, 20));
-        if (time() - jingledAt > 0.09) {
-          playSound("coin");
-          jingledAt = time();
-        }
-      }
-      if (c.vel.len() < 1) continue;
-      const next = c.coin.pos.add(c.vel.scale(dt()));
-      c.coin.pos = vec2(clamp(next.x, limits.left, limits.right), clamp(next.y, limits.top, limits.bottom));
-      c.coin.z = 2 + c.coin.pos.y / 1000;
-      c.vel = c.vel.scale(Math.pow(0.88, dt() * 60)); // slides to a stop
-    }
-  });
-
-  // Twinkles: a tiny four-pointed glint on a random coin, now and then.
-  loop(0.07, () => {
-    const { coin } = choose(coins);
-    const glint = add([pos(coin.pos.add(rand(-2, 2), -rand(3, 7))), opacity(1), z(3)]);
-    glint.onDraw(() => {
-      drawRect({ pos: vec2(-1.5, -0.5), width: 3, height: 1, color: rgb(255, 250, 220), opacity: glint.opacity });
-      drawRect({ pos: vec2(-0.5, -1.5), width: 1, height: 3, color: rgb(255, 250, 220), opacity: glint.opacity });
-    });
-    tween(1, 0, 0.35, (v) => (glint.opacity = v)).onEnd(() => destroy(glint));
-  });
-}
-
-// As he lands, the chests swing open, one after another.
-function openChests() {
-  chests.forEach((chest, i) => wait(0.12 * i, () => {
-    chest.play("open");
-    playSound("unlock");
-  }));
-  wait(0.5, () => playSound("correct"));
 }
 
 // The underworld: the same kind of room, but dark red, with lava pouring

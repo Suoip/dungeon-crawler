@@ -51,8 +51,7 @@ html, body {
   font-family: "Atkinson Hyperlegible", system-ui, sans-serif;
 }
 
-/* The game fills the page (with the touch controls under it on an upright
-   phone) */
+/* The game fills the page */
 body {
   display: flex;
   flex-direction: column;
@@ -94,12 +93,6 @@ button:hover { background: var(--stone-light); }
 
 #game canvas {
   image-rendering: pixelated; /* scale up with hard pixel edges, no blur */
-}
-
-/* An upright phone: the stage sits at the top, so the space left over goes
-   to the touch controls under it */
-@media (orientation: portrait) {
-  body.touch #game { align-items: flex-start; }
 }
 
 /* The strip above the game: a hint or the button for what you're standing at on the left,
@@ -150,182 +143,39 @@ kbd {
   border-radius: 3px;
 }
 
-/* Touch screens have no E or Space key, so don't show that hint there
-   (touch.js puts the "touch" class on the body) */
-body.touch kbd { display: none; }
-
-/* ---- Touch controls (src/touch.js) ---- */
-
+/* The pixel font, for the keyboard notice */
 @font-face {
   font-family: "Press Start 2P";
   src: url("assets/fonts/press-start-2p-latin-400-normal.woff2") format("woff2");
 }
 
-#touch {
-  display: none;
-  position: relative;
-  flex: 0 0 auto;
-  height: 36vh;          /* upright: a strip below the game, for both thumbs */
-  min-height: 170px;
-  max-height: 280px;
-  touch-action: none;    /* no scrolling or zooming while you play */
-  user-select: none;
-  -webkit-user-select: none;
-  -webkit-touch-callout: none;
-}
+/* ---- The notice on phones and tablets (main.js) ---- */
 
-body.touch #touch { display: block; }
-body.touch #game { touch-action: none; }
-
-/* Fullscreen (hides the browser's bars), in the top-right corner of the
-   controls. touch.js only shows it where the browser allows it. */
-#touch-fullscreen {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  width: 36px;
-  height: 36px;
-  padding: 0;
-  background: rgba(58, 47, 74, 0.7);
-  border: 2px solid var(--stone-light);
-  border-radius: 6px;
-  pointer-events: auto;
-}
-
-#touch-fullscreen svg {
-  display: block;
-  width: 20px;
-  height: 20px;
-  margin: auto;
-  stroke: var(--text);
-}
-
-/* The left part: put a thumb down anywhere here for the joystick */
-#stick-zone {
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 55%;
-}
-
-#stick-base {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 96px;
-  height: 96px;
-  margin: -48px 0 0 -48px; /* so left/top are its middle */
-  border: 3px solid rgba(244, 240, 248, 0.35);
-  border-radius: 50%;
-  background: rgba(58, 47, 74, 0.45);
-  opacity: 0.45;          /* faint while waiting */
-  pointer-events: none;
-}
-
-#stick-base.active { opacity: 1; }
-
-#stick-knob {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 44px;
-  height: 44px;
-  margin: -22px 0 0 -22px;
-  border-radius: 50%;
-  background: rgba(244, 240, 248, 0.75);
-  box-shadow: 0 2px 0 rgba(24, 20, 37, 0.6);
-}
-
-/* The right part: Use on top, then Dash and Attack */
-#touch-buttons {
-  position: absolute;
-  right: 16px;
-  top: 50%;
-  transform: translateY(-50%);
+#keyboard-notice {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
+  align-items: center;
+  justify-content: center;
   gap: 12px;
-}
-
-.touch-row {
-  display: flex;
-  align-items: flex-end;
-  gap: 14px;
-}
-
-.touch-button {
-  font-family: "Press Start 2P", monospace;
-  font-size: 9px;
+  padding: 24px;
+  text-align: center;
+  background: rgba(24, 20, 37, 0.92);
   color: var(--text);
-  background: rgba(58, 47, 74, 0.85);
-  border: 3px solid var(--stone-light);
-  box-shadow: 0 4px 0 #120f1c;
-  touch-action: none;
+  font-size: 18px;
 }
 
-.touch-button:hover { background: rgba(58, 47, 74, 0.85); } /* no sticky hover on phones */
-.touch-button.down { transform: translateY(3px); box-shadow: 0 1px 0 #120f1c; background: var(--stone-light); }
+#keyboard-notice[hidden] { display: none; }
 
-.touch-button.round {
-  width: 64px;
-  height: 64px;
-  padding: 0;
-  border-radius: 50%;
+#keyboard-notice p { margin: 0; }
+
+#keyboard-notice .notice-title {
+  font-family: "Press Start 2P", monospace;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #ffcd46;
 }
 
-.touch-button.big {
-  width: 84px;
-  height: 84px;
-  font-size: 10px;
-  border-color: #e6482e;
-}
-
-#touch-use {
-  min-height: 44px;
-  padding: 8px 14px;
-  border-radius: 22px;
-  border-color: #ffcd46;
-  font-size: 9px;
-  line-height: 1.4;
-}
-
-/* Sideways: the controls lie over the edges of the game, and are
-   see-through so the game shows behind them */
-@media (orientation: landscape) {
-  body.touch #touch {
-    position: fixed;
-    left: 0;
-    right: 0;
-    top: 0;
-    bottom: 0;
-    height: auto;
-    min-height: 0;
-    max-height: none;
-    pointer-events: none; /* only the stick area and buttons catch touches */
-  }
-
-  /* The empty space left of the stage (touch.js measures it), so the
-     joystick mostly stays off the room; at least a quarter of the screen,
-     so there's always room for a thumb. On wide phones that quarter reaches
-     over the room's left edge, so the strip is lifted above the touch
-     controls: its button still gets the tap. */
-  #stick-zone {
-    width: max(var(--side-space, 30%), 25%);
-    pointer-events: auto;
-  }
-
-  #touch-buttons {
-    right: 12px;
-    pointer-events: auto;
-  }
-
-  body.touch #strip {
-    position: relative;
-    z-index: 1;
-  }
-
-  .touch-button { opacity: 0.8; }
-}
 

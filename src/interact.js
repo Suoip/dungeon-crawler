@@ -29,7 +29,7 @@ export function setupInteractions(player, things, hint) {
     setPrompt(null, useActive, hint()); // the next frame works out what's nearby again
   }
 
-  onButtonPress("use", useActive); // E (Space is for attacking, see combat.js)
+  onButtonPress("use", useActive); // E, or the strip's button
 
   onUpdate(() => {
     if (!enabled || busy) return;
@@ -50,6 +50,12 @@ export function setupInteractions(player, things, hint) {
       enabled = true;
       active = null;
       setPrompt(null, useActive, hint());
+    },
+    // Nothing more can be used (the run is over): no prompt, and E does nothing.
+    disable() {
+      enabled = false;
+      active = null;
+      hidePrompt();
     },
     // Something changed (like the door unlocking): redo the prompt or hint.
     refresh() {

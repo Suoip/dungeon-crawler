@@ -42,6 +42,10 @@ const SOUNDS = {
   vomit:    [0.4, 0.1, 200, 0, 0.05, 0.25, 4, 1, -8, 0, 0, 0, 0, 1],
   summon:   [0.3, 0, 200, 0.2, 0.2, 0.3, 1, 1, 4, 0, 0, 0, 0.08],
   roar:     [0.6, 0.1, 80, 0.1, 0.4, 0.4, 2, 1, -1, 0, 0, 0, 0, 0.8, 0, 0.1],
+
+  // The run's clock
+  tick:     [0.15, 0, 1400, 0, 0.005, 0.03, 0, 1],                         // a soft click, each of the last 5 seconds
+  gong:     [0.5, 0, 98, 0.01, 0.2, 1.4, 0, 1, 0, 0, 0, 0, 0, 0, 1.5, 0, 0, 1, 0.3], // time's up: a low, ringing gong
 };
 
 // An equalizer (EQ) for some sounds: it changes their tone without changing
@@ -66,6 +70,7 @@ const EQ = {
   gurgle:  { lowpass: 1500, shelf: -8, shelfFrom: 1000 },
   vomit:   { lowpass: 1600, shelf: -10, shelfFrom: 1200 },
   roar:    { lowpass: 1400, shelf: -8, shelfFrom: 900 },
+  gong:    { lowpass: 1200, shelf: -6, shelfFrom: 800 },
 };
 
 // Each sound's filters are built once, the first time it plays, and reused.

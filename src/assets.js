@@ -7,7 +7,16 @@ import { heroSprites } from "./heroes.js";
 const tile = (x, y, width = TILE, height = TILE) => ({ x, y, width, height });
 
 // Monsters: 8 frames in a row, 4 idle then 4 run (like the heroes, minus the
-// hit frame). `w` and `h` are the size of one frame.
+// hit frame). `w` and `h` are the size of one frame. The slugs only have one
+// 4-frame wriggle, which `wriggler` uses for both.
+const wriggler = (x, y, w, h) => ({
+  x, y, width: w * 4, height: h,
+  sliceX: 4,
+  anims: {
+    idle: { from: 0, to: 3, speed: 5, loop: true },
+    run: { from: 0, to: 3, speed: 8, loop: true },
+  },
+});
 const monster = (x, y, w, h) => ({
   x, y, width: w * 8, height: h,
   sliceX: 8,
@@ -29,6 +38,9 @@ export function loadAssets() {
 
     // Monsters and bosses.
     tiny_zombie: monster(368, 16, 16, 16),
+    skeleton: monster(368, 88, 16, 16),
+    slug: wriggler(368, 369, 16, 23),
+    tiny_slug: wriggler(432, 376, 16, 16),
     goblin: monster(368, 40, 16, 16),
     orc_warrior: monster(368, 177, 16, 23),
     big_demon: monster(16, 428, 32, 36),
@@ -50,9 +62,7 @@ export function loadAssets() {
     // Menu room props.
     floor_ladder: tile(48, 96),
 
-    // Treasure for the room you win in: a chest that swings open full of
-    // gold, and a spinning coin (6x7, with 2 px between frames).
-    chest_full_open: { ...tile(304, 416, TILE * 3, TILE), sliceX: 3, anims: { open: { from: 0, to: 2, speed: 8 } } },
+    // A spinning coin (6x7, with 2 px between frames).
     coin: { x: 289, y: 385, width: 32, height: 7, sliceX: 4, anims: { spin: { from: 0, to: 3, speed: 8, loop: true } } },
 
     // A lava fountain for the underworld, in three pieces stacked down the

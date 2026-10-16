@@ -12,7 +12,6 @@ import { registerEndScenes } from "./endings.js";
 import { registerMenuScenes } from "./menu.js";
 import { scaleToFit } from "./display.js";
 import { unlockAudioOnFirstInput } from "./sound.js";
-import { setupTouchControls } from "./touch.js";
 
 // The art is tiny, so the game is drawn at a small resolution (320x208) and
 // display.js scales it up (with the strip above it) to fill its box on the
@@ -26,14 +25,13 @@ kaplay({
   pixelDensity: 1,   // draw exactly 320x208 pixels; display.js does the scaling
   crisp: true,       // no smoothing, so pixels stay sharp when scaled up
   background: BACKGROUND,
-  // Named buttons, so the game asks "is attack pressed?" instead of "is
-  // Space pressed?". The touch controls press the same buttons (touch.js).
+  // Named buttons, so the game asks "is dash pressed?" instead of "is Shift
+  // pressed?". The hero swings on his own, so there's no attack button.
   buttons: {
     up: { keyboard: ["w", "up"] },
     down: { keyboard: ["s", "down"] },
     left: { keyboard: ["a", "left"] },
     right: { keyboard: ["d", "right"] },
-    attack: { keyboard: ["space"] },
     dash: { keyboard: ["shift"] },
     use: { keyboard: ["e"] },
   },
@@ -42,7 +40,11 @@ scaleToFit(stage, document.querySelector("#game canvas"), gameBox);
 
 loadAssets();
 unlockAudioOnFirstInput();
-setupTouchControls();
+// The game needs a keyboard. On a phone or tablet (its only pointer is a
+// finger), a notice over the game says so. A laptop with a touch screen
+// still has a mouse or trackpad, so it doesn't get the notice.
+const onlyFingers = matchMedia("(pointer: coarse)").matches && !matchMedia("(any-pointer: fine)").matches;
+document.getElementById("keyboard-notice").hidden = !onlyFingers;
 
 registerRoomScene();
 registerEndScenes();

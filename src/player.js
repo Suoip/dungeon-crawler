@@ -2,7 +2,6 @@ import { PLAYER_SPEED } from "./config.js";
 import { puffDust, during, addShadow } from "./effects.js";
 import { getSetting } from "./settings.js";
 import { playSound } from "./sound.js";
-import { joystickDirection } from "./touch.js";
 import { keepInRoom } from "./room.js";
 
 export const PLAYER_FEET = [10, 6]; // the box at his feet that collides, in px
@@ -38,8 +37,7 @@ export function addPlayer(x, y) {
 }
 
 // Which way he's being told to go: the movement keys (WASD or the arrows,
-// see the buttons in main.js), or else the touch joystick. Its length is 1
-// for keys, and 0 to 1 for the joystick, so a small push walks slowly.
+// see the buttons in main.js).
 function heldDirection() {
   const dir = vec2(0, 0);
   if (isButtonDown("left")) dir.x -= 1;
@@ -48,7 +46,7 @@ function heldDirection() {
   if (isButtonDown("down")) dir.y += 1;
   // unit() makes diagonal movement the same speed as straight movement.
   // Without it, moving diagonally would be about 41% faster.
-  return dir.len() > 0 ? dir.unit() : joystickDirection();
+  return dir.len() > 0 ? dir.unit() : dir;
 }
 
 export function setupPlayerMovement(player) {

@@ -64,12 +64,14 @@ export async function fallIn(player) {
   }, easings.easeOutBack);
 }
 
-// The hero is dead, lying on the floor: a dark hole opens under him, little
-// hands reach up out of it and grab him, and drag him down into it.
-export async function dragDown(player) {
-  // He's rotated 90° around his feet, so his body lies to the right of them.
-  const middle = player.pos.add(11, 0);
-  const closeHole = addSpawnHole(middle, 30);
+// The run is over: a dark hole opens under the hero, little hands reach up
+// out of it and grab him, and drag him down into it, to the underworld.
+// When he's died he's lying on the floor; with { standing: true } (the clock
+// ran out) he's still on his feet.
+export async function dragDown(player, { standing = false } = {}) {
+  // Lying down, he's rotated 90° around his feet, so his body is to their right.
+  const middle = standing ? player.pos.clone() : player.pos.add(11, 0);
+  const closeHole = addSpawnHole(middle, standing ? 22 : 30);
   playSound("crumble");
   shakeScreen(3);
   await sleep(0.3);
@@ -162,6 +164,21 @@ export async function climbLadder(player, ladder, fader) {
 // Where the knight stands in the title room: just to the right of the
 // hatch, so he doesn't hide it.
 export const besideHatch = (hatch) => vec2(hatch.centerX + 20, hatch.y + 14);
+
+// Down a well or hatch in the floor: he steps onto it and climbs down out of
+// sight, then the screen fades out.
+export async function climbIntoHatch(player, hatch, fader) {
+  takeControl(player);
+  player.play("run");
+  await animate(player.pos, vec2(hatch.centerX, hatch.y + 12), 0.25, (p) => (player.pos = p));
+  const rungs = loop(0.14, () => playSound("climb"));
+  await animate(0, 1, 0.45, (t) => {
+    player.pos.y = hatch.y + 12 + 10 * t; // down into the hole
+    player.opacity = 1 - t;
+  });
+  rungs.cancel();
+  await fadeOut(fader);
+}
 
 // Back in the title room: the knight climbs up out of the floor hatch and
 // steps off it.

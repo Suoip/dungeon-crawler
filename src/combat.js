@@ -1,4 +1,5 @@
 import { GAME_WIDTH, GAME_HEIGHT, TOP } from "./config.js";
+import { BALANCE } from "./balance.js";
 import { heroById } from "./heroes.js";
 import { getSetting } from "./settings.js";
 import { hurtMob } from "./mobs.js";
@@ -8,17 +9,15 @@ import { PLAYER_FEET } from "./player.js";
 import { flashScreen, shakeScreen, hitStop } from "./effects.js";
 import { playSound } from "./sound.js";
 
-const SWING_COOLDOWN = 0.35; // seconds between swings
 const SWING_TIME = 0.15;     // seconds the weapon takes to sweep across
-const INVINCIBLE_FOR = 1;    // seconds the hero can't be hit again after a hit
 
 // Every hero's swing covers the same area: everything in front of them out to
-// SLASH_REACH, within SLASH_ARC to each side. It's a real swing: the weapon
+// their reach (stats.reach, px from the chest), across their arc (stats.arc,
+// in degrees, half to each side of the way they're facing). Both come from
+// balance.js and the upgrades (stats.js). It's a real swing: the weapon
 // sweeps across that area, and hits whatever it passes through as it goes.
 // Its tip leaves a trail along the outer edge, so the hit area is everything
 // between the trail and the hero, whatever weapon you hold.
-const SLASH_REACH = 30; // px from the hero's chest to the edge of the hit area
-const SLASH_ARC = 75;   // degrees to each side of the way he's facing
 const TRAIL_WIDTH = 4;  // px thickness of the trail right behind the tip
 const TRAIL_LIFE = 0.16; // seconds each bit of trail lasts before it's gone
 
@@ -44,31 +43,34 @@ const directionOf = (angle) => vec2(Math.sin((angle * Math.PI) / 180), -Math.cos
 // The difference between two angles, from -180° to 180°.
 const turnBetween = (from, to) => ((to - from + 540) % 360) - 180;
 
-// Space (or the Attack button) swings the hero's weapon in the direction
-// they're facing. It works in every room (try it in the title room); `room`
-// is only passed in rooms with mobs to hit.
-export function setupAttack(player, room = null) {
-  let ready = 0;
+// The hero swings on his own, every stats.swingEvery seconds, in the
+// direction he's facing (the way he last walked), so the player only moves.
+// Only in the dungeon: the menu rooms are calm. The timer counts game time,
+// so it waits during a hit-stop, and it doesn't run while he's frozen in a
+// cutscene.
+export function setupAutoSwing(player, room, stats) {
   let side = 1; // swings alternate: one way, then back the other way
-
-  onButtonPress("attack", () => {
-    if (player.frozen || time() < ready) return;
-    ready = time() + SWING_COOLDOWN;
-    swing(player, room, side);
+  let next = stats.swingEvery;
+  player.onUpdate(() => {
+    if (player.frozen || room.over) return;
+    next -= dt();
+    if (next > 0) return;
+    next += stats.swingEvery;
+    swing(player, room, side, stats);
     side = -side;
   });
 }
 
-function swing(player, room, side) {
+function swing(player, room, side, stats) {
   playSound("swing");
   const facing = angleOf(player.facing);
-  const from = facing - SLASH_ARC * side;
-  const to = facing + SLASH_ARC * side;
+  const from = facing - (stats.arc / 2) * side;
+  const to = facing + (stats.arc / 2) * side;
 
   const name = heroById(getSetting("hero")).weapon;
   const { length, scale: size } = WEAPONS[name];
   // Held out from the chest so the tip lands on the edge of the hit area.
-  const holdOut = Math.max(0, SLASH_REACH - length * size);
+  const holdOut = Math.max(0, stats.reach - length * size);
   const blade = add([
     sprite(name),
     pos(chestOf(player)),
@@ -78,7 +80,7 @@ function swing(player, room, side) {
     z(player.z + 0.01),
   ]);
 
-  const trail = addTrail(player);
+  const trail = addTrail(player, stats.reach);
   const alreadyHit = new Set(); // each mob gets hit at most once per swing
   let last = from;
 
@@ -86,7 +88,7 @@ function swing(player, room, side) {
     blade.angle = angle;
     blade.pos = chestOf(player).add(directionOf(angle).scale(holdOut));
     trail.extend(last, angle);
-    hitSwept(player, last, angle, alreadyHit, room);
+    hitSwept(player, last, angle, alreadyHit, room, stats);
     last = angle;
   }, easings.easeOutQuad).onEnd(() => destroy(blade));
 }
@@ -94,12 +96,13 @@ function swing(player, room, side) {
 // Hits every mob the weapon passed through since the last frame: close
 // enough, and between the angle it was at then and the angle it's at now.
 // It also bats back the boss's shots, once they've turned yellow.
-function hitSwept(player, fromAngle, toAngle, alreadyHit, room) {
+function hitSwept(player, fromAngle, toAngle, alreadyHit, room, stats) {
+  if (room.over) return; // a swing still in the air when the run ended hits nothing
   const chest = chestOf(player);
   const sweptThrough = (point, extra) => {
     const offset = point.sub(chest);
     const distance = offset.len();
-    if (distance > SLASH_REACH + extra) return false;
+    if (distance > stats.reach + extra) return false;
     // How many degrees the target's size covers at that distance, so the
     // weapon only has to reach its edge, not its middle.
     const margin = (Math.atan2(extra, Math.max(distance, 1)) * 180) / Math.PI;
@@ -109,7 +112,8 @@ function hitSwept(player, fromAngle, toAngle, alreadyHit, room) {
   };
 
   // Things that react to being hit (tagged "strikeable", with a struck()
-  // function), like the volume blocks in the Options room. Once per swing.
+  // function), like the crypt's breakables will (DESIGN.md step 6). Once per
+  // swing.
   for (const thing of get("strikeable")) {
     if (alreadyHit.has(thing)) continue;
     if (sweptThrough(thing.pos.add(0, -thing.hitHeight), thing.hitSize)) {
@@ -117,14 +121,13 @@ function hitSwept(player, fromAngle, toAngle, alreadyHit, room) {
       thing.struck(player);
     }
   }
-  if (!room) return; // no monsters outside the dungeon
 
   for (const mob of get("mob")) {
     if (alreadyHit.has(mob)) continue;
     const extra = mob.def.boss ? 14 : 6; // so hitting the edge of a mob counts
     if (sweptThrough(mob.pos.add(0, -mob.def.size / 2), extra)) {
       alreadyHit.add(mob);
-      hurtMob(mob, player.pos, room);
+      hurtMob(mob, player.pos, room, stats.damage);
     }
   }
   for (const shot of get("shot")) {
@@ -140,15 +143,15 @@ function hitSwept(player, fromAngle, toAngle, alreadyHit, room) {
 // disappears from its oldest end first, like a comet's tail. Small random
 // wobbles in its edge, and little streaks of air flicking off the tip, keep
 // it from looking like a perfect geometric shape.
-function addTrail(player) {
+function addTrail(player, reach) {
   const bits = [];     // { angle, born, radius, width }
   const streaks = [];  // { angle, born, radius, length }
   const trail = add([pos(0, 0), z(player.z + 0.02)]);
 
   function layDown(angle) {
-    bits.push({ angle, born: time(), radius: SLASH_REACH + rand(-1.5, 0.5), width: rand(0.6, 1.2) });
+    bits.push({ angle, born: time(), radius: reach + rand(-1.5, 0.5), width: rand(0.6, 1.2) });
     if (bits.length % 3 === 0) {
-      streaks.push({ angle, born: time(), radius: SLASH_REACH + rand(1, 3), length: rand(2, 4) });
+      streaks.push({ angle, born: time(), radius: reach + rand(1, 3), length: rand(2, 4) });
     }
   }
 
@@ -215,11 +218,14 @@ export function addHearts(run) {
     z(1),
   ]));
 
-  // On the last heart: it beats, and a dark red glow breathes in from the
-  // edges of the screen (z 44: over the room and everyone in it).
+  // Down to the last of several hearts: it beats, and a dark red glow
+  // breathes in from the edges of the screen (z 44: over the room and
+  // everyone in it). With only one heart to begin with, there's no warning:
+  // that's every run's start.
+  const lastHeart = () => run.hearts === 1 && run.maxHearts > 1;
   let beating = false;
   hearts[0].onUpdate(() => {
-    if (run.hearts === 1) {
+    if (lastHeart()) {
       beating = true;
       hearts[0].scale = vec2(2 + 0.25 * Math.max(0, Math.sin(time() * 6)) ** 4);
     } else if (beating) {
@@ -229,7 +235,7 @@ export function addHearts(run) {
   });
   const vignette = add([pos(0, TOP), z(44)]);
   vignette.onDraw(() => {
-    if (run.hearts !== 1) return;
+    if (!lastHeart()) return;
     const strength = 0.5 + 0.2 * Math.sin(time() * 3);
     const height = GAME_HEIGHT - TOP;
     for (let i = 0; i < 8; i++) {
@@ -265,8 +271,8 @@ export function addHearts(run) {
 // (the boss's fire and shots), when its touches(player) says so. Each hit
 // costs a whole heart, knocks him back, and makes him blink for a moment,
 // during which he can't be hit again. `onDeath` runs when the last heart is
-// gone.
-export function setupHurt(player, run, heartsHud, room, onDeath) {
+// gone. How long the blinking lasts is stats.invincibleFor.
+export function setupHurt(player, run, heartsHud, room, onDeath, stats) {
   let invincibleUntil = 0;
   let knockVel = vec2(0);
   let knockTime = 0;
@@ -280,7 +286,8 @@ export function setupHurt(player, run, heartsHud, room, onDeath) {
 
     const blinking = time() < invincibleUntil;
     if (!player.frozen) player.opacity = blinking && Math.floor(time() * 12) % 2 ? 0.3 : 1;
-    if (player.frozen || blinking || room.over || run.hearts <= 0) return;
+    // Frozen (the run is over, or the boss is down): nothing can hit him.
+    if (player.frozen || blinking || room.over || room.frozen || run.hearts <= 0) return;
 
     const attacker = get("mob").find((mob) => mob.active && player.isColliding(mob))
       ?? get("hazard").find((hazard) => hazard.touches(player));
@@ -298,7 +305,7 @@ export function setupHurt(player, run, heartsHud, room, onDeath) {
     const strength = attacker.def?.knockback ?? 1;
     knockVel = away.scale(160 * strength);
     knockTime = 0.15;
-    invincibleUntil = time() + INVINCIBLE_FOR;
+    invincibleUntil = time() + stats.invincibleFor;
 
     if (run.hearts <= 0) onDeath();
   });
@@ -306,28 +313,27 @@ export function setupHurt(player, run, heartsHud, room, onDeath) {
 
 // Hearts that monsters drop. They only drop while you're missing one, so
 // you have to keep fighting while hurt to earn them back. The chance starts
-// at 2% a kill and goes up 1% for every kill that didn't drop one, back to
-// 2% after a drop, so there are no long unlucky streaks. Returns the
-// function to call when a mob is beaten.
-const DROP_CHANCE = 0.02;
-const DROP_CHANCE_STEP = 0.01;
+// at stats.heartChance a kill (balance.js, raised by Lucky hearts) and goes
+// up a little for every kill that didn't drop one, back to the start after
+// a drop, so there are no long unlucky streaks. Returns the function to call
+// when a mob is beaten.
 const PICKUP_LIFE = 8;  // seconds before a dropped heart vanishes
 const PICKUP_BLINK = 6; // it blinks from here on, as a warning
-const MAGNET_RANGE = 20; // px: closer than this, it drifts toward you
 
-export function setupHeartDrops(run, heartsHud, player) {
+export function setupHeartDrops(run, heartsHud, player, stats) {
   return (mob) => {
     if (run.hearts >= run.maxHearts) return;
-    if (Math.random() < DROP_CHANCE + DROP_CHANCE_STEP * run.dropStreak) {
+    if (Math.random() < stats.heartChance + BALANCE.drops.heart.step * run.dropStreak) {
       run.dropStreak = 0;
-      dropHeart(mob.pos.clone(), run, heartsHud, player);
+      dropHeart(mob.pos.clone(), run, heartsHud, player, stats.magnetRange);
     } else {
       run.dropStreak++;
     }
   };
 }
 
-function dropHeart(at, run, heartsHud, player) {
+// Closer than `magnet` px (the hero's magnet range), it drifts toward him.
+function dropHeart(at, run, heartsHud, player, magnet) {
   const born = time();
   const canTake = () => !player.frozen && run.hearts < run.maxHearts;
   const heart = add([sprite("heart_full"), pos(at), anchor("bot"), opacity(1), z(9)]);
@@ -342,7 +348,7 @@ function dropHeart(at, run, heartsHud, player) {
     if (age < 0.35 || !canTake()) return;
 
     const distance = player.pos.dist(at);
-    if (distance < MAGNET_RANGE) at = at.add(player.pos.sub(at).unit().scale(Math.min(distance, 90 * dt())));
+    if (distance < magnet) at = at.add(player.pos.sub(at).unit().scale(Math.min(distance, 90 * dt())));
     if (distance < 8) {
       run.hearts++;
       heartsHud.update();
