@@ -45,9 +45,8 @@ const directionOf = (angle) => vec2(Math.sin((angle * Math.PI) / 180), -Math.cos
 const turnBetween = (from, to) => ((to - from + 540) % 360) - 180;
 
 // Space (or the Attack button) swings the hero's weapon in the direction
-// they're facing. It works
-// in every room (try it in the title room); `room` is only passed in rooms
-// with mobs to hit.
+// they're facing. It works in every room (try it in the title room); `room`
+// is only passed in rooms with mobs to hit.
 export function setupAttack(player, room = null) {
   let ready = 0;
   let side = 1; // swings alternate: one way, then back the other way
@@ -87,7 +86,7 @@ function swing(player, room, side) {
     blade.angle = angle;
     blade.pos = chestOf(player).add(directionOf(angle).scale(holdOut));
     trail.extend(last, angle);
-    if (room) hitSwept(player, last, angle, alreadyHit, room);
+    hitSwept(player, last, angle, alreadyHit, room);
     last = angle;
   }, easings.easeOutQuad).onEnd(() => destroy(blade));
 }
@@ -108,6 +107,17 @@ function hitSwept(player, fromAngle, toAngle, alreadyHit, room) {
     const swept = toAngle - fromAngle;
     return distance < 8 || (where >= Math.min(0, swept) - margin && where <= Math.max(0, swept) + margin);
   };
+
+  // Things that react to being hit (tagged "strikeable", with a struck()
+  // function), like the volume blocks in the Options room. Once per swing.
+  for (const thing of get("strikeable")) {
+    if (alreadyHit.has(thing)) continue;
+    if (sweptThrough(thing.pos.add(0, -thing.hitHeight), thing.hitSize)) {
+      alreadyHit.add(thing);
+      thing.struck(player);
+    }
+  }
+  if (!room) return; // no monsters outside the dungeon
 
   for (const mob of get("mob")) {
     if (alreadyHit.has(mob)) continue;

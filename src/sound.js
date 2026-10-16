@@ -1,5 +1,5 @@
 import { getSetting } from "./settings.js";
-import { startMusic, stopMusic } from "./music.js";
+import { startMusic, stopMusic, isMusicPlaying, setMusicGain } from "./music.js";
 
 // Sound effects are made by ZzFX (lib/zzfx.js), which builds each sound from a
 // list of numbers instead of playing a recorded file. The numbers are, in
@@ -38,6 +38,7 @@ const SOUNDS = {
   heal:     [0.35, 0, 600, 0.01, 0.08, 0.25, 0, 1, 0, 0, 300, 0.07],
   bat:      [0.3, 0, 900, 0, 0.02, 0.12, 1, 1, 0, 0, 400, 0.02],
   unroll:   [0.25, 0.3, 900, 0.01, 0.08, 0.12, 4, 2, 0, 0, 0, 0, 0.035, 0.6], // a papery flutter
+  coin:     [0.2, 0.05, 1600, 0, 0.02, 0.12, 1, 1, 0, 0, 600, 0.03],         // a little jingle
 
   // The boss's moves
   gurgle:   [0.35, 0.1, 110, 0.05, 0.3, 0.15, 2, 1, 0, 0, 0, 0, 0.05, 0.5, 15],
@@ -92,22 +93,51 @@ function eqInput(name) {
     // small peak at the cutoff.)
     lowpassFilter.Q.value = -3.01;
 
-    shelfFilter.connect(lowpassFilter).connect(zzfxX.destination);
+    shelfFilter.connect(lowpassFilter).connect(effectsOutput());
     eqInputs[name] = shelfFilter;
   }
   return eqInputs[name];
 }
 
+// Volume levels go from 0 (off) to 10, and 5 is the mix as designed. Ears
+// hear loudness on a curve, not in a straight line, so the level is raised
+// to a power: each step then sounds about the same size. 10 is about 2.8x
+// as loud as 5.
+export const VOLUME_STEPS = 10;
+export const volumeGain = (level) => (level / 5) ** 1.5;
+
+// All sound effects play through one volume control, and then a limiter: at
+// high volumes, the loudest moments are turned down a little instead of
+// distorting.
+let effects = null;
+function effectsOutput() {
+  if (!effects) {
+    const limiter = zzfxX.createDynamicsCompressor();
+    limiter.threshold.value = -3;
+    limiter.knee.value = 3;
+    limiter.ratio.value = 20;
+    limiter.attack.value = 0.002;
+    limiter.release.value = 0.1;
+    limiter.connect(zzfxX.destination);
+    effects = zzfxX.createGain();
+    effects.gain.value = volumeGain(getSetting("sound"));
+    effects.connect(limiter);
+  }
+  return effects;
+}
+
+export function setEffectsVolume(level) {
+  effectsOutput().gain.value = volumeGain(level);
+}
+
 export function playSound(name) {
   if (!getSetting("sound") || !SOUNDS[name]) return;
   const source = zzfx(...SOUNDS[name]);
-  if (EQ[name]) {
-    // zzfx() connects the sound straight to the speakers. It hasn't actually
-    // started yet (audio runs a moment later), so we can re-route it through
-    // its EQ first.
-    source.disconnect();
-    source.connect(eqInput(name));
-  }
+  // zzfx() connects the sound straight to the speakers. It hasn't actually
+  // started yet (audio runs a moment later), so we can re-route it: through
+  // its EQ if it has one, and the effects volume either way.
+  source.disconnect();
+  source.connect(EQ[name] ? eqInput(name) : effectsOutput());
 }
 
 // Browsers keep sound switched off until the player clicks, taps or presses a
@@ -116,7 +146,7 @@ export function playSound(name) {
 export function unlockAudioOnFirstInput() {
   const unlock = () => {
     zzfxX.resume();
-    if (getSetting("music")) startMusic(zzfxX);
+    if (getSetting("music")) startMusic(zzfxX, volumeGain(getSetting("music")));
     window.removeEventListener("keydown", unlock, true);
     window.removeEventListener("pointerdown", unlock, true);
   };
@@ -126,7 +156,10 @@ export function unlockAudioOnFirstInput() {
   window.addEventListener("pointerdown", unlock, true);
 }
 
-export function setMusicPlaying(on) {
-  if (on) startMusic(zzfxX);
-  else stopMusic();
+// Changes the music's volume while it plays: 0 stops it, and turning it up
+// from 0 starts it again.
+export function setMusicVolume(level) {
+  if (level === 0) stopMusic();
+  else if (!isMusicPlaying()) startMusic(zzfxX, volumeGain(level));
+  else setMusicGain(volumeGain(level));
 }
