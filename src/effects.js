@@ -10,7 +10,7 @@ export function shakeScreen(amount) {
 
 // Kaplay's wait() and tween() take a callback for "when it's done". Wrapping
 // them in Promises lets cutscenes use await, so they read top to bottom:
-// "fall, then land, then crack the floor".
+// "fall, then land, then fade out".
 export const sleep = (seconds) => new Promise((resolve) => wait(seconds, resolve));
 
 export function animate(from, to, seconds, setValue, easing = easings.linear) {
@@ -61,17 +61,13 @@ export function puffDust(x, y, count = 8, spread = 14, depth = 11) {
   }
 }
 
-// Red light over the whole room while it's cursed (after a wrong door). It's
-// drawn over the floor, the hero and the mobs, but under the hearts, and
+// A red glow over the whole room (the underworld's). It fades in, then
 // pulses slowly.
 export function addRedLight() {
   const light = add([rect(GAME_WIDTH, GAME_HEIGHT), color(150, 0, 20), opacity(0), z(45)]);
   let strength = 0;
   light.onUpdate(() => (light.opacity = strength * (0.16 + 0.05 * Math.sin(time() * 3))));
-  return {
-    on: () => animate(strength, 1, 0.6, (v) => (strength = v)),
-    off: () => animate(strength, 0, 1, (v) => (strength = v)),
-  };
+  animate(0, 1, 0.6, (v) => (strength = v));
 }
 
 // A short line of text that pops up over the room and fades, like "WAVE 2/3".

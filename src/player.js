@@ -24,7 +24,7 @@ export function addPlayer(x, y) {
     opacity(1),
     rotate(0),
     scale(1),  // squashed flat for a moment when he lands
-    z(10),     // in front of the floor, cracks and his shadow
+    z(10),     // in front of the floor and his shadow
     "player",
     // A plain object adds our own properties. While frozen, the keyboard does
     // nothing, so cutscenes (like walking through a door) can move him instead.

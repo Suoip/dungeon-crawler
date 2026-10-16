@@ -1,6 +1,4 @@
 import { TILE, TOP, GAME_HEIGHT } from "./config.js";
-import { tileAt } from "./room.js";
-import { spawnSpot } from "./mobs.js";
 import { openDoor } from "./doors.js";
 import { sleep, animate, fadeOut, puffDust, shakeScreen, addSpawnHole } from "./effects.js";
 import { playSound } from "./sound.js";
@@ -64,45 +62,6 @@ export async function fallIn(player) {
   await animate(0, 1, 0.2, (t) => {
     player.scale = vec2(lerp(1.4, 1, t), lerp(0.6, 1, t));
   }, easings.easeOutBack);
-}
-
-// The punishment for a wrong door: the floor cracks open in `count` places
-// away from the hero, spreading out tile by tile from each spot, and the
-// cursed mobs crawl out of the cracks. Returns those spots.
-export async function crackFloor(floor, player, count = 3) {
-  const spots = [];
-  for (let i = 0; i < count; i++) {
-    // Not too close to each other either, so the cracks spread out.
-    let spot = spawnSpot(player);
-    for (let tries = 0; tries < 20 && spots.some((other) => other.dist(spot) < 60); tries++) spot = spawnSpot(player);
-    spots.push(spot);
-  }
-
-  for (const spot of spots) {
-    // The tiles around the spot, nearest first, so the crack grows outwards.
-    const center = tileAt(spot.x, spot.y - 4);
-    const tiles = [];
-    for (let col = center.col - 1; col <= center.col + 1; col++) {
-      for (let row = center.row - 1; row <= center.row + 1; row++) {
-        const tile = floor.get(`${col},${row}`);
-        const distance = Math.hypot(col - center.col, row - center.row);
-        if (tile && (distance < 1 || chance(0.6))) tiles.push({ tile, distance });
-      }
-    }
-    tiles.sort((a, b) => a.distance - b.distance);
-
-    playSound("crack");
-    shakeScreen(3);
-    puffDust(spot.x, spot.y, 6, 12, 9);
-    for (const { tile } of tiles) {
-      tile.use(sprite(choose(["floor_2", "floor_4"]))); // the cracked floor tiles
-      await sleep(0.03);
-    }
-    await sleep(0.12);
-  }
-  playSound("crumble");
-  shakeScreen(4);
-  return spots;
 }
 
 // The hero is dead, lying on the floor: a dark hole opens under him, little

@@ -1,4 +1,4 @@
-import { TILE, ROOM_COLS, TOP, LETTERS, LETTER_COLORS } from "./config.js";
+import { TILE, ROOM_COLS, TOP } from "./config.js";
 import { playSound } from "./sound.js";
 
 const DOOR_COLS = 4; // each door is 4 tiles wide: wall, door (2 tiles), wall
@@ -34,11 +34,10 @@ function doorColumns(count) {
 const LABEL_Y = 7;
 const LABEL_ROOM = 60; // px above each door for its label (a door is 64 px wide)
 
-// Adds 2 to 4 doors on the top wall and returns one object per door.
-// `labels` is what's written above each door: the quiz rooms use the letters
-// A-D in their colors; the title room uses words like "PLAY".
-//   { hidden: true } keeps the labels invisible until revealLabels().
-export function addDoors(labels, { hidden = false } = {}) {
+// Adds 1 to 4 doors on the top wall and returns one object per door.
+// `labels` has what's written above each door, like { text: "PLAY", color },
+// or null for a door with no label (the way deeper in the dungeon).
+export function addDoors(labels) {
   return doorColumns(labels.length).map((col, i) => {
     const x = col * TILE;
     const doorX = x + TILE; // the door itself starts one tile in
@@ -56,18 +55,18 @@ export function addDoors(labels, { hidden = false } = {}) {
     add([sprite("door_frame_top"), pos(doorX, TOP - TILE), z(3)]);
     const leaf = add([sprite("door_closed"), pos(doorX, TOP), z(3)]);
 
-    const label = add([
+    const label = labels[i] && add([
       text(labels[i].text, { size: 8, font: "pixel" }),
       pos(doorX + TILE, LABEL_Y),
       anchor("center"),
       color(...labels[i].color),
       scale(1),
-      opacity(hidden ? 0 : 1),
     ]);
     // How much the label can grow when highlighted without bumping into the
-    // next door's label: a lot for one letter, a little for a word.
-    const labelWidth = formatText({ text: labels[i].text, size: 8, font: "pixel" }).width;
-    const maxScale = Math.min(1.4, LABEL_ROOM / labelWidth);
+    // next door's label: a lot for a short word, a little for a long one.
+    const maxScale = label
+      ? Math.min(1.4, LABEL_ROOM / formatText({ text: labels[i].text, size: 8, font: "pixel" }).width)
+      : 1;
 
     // An invisible strip of floor in front of the door. Standing on it means
     // "I'm at this door". It has an area but no body, so it never blocks you.
@@ -76,28 +75,14 @@ export function addDoors(labels, { hidden = false } = {}) {
       area({ shape: new Rect(vec2(0), 2 * TILE - 8, 14) }),
     ]);
 
-    return { index: i, leaf, label, maxScale, zone, centerX: doorX + TILE };
-  });
-}
-
-// The quiz rooms' labels: A, B, C, D in their colors.
-export const letterLabels = (count) =>
-  LETTERS.slice(0, count).map((letter, i) => ({ text: letter, color: LETTER_COLORS[i] }));
-
-// Pops the labels in one after another, left to right.
-export function revealLabels(doors) {
-  doors.forEach((door, i) => {
-    wait(i * 0.08, () => {
-      door.label.opacity = 1;
-      playSound("letter");
-      tween(2, 1, 0.25, (s) => (door.label.scale = vec2(s)), easings.easeOutBack);
-    });
+    return { leaf, label, maxScale, zone, centerX: doorX + TILE };
   });
 }
 
 // Makes a door's label grow and bob while it's the one you'd open, and puts
 // it back to normal when it isn't. Called every frame.
 export function highlightDoor(door, isActive) {
+  if (!door.label) return;
   if (isActive) {
     const grow = 1 + (door.maxScale - 1) * (0.8 + 0.2 * Math.sin(time() * 8));
     door.label.scale = vec2(grow);
@@ -111,8 +96,7 @@ export function highlightDoor(door, isActive) {
 // Two chains crossed over a door in an X, with a padlock in the middle. The
 // pack has no chains, so they're drawn from little squares: alternating light
 // and dark links along each diagonal. z 4 puts them in front of the door.
-// With { slam: true } they drop into place instead of just being there.
-export function chainDoor(door, { slam = false } = {}) {
+export function chainDoor(door) {
   const left = door.centerX - TILE;
   const parts = [];
   for (const [fromX, toX] of [[left + 3, left + 29], [left + 29, left + 3]]) {
@@ -131,46 +115,13 @@ export function chainDoor(door, { slam = false } = {}) {
   ];
   door.locked = true;
   door.chains = { parts, lock };
-
-  if (slam) {
-    for (const piece of [...parts, ...lock]) {
-      const end = piece.pos.clone();
-      piece.opacity = 0;
-      tween(0, 1, 0.18, (t) => {
-        piece.pos = end.add(0, -10 * (1 - t));
-        piece.opacity = t;
-      }, easings.easeInQuad);
-    }
-  }
 }
 
-// The door won't budge: it shakes in its frame for a moment.
-export function rattleDoor(door) {
-  const x = door.leaf.pos.x;
-  return new Promise((resolve) => tween(0, 1, 0.3, (t) => {
-    door.leaf.pos.x = x + Math.round(Math.sin(t * Math.PI * 8) * 2 * (1 - t));
-  }).onEnd(() => {
-    door.leaf.pos.x = x;
-    resolve();
-  }));
-}
-
-// A wrong answer's door: its letter fades and gets a red line through it,
-// and its chains stay on for the rest of the room.
-export function crossOutDoor(door) {
-  door.wrong = true;
-  door.label.opacity = 0.35;
-  const width = door.label.width + 4;
-  add([rect(width, 2), pos(door.centerX - width / 2, LABEL_Y - 1), color(230, 72, 46), z(1)]);
-}
-
-// The padlock pops open and the chains drop away. The door counts as open
-// straight away; `delay` only holds back the animation (so a row of doors
-// can unlock one after another).
-export function unchainDoor(door, delay = 0) {
+// The padlock pops open and the chains drop away.
+export function unchainDoor(door) {
   if (!door.locked) return;
   door.locked = false;
-  wait(delay, () => dropChains(door.chains));
+  dropChains(door.chains);
 }
 
 function dropChains({ parts, lock }) {
@@ -198,10 +149,11 @@ export const doorInteraction = (door, prompt, use) => ({
   highlight: (isActive) => highlightDoor(door, isActive),
 });
 
-// Swings the door open, and its label does a little hop.
+// Swings the door open, and its label (if it has one) does a little hop.
 export function openDoor(door) {
   door.leaf.use(sprite("door_open"));
   playSound("door");
+  if (!door.label) return;
   const hop = Math.min(1.8, door.maxScale + 0.3);
   tween(hop, 1, 0.35, (s) => (door.label.scale = vec2(s)), easings.easeOutBack);
   tween(0, 1, 0.35, (t) => (door.label.pos.y = LABEL_Y - 5 * Math.sin(t * Math.PI)));

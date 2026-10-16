@@ -1,8 +1,8 @@
 import { GAME_WIDTH, GAME_HEIGHT, STAGE_HEIGHT } from "./config.js";
 
-// Kaplay draws the game at its real size, 320x208. Above it sit the question
-// scroll and the strip (HTML, see index.html), and together they make the
-// stage: one picture, 320x276 game pixels. This blows the whole stage up to
+// Kaplay draws the game at its real size, 320x208. Above it sits the strip
+// (HTML, see index.html), and together they make the stage: one picture,
+// 320x220 game pixels. This blows the whole stage up to
 // fill its box on the page, by a whole number (2x, 3x, 4x...) where it can.
 // At an uneven scale like 2.7x, some game pixels become 3 screen pixels wide
 // and others 2, which makes lines look uneven. Whole numbers keep every pixel
@@ -28,9 +28,6 @@ const KEEP_AT_LEAST_SHARP = 0.97; // on sharp screens, only if it keeps 97%
 let gamePixel = 1;
 export const getGamePixel = () => gamePixel;
 
-const resizeListeners = [];
-export const onStageResize = (listener) => resizeListeners.push(listener);
-
 export function scaleToFit(stage, canvas, box) {
   function fit() {
     const ratio = window.devicePixelRatio || 1;
@@ -44,7 +41,6 @@ export function scaleToFit(stage, canvas, box) {
     stage.style.setProperty("--gp", `${gamePixel}px`);
     canvas.style.width = `${GAME_WIDTH * gamePixel}px`;
     canvas.style.height = `${GAME_HEIGHT * gamePixel}px`;
-    resizeListeners.forEach((listener) => listener());
   }
 
   fit();

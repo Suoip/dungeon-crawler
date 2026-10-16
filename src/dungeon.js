@@ -1,71 +1,20 @@
-import { LETTERS } from "./config.js";
-
-// Loads a dungeon file (questions and answers) from the server.
-export async function loadDungeon(url) {
-  const response = await fetch(url);
-  if (!response.ok) throw new Error(`Couldn't load dungeon ${url} (${response.status})`);
-  const dungeon = await response.json();
-
-  dungeon.rooms.forEach((room, i) => {
-    const answers = 1 + room.wrong.length;
-    if (answers < 2 || answers > LETTERS.length) {
-      throw new Error(`Room ${i + 1} has ${answers} answers; it needs 2 to ${LETTERS.length}.`);
-    }
-  });
-  return dungeon;
-}
-
-// Fisher-Yates shuffle: walk backwards through the list, swapping each item
-// with a random one at or before it. Every order is equally likely, which
-// isn't true of the popular `sort(() => Math.random() - 0.5)` trick.
-function shuffle(list) {
-  const result = [...list];
-  for (let i = result.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [result[i], result[j]] = [result[j], result[i]];
-  }
-  return result;
-}
-
-// A run is one attempt at the dungeon. Questions come in a new order every
-// run, and so do the answers behind the doors, so nobody can memorize
-// "the answer is always the left door".
-// `boss` is which boss waits in the last question room (picked in the
-// boss-select test room). Hearts carry over from room to room for the whole
-// run. The timer starts when the hero lands in the first room, and stops
-// while an explanation is up on the scroll (reading it shouldn't cost time).
-// `firstTry` counts questions answered right with the first door picked.
-export function newRun(dungeon, boss) {
-  const rooms = shuffle(dungeon.rooms).map((room) => {
-    const answers = shuffle([
-      { text: room.correct, correct: true },
-      ...room.wrong.map((text) => ({ text, correct: false })),
-    ]);
-    return { question: room.question, explanation: room.explanation, answers };
-  });
-
+// A run is one attempt at the dungeon: ROOMS rooms deep (config.js), with
+// the boss waiting in the last one. Hearts carry over from room to room for
+// the whole run. The timer starts when the hero lands in the first room.
+export function newRun() {
   return {
-    dungeon, rooms, index: 0, boss,
+    index: 0, // the room he's in, 0 = the first
+    boss: "big_zombie",
     hearts: 3, maxHearts: 3,
-    startTime: null, endTime: null, pausedFor: 0, pausedAt: null,
-    firstTry: 0,
+    startTime: null, endTime: null,
     dropStreak: 0, // kills in a row that didn't drop a heart (see combat.js)
   };
-}
-
-export function pauseClock(run) {
-  run.pausedAt = performance.now();
-}
-
-export function resumeClock(run) {
-  run.pausedFor += performance.now() - run.pausedAt;
-  run.pausedAt = null;
 }
 
 // How long the run has taken so far, as "1:23".
 export function runTime(run) {
   if (run.startTime === null) return "0:00";
-  const now = run.endTime ?? run.pausedAt ?? performance.now();
-  const seconds = Math.floor((now - run.startTime - run.pausedFor) / 1000);
+  const now = run.endTime ?? performance.now();
+  const seconds = Math.floor((now - run.startTime) / 1000);
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
 }

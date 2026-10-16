@@ -17,17 +17,6 @@ export const MOB_TYPES = {
   big_zombie:  { hp: 24, speed: 16, feet: [22, 8], size: 36, boss: true, name: "BIG ZOMBIE", favorite: "spawn" },
 };
 
-// Cursed mobs (the punishment for a wrong door) are tinted red and faster.
-const CURSED_TINT = [255, 140, 140];
-const CURSED_SPEED = 1.25;
-
-// For the boss-select test room.
-export const BOSSES = [
-  { id: "big_demon", label: "DEMON", name: "Big Demon", blurb: "Loves to dash at you, leaving a trail of fire behind it." },
-  { id: "ogre", label: "OGRE", name: "Ogre", blurb: "Very tough. Vomits a lot, and knocks you far back." },
-  { id: "big_zombie", label: "ZOMBIE", name: "Big Zombie", blurb: "Very slow, but keeps raising the dead." },
-];
-
 // The waves of mobs a room sends at you, one list of mobs per wave. Deeper
 // rooms have more waves, and tougher mobs in them.
 const Z = "tiny_zombie", G = "goblin", O = "orc_warrior";
@@ -39,28 +28,18 @@ const TIERS = [
 ];
 const tierOf = (depth) => (depth <= 3 ? 0 : depth <= 6 ? 1 : depth <= 8 ? 2 : 3);
 
-// `depth` starts at 1. The last question room has only the boss (it raises
-// its own minions, see boss.js).
+// `depth` starts at 1. The last room has only the boss (it raises its own
+// minions, see boss.js).
 export function wavesForRoom(depth, totalRooms, boss) {
   if (depth === totalRooms) return [[boss]];
   return TIERS[tierOf(depth)];
-}
-
-// The punishment for a wrong door: two waves from the next tier down (the
-// hardest two it has). In the boss room, and at depth 9, that's the
-// toughest tier there is.
-export function cursedWaves(depth, totalRooms) {
-  const tier = depth === totalRooms ? TIERS.length - 1 : Math.min(tierOf(depth) + 1, TIERS.length - 1);
-  return TIERS[tier].slice(-2);
 }
 
 // Raises a room's waves one after another. The next wave starts rising as
 // soon as only one mob of the current wave is left (the boss doesn't count),
 // so there's never a quiet moment. `room.waiting` counts waves that haven't
 // started yet, so the room doesn't think it's clear in between.
-//   cursed  the mobs are cursed (red and faster)
-//   spots   where they rise (cursed mobs crawl out of the floor cracks)
-export function startWaves(waves, room, { cursed = false, spots = null } = {}) {
+export function startWaves(waves, room) {
   room.waiting += waves.length;
   let next = 0;
 
@@ -68,7 +47,7 @@ export function startWaves(waves, room, { cursed = false, spots = null } = {}) {
     if (room.over || next >= waves.length) return;
     const wave = waves[next++];
     room.waiting--;
-    if (waves.length > 1) room.onWave?.(next, waves.length, cursed); // (no "WAVE 1/1" for a lone boss)
+    if (waves.length > 1) room.onWave?.(next, waves.length); // (no "WAVE 1/1" for a lone boss)
 
     let left = wave.filter((type) => !MOB_TYPES[type].boss).length;
     let started = false;
@@ -80,10 +59,7 @@ export function startWaves(waves, room, { cursed = false, spots = null } = {}) {
       }
     };
     wave.forEach((type, i) => {
-      const spot = spots && !MOB_TYPES[type].boss
-        ? spots[i % spots.length].add(rand(-10, 10), rand(-6, 6))
-        : null;
-      raiseMob(type, room, { at: spot, delay: i * 0.25, cursed, onDeath: MOB_TYPES[type].boss ? null : died });
+      raiseMob(type, room, { delay: i * 0.25, onDeath: MOB_TYPES[type].boss ? null : died });
     });
   }
   raiseWave();
@@ -105,7 +81,7 @@ export function spawnSpot(player) {
 // scene. `room.rising` counts mobs still on their way up (or waiting to
 // start, after `delay` seconds), so the room doesn't think it's clear while
 // one is still appearing. `onDeath` is called when this mob is beaten.
-export async function raiseMob(type, room, { at = null, delay = 0, cursed = false, onDeath = null } = {}) {
+export async function raiseMob(type, room, { at = null, delay = 0, onDeath = null } = {}) {
   const def = MOB_TYPES[type];
   room.rising++;
   await sleep(delay);
@@ -133,14 +109,14 @@ export async function raiseMob(type, room, { at = null, delay = 0, cursed = fals
     area({ shape: new Rect(vec2(0), def.feet[0], def.feet[1]) }),
     body(),
     scale(vec2(1, 0)),
-    color(...(cursed ? CURSED_TINT : [255, 255, 255])),
+    color(255, 255, 255),
     z(10),
     "mob",
     {
-      type, def, cursed, onBeaten: onDeath,
+      type, def, onBeaten: onDeath,
       hp: def.hp,
-      speed: def.speed * (cursed ? CURSED_SPEED : 1),
-      tint: rgb(...(cursed ? CURSED_TINT : [255, 255, 255])), // its normal color, to go back to after a flash
+      speed: def.speed,
+      tint: rgb(255, 255, 255), // its normal color, to go back to after a flash
       active: false,            // false while rising, dying or frozen
       knockVel: vec2(0), knockTime: 0,
     },
@@ -169,7 +145,7 @@ export function hurtMob(mob, from, room) {
   const middle = mob.pos.sub(0, mob.def.size / 2);
   const toward = from.sub(0, 10).sub(middle).unit().scale(Math.min(8, mob.def.size / 3));
   sparks(middle.x + toward.x, middle.y + toward.y);
-  mob.color = mob.cursed ? rgb(190, 40, 40) : rgb(255, 110, 110);
+  mob.color = rgb(255, 110, 110);
   wait(0.1, () => mob.exists() && (mob.color = mob.tint));
 
   // Pushed away from whoever hit it. Bosses barely budge, and not at all in

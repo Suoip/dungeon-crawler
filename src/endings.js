@@ -1,42 +1,38 @@
-import { TILE, TOP, GAME_WIDTH, GAME_HEIGHT } from "./config.js";
+import { TILE, TOP, GAME_WIDTH, GAME_HEIGHT, ROOMS } from "./config.js";
 import { buildRoom, roomLimits } from "./room.js";
 import { addPlayer, setupPlayerMovement, setupDash } from "./player.js";
 import { newRun, runTime } from "./dungeon.js";
 import { setupInteractions } from "./interact.js";
 import { fallIn, climbLadder, giveControl, LAND_X, LAND_Y } from "./cutscenes.js";
 import { addFader, fadeIn, sleep, addRedLight } from "./effects.js";
-import { addLadder, addShadowText } from "./props.js";
+import { addLadder, addShadowText, addSign } from "./props.js";
 import { setupAttack } from "./combat.js";
 import { playSound } from "./sound.js";
-import { hideScroll, setScrollNotes } from "./scroll.js";
 import { hidePrompt, showRoomName } from "./panel.js";
-import { celebrate } from "./scenes.js";
 
 // The two ways a run can end, both of them rooms you walk around in (no
 // pop-up screens):
-//   won         through the last right door, into the treasure room
+//   won         through the last room's door, into the treasure room
 //   underworld  dragged down after the monsters took the last heart
 // Both write the run's stats on the floor, and have two ladders up the back
 // wall: one to try again, one back to the menu.
 export function registerEndScenes() {
-  scene("won", (run, { answered }) => endRoom(run, { won: true, answered }));
+  scene("won", (run) => endRoom(run, { won: true }));
   scene("underworld", (run, { depth }) => endRoom(run, { won: false, depth }));
 }
 
 const LADDERS = [
-  { x: 96, label: "TRY AGAIN", prompt: "Try again", go: (run) => go("room", newRun(run.dungeon, run.boss)) },
+  { x: 96, label: "TRY AGAIN", prompt: "Try again", go: () => go("room", newRun()) },
   { x: 224, label: "MENU", prompt: "Back to the menu", go: () => go("title", { from: "below" }) },
 ];
 
-function endRoom(run, { won, answered, depth }) {
-  hideScroll();
-  setScrollNotes();
+function endRoom(run, { won, depth }) {
   buildRoom();
   if (!won) makeUnderworld();
 
   const ladders = LADDERS.map((ladder) => {
     const built = addLadder(ladder.x);
-    addSign(ladder.label, ladder.x - 1.5, 7);
+    addSign([{ text: ladder.label }], ladder.x - 1.5, 7); // over the ladder's top, so it doesn't run through the letters
     return { ...ladder, ...built };
   });
 
@@ -55,7 +51,7 @@ function endRoom(run, { won, answered, depth }) {
       prompt: [ladder.prompt],
       use: async () => {
         await climbLadder(player, ladder, fader);
-        ladder.go(run);
+        ladder.go();
         return true; // he left the room
       },
     })),
@@ -69,8 +65,6 @@ function endRoom(run, { won, answered, depth }) {
     fadeIn(fader, 0.3);
     await fallIn(player);
     if (won) openChests();
-    // The last question's explanation, if it took more than one try.
-    if (answered) await celebrate(run, answered);
     await writeStats(run, won, depth);
     giveControl(player);
     interactions.enable();
@@ -79,19 +73,16 @@ function endRoom(run, { won, answered, depth }) {
 
 // The stats, written on the floor one line after another, like the title.
 async function writeStats(run, won, depth) {
-  const answered = won ? run.rooms.length : run.index;
   const lines = won
     ? [
       { text: "YOU WON!", size: 16, color: [255, 205, 70] },
       { text: `TIME ${runTime(run)}` },
-      { text: `FIRST TRY ${run.firstTry}/${answered}` },
       { text: `HEARTS LEFT ${run.hearts}/${run.maxHearts}` },
     ]
     : [
       { text: "YOU DIED", size: 16, color: [230, 72, 46] },
-      { text: `DEPTH ${depth}/${run.rooms.length}` },
+      { text: `DEPTH ${depth}/${ROOMS}` },
       { text: `TIME ${runTime(run)}` },
-      { text: `FIRST TRY ${run.firstTry}/${answered}` },
     ];
 
   let y = TOP + 4 * TILE + 4;
@@ -196,7 +187,7 @@ function openChests() {
 function makeUnderworld() {
   // Everything built so far is the room's floor and walls: tint it red.
   get("*").filter((part) => part.has("sprite")).forEach((part) => part.use(color(190, 100, 96)));
-  addRedLight().on();
+  addRedLight();
 
   // Fountains in the back wall (columns, left to right), away from the
   // ladders. Their stone gets a lighter red tint than the walls, so the lava
@@ -226,13 +217,4 @@ function makeUnderworld() {
       ember.opacity = 0.9 * (1 - t);
     }).onEnd(() => destroy(ember));
   });
-}
-
-// A sign over a ladder: its label on a small dark wooden board, drawn over
-// the ladder's top so the ladder doesn't run through the letters.
-function addSign(label, x, y) {
-  const width = label.length * 8 + 6;
-  add([rect(width + 2, 12), pos(x - width / 2 - 1, y - 6), color(24, 20, 37), z(2)]);
-  add([rect(width, 10), pos(x - width / 2, y - 5), color(92, 52, 30), z(2)]);
-  add([text(label, { size: 8, font: "pixel" }), pos(x, y + 1), anchor("center"), color(240, 230, 210), z(3)]);
 }

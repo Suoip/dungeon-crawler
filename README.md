@@ -1,8 +1,8 @@
 # Who Wants To Be A Dungeon Crawler
 
-A pixel-art quiz dungeon crawler that runs in the browser. Every room asks a question, and the doors are the answers. Pick the right door and you drop one level deeper into the dungeon. Pick the wrong one and it stays shut: the floor cracks open and cursed monsters crawl out.
+A pixel-art dungeon crawler that runs in the browser. Waves of monsters rise from the floor of every room, and the door deeper stays chained until they're all beaten. Ten rooms down, a boss waits.
 
-![Highlights of a run: fighting the first room's monsters, picking up the scroll they drop, a wrong door turning into cursed waves, the explanation scroll after the right door, the ogre boss's projectile ring, and the treasure room](assets/social/gameplay.gif)
+![A room of the game: the knight swinging at goblins and an orc in front of the chained door, with two of three hearts left](assets/social/screenshot.png)
 
 **[▶ Play it in your browser](https://dungeon-crawler.salihonder.dev)**
 
@@ -13,24 +13,21 @@ A pixel-art quiz dungeon crawler that runs in the browser. Every room asks a que
 | <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> or arrow keys | Move |
 | <kbd>Space</kbd> | Attack |
 | <kbd>Shift</kbd> | Dash |
-| <kbd>E</kbd> | Open a door, pull a lever, climb a ladder, pick a hero |
+| <kbd>E</kbd> | Open a door, pull a lever, climb a ladder, pick a hero, visit a credit's link |
 
-The menu is a room too: walk through **PLAY** to start, or explore **HEROES**, **OPTIONS** and **CREDITS**. In the dungeon, waves of monsters rise from the floor and the doors stay chained until you've beaten them all. The last monster drops a scroll: pick it up and it unrolls with the question. Then stand at the door with your answer and open it. A wrong door is crossed out and the chains go back on while a harder fight plays out; then you pick again from what's left. You have 3 hearts for the whole run, and monsters sometimes drop one when you're missing one. Your score is how deep you get, how fast, and how many questions you got right first try. There are no pop-up screens: a run ends in a room too, either in the treasure room or down in the underworld, with your stats written on the floor and ladders to try again or go back to the menu.
+The menu is a room too: walk through **PLAY** to start, or explore **HEROES**, **OPTIONS** and **CREDITS**. In the dungeon, waves of monsters rise from the floor and the door on the back wall stays chained until you've beaten them all. Then walk through it and drop into the next room, ten rooms deep, with the boss in the last one. You have 3 hearts for the whole run, and monsters sometimes drop one when you're missing one. There are no pop-up screens: a run ends in a room too, either in the treasure room or down in the underworld, with your stats written on the floor and ladders to try again or go back to the menu.
 
 On phones and tablets, touch controls appear: drag anywhere on the left for a joystick, and use the Attack and Dash buttons on the right. A Use button pops up next to them whenever there's something to use. Held upright, the controls sit below the game; held sideways, they sit beside it.
 
 ## Features
 
-- **Questions as doors:** each room shows a question with 2–4 answers, one door per answer, shuffled on every run.
-- **Mistakes cost time, not the run:** a wrong door won't open. The floor cracks, the room turns red, and two waves of cursed monsters (tougher, faster, tinted red) crawl out of the cracks. Then you try again, so every question gets answered in the end.
-- **Learning from mistakes:** after a question you got wrong, the next room opens its scroll with the right answer and an explanation, and waits (the clock too) until you've read it.
+- **Ten rooms deep:** each room is a fight, and its door only unchains once every wave is beaten. Deeper rooms send more waves, and tougher monsters in them.
 - **Endings you walk around in:** get through the last door into the treasure room, where heaps of gold flow out of the corners toward the middle (and scatter when you run through them), and your stats are written on the floor. Lose your last heart and little hands reach up out of the floor and drag your body down into the underworld, a red room with lava fountains, where your stats wait for you. Both have ladders to try again or return to the menu.
 - **Combat in waves:** monsters rise from the floor in waves (zombies, then goblins, then orcs as you go deeper), and the next wave starts as the last one is nearly beaten. Each hit costs one of your 3 hearts for the whole run. A quick dash on a cooldown helps you get into position, and a tiny hit-stop makes every hit land with weight.
 - **Hearts to win back:** monsters can drop a heart, but only while you're missing one, so you have to keep fighting while hurt to earn it. A bad-luck counter makes sure the drops don't dry up, and a dropped heart blinks out after a few seconds.
-- **A boss fight that keeps you moving:** the boss in the last room casts a random move every couple of seconds, each with its own warning flash: a dash that leaves a trail of fire, a ring of 12 projectiles, or raising minions. Once the projectiles turn yellow, a swing bats them back at the boss. Below half health it becomes enraged: it dashes twice, fires a second ring that covers the gaps in the first, and raises tougher minions.
-- **Three bosses:** a demon that loves to dash, an ogre that vomits a lot and hits hard, and a big zombie that keeps raising the dead.
+- **A boss fight that keeps you moving:** the Big Zombie in the last room casts a random move every couple of seconds, each with its own warning flash: a dash that leaves a trail of fire, a ring of 12 projectiles, or raising minions. Once the projectiles turn yellow, a swing bats them back at the boss. Below half health it becomes enraged: it dashes twice, fires a second ring that covers the gaps in the first, and raises tougher minions.
 - **10 playable heroes, each with their own weapon:** pick one in the Heroes room, and it's remembered.
-- **A run timer:** the faster you clear rooms, the better your time. Wrong answers make rooms take longer.
+- **A run timer:** the faster you clear rooms, the better your time.
 - **A volume mixer you walk around in:** sound effects and music each have a slider on the floor, a stone block you knock along a rail from 0 to 10, one notch per hit of your weapon, so you can set your own mix of effects and music. Screen shake is a lever. All of it is remembered between visits.
 - **Sound and music made in code:** sound effects are generated with ZzFX, and the background music is a chiptune loop composed in code with the Web Audio API. There are no audio files.
 
@@ -41,68 +38,44 @@ Plain JavaScript (ES modules) with the [Kaplay](https://kaplayjs.com) game engin
 A few parts worth a look:
 
 - **One set of controls for keys and touch** ([`src/touch.js`](src/touch.js)): the game listens for named buttons (attack, dash, use) instead of keys. The keyboard is bound to them, and the on-screen buttons press the same ones, so no game code knows which was used. The joystick is analog: a small push walks slowly.
-- **One interaction system** ([`src/interact.js`](src/interact.js)): doors, levers, heroes and ladders all work the same way. Each is a zone, a prompt and a `use()` function, and one small module handles detecting the nearest one, the on-screen prompt and the key presses.
+- **One interaction system** ([`src/interact.js`](src/interact.js)): doors, levers, heroes, ladders and plaques all work the same way. Each is a zone, a prompt and a `use()` function, and one small module handles detecting the nearest one, the on-screen prompt and the key presses.
 - **Cutscenes with `async`/`await`** ([`src/cutscenes.js`](src/cutscenes.js)): Kaplay's tweens and timers are wrapped in Promises, so sequences like "open the door, walk in, fade out" read top to bottom.
 - **Layered drawing:** when the knight steps into a doorway, he's drawn behind the door frame but in front of the darkness behind it, using draw order (`z`), so he really walks *into* the door.
-- **A question scroll that never changes size** ([`src/scroll.js`](src/scroll.js)): the question is written on a pixel-art scroll above the room, which unrolls (the two rolls slide apart, done with CSS transitions) once it's found. The scroll, the strip under it and the game are sized in game pixels and scaled as one picture, so they keep their shape on every screen. The text shrinks until it fits, down to a smallest readable size. Because the font comes with the game and everything is measured in game pixels, a question wraps the same way on every device.
-- **Crisp pixels** ([`src/display.js`](src/display.js)): the game is drawn at 320×208 and scaled up by a whole number of real screen pixels (accounting for `devicePixelRatio`) when that keeps most of the space, so every pixel is the same size.
-- **Safe user content:** question text is always inserted with `textContent`, never `innerHTML`, ready for user-made dungeons.
+- **Crisp pixels** ([`src/display.js`](src/display.js)): the game is drawn at 320×208 and scaled up by a whole number of real screen pixels (accounting for `devicePixelRatio`) when that keeps most of the space, so every pixel is the same size. The strip above it is HTML, sized in game pixels and scaled together with the game as one picture, so it keeps its shape on every screen.
 - **Procedural music** ([`src/music.js`](src/music.js)): notes are written as data (`"E5 . . D5 C5"`) and scheduled ahead of time on the Web Audio clock for precise timing.
 
 ## Project structure
 
 ```
-index.html            the page: the question scroll, the strip and the game area
-style.css             scroll, strip and touch control styles
+index.html            the page: the strip and the game area
+style.css             strip and touch control styles
 src/
   main.js             entry point: sets up Kaplay, loads everything, opens the title room
   config.js           shared sizes, speed and colors
   menu.js             the title room and the Heroes, Options and Credits rooms
-  scenes.js           the question rooms
+  scenes.js           the dungeon's rooms
   endings.js          the two rooms a run can end in: the treasure room, and the underworld
-  cutscenes.js        falling in, walking through doors, the floor cracking, ladders, being dragged down
-  interact.js         using doors, levers, heroes and ladders
+  cutscenes.js        falling in, walking through doors, ladders, being dragged down
+  interact.js         using doors, levers, heroes, ladders and plaques
   combat.js           swinging weapons, hearts, heart drops, getting hurt
   mobs.js             monster types, waves, rising from the floor, chasing
   boss.js             the boss's moves: dash and fire trail, projectile rings, raising minions, rage
   player.js           the hero: walking and dashing
   touch.js            touch controls: the joystick and buttons
   doors.js, room.js, props.js, heroes.js   building the rooms and characters
-  panel.js            what the scroll and the strip say
-  scroll.js           drawing the scroll, and shrinking its text to fit
-  dungeon.js          loading a dungeon and shuffling a run
+  panel.js            what the strip says
+  dungeon.js          a run: its rooms, hearts and clock
   sound.js, music.js  sound effects and music
   settings.js         remembered settings (localStorage)
   display.js          whole-pixel scaling
   effects.js          fades, flashes, dust, screen shake, hit-stop
-data/dungeons/        dungeon files (questions, answers, explanations)
-assets/               the tileset, font, icons and preview images
+assets/               the tileset, fonts, icons and preview images
 lib/zzfx.js           ZzFX sound generator
 ```
 
-### Dungeon files
-
-A dungeon is a JSON file of rooms:
-
-```json
-{
-  "title": "Math Test Dungeon",
-  "rooms": [
-    {
-      "question": "What is 1/2 + 1/4?",
-      "correct": "3/4",
-      "wrong": ["2/6", "1/6", "2/4"],
-      "explanation": "Turn 1/2 into 2/4 so both have the same bottom number. Then 2/4 + 1/4 = 3/4."
-    }
-  ]
-}
-```
-
-Each question and its answers must fit on the scroll at its smallest text size, which is three lines, and so must the explanation (with the correct answer). As a rough guide, that's about 120 characters for a question with short answers, or about 60 with answers that take a second line. There's no fixed character count: the game measures every question (in every order its answers can be shuffled) when it loads the dungeon, and refuses one that doesn't fit, naming the room.
-
 ## Running it locally
 
-The game loads its files with `fetch`, so it needs to be served rather than opened as a file. Any static server works, for example:
+The game is made of ES modules, which browsers only load from a server, so it needs to be served rather than opened as a file. Any static server works, for example:
 
 ```bash
 python -m http.server 8000

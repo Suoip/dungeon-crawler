@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Who Wants To Be A Dungeon Crawler</title>
-  <meta name="description" content="A pixel-art quiz dungeon crawler in the browser. Every room asks a question, and the doors are the answers. Pick the wrong one and cursed monsters crawl out of the floor.">
+  <meta name="description" content="A pixel-art dungeon crawler in the browser. Fight through waves of monsters, room after room, down to the boss at the bottom.">
   <meta name="theme-color" content="#181425">
 
   <!-- The icon in the browser tab, and on a phone's home screen -->
@@ -16,36 +16,22 @@
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://dungeon-crawler.salihonder.dev/">
   <meta property="og:title" content="Who Wants To Be A Dungeon Crawler">
-  <meta property="og:description" content="Every room asks a question, and the doors are the answers. Pick the wrong one and cursed monsters crawl out of the floor.">
+  <meta property="og:description" content="Fight through waves of monsters, room after room, down to the boss at the bottom.">
   <meta property="og:image" content="https://dungeon-crawler.salihonder.dev/assets/social/preview.png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
-  <meta property="og:image:alt" content="A room of the game: a question on a scroll with one answer crossed out, chained doors, and a knight fighting red cursed monsters. Next to it, the title: Who Wants To Be A Dungeon Crawler.">
+  <meta property="og:image:alt" content="A room of the game: a knight swinging at goblins and an orc in front of a chained door, with two of three hearts left. Next to it, the title: Who Wants To Be A Dungeon Crawler.">
   <meta name="twitter:card" content="summary_large_image">
 
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <main id="game">
-    <!-- The stage: the scroll, the strip under it, and Kaplay's canvas, scaled
-         together as one picture (display.js), so they always keep their shape. -->
+    <!-- The stage: the strip, and Kaplay's canvas under it, scaled together
+         as one picture (display.js), so they always keep their shape. -->
     <div id="stage">
-      <!-- The question, on a scroll drawn in pixel art (scroll.js). The text is
-           plain HTML on top of it, so it stays sharp and readable. The scroll
-           only appears once it's been found; until then its space is empty. -->
-      <div id="scroll" class="hidden">
-        <div id="scroll-paper"></div>
-        <div id="roll-left" class="roll"></div>
-        <div id="roll-right" class="roll"></div>
-        <div id="scroll-text" class="scroll-text">
-          <p id="question" class="scroll-line">Loading the dungeon…</p>
-          <ol id="answers" class="scroll-items"></ol>
-        </div>
-        <!-- Rooms without a scroll can write short notes in its space -->
-        <div id="scroll-notes"></div>
-      </div>
-      <!-- The strip: a hint or the "Open door" button on the left, depth and
-           time (or the menu room's name) on the right -->
+      <!-- The strip: a hint or the button for what you're standing at on the
+           left, depth and time (or the menu room's name) on the right -->
       <div id="strip">
         <button id="door-button" hidden></button>
         <p id="door-hint" hidden></p>

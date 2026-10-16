@@ -6,9 +6,6 @@ function placeTile(name, col, row, ...extra) {
   return add([sprite(name), pos(col * TILE, TOP + row * TILE), ...extra]);
 }
 
-// The grid square (column, row) that a point in the room is in.
-export const tileAt = (x, y) => ({ col: Math.floor(x / TILE), row: Math.floor((y - TOP) / TILE) });
-
 // Picks the wall piece for a grid position. The room is drawn like this:
 //   row 0      ┌───────┐   top of the wall (thin cap)
 //   row 1      │▓▓▓▓▓▓▓│   brick face of the wall (doors go here)
@@ -67,16 +64,14 @@ export function keepInRoom(obj, feet) {
   if (x !== obj.pos.x || y !== obj.pos.y) obj.pos = vec2(x, y);
 }
 
-// Builds the room and returns its floor tiles, so a trap can crack some of
-// them later. Look one up with floor.get(`${col},${row}`).
+// Builds the room: the floor, the walls, and the invisible boxes that make
+// the walls solid.
 export function buildRoom() {
-  const floor = new Map();
-
   for (let row = 0; row < ROOM_ROWS; row++) {
     for (let col = 0; col < ROOM_COLS; col++) {
       // Floor goes everywhere except the top two wall rows, because the side
       // and bottom wall strips are see-through and the floor shows behind them.
-      if (row >= 2) floor.set(`${col},${row}`, placeTile(randomFloor(), col, row));
+      if (row >= 2) placeTile(randomFloor(), col, row);
 
       const wall = wallTileAt(col, row);
       if (wall) placeTile(wall, col, row);
@@ -98,6 +93,4 @@ export function buildRoom() {
   addSolid(-THICK, TOP - THICK, THICK + 5, GAME_HEIGHT - TOP + 2 * THICK);  // left wall (5 px on screen)
   addSolid(GAME_WIDTH - 5, TOP - THICK, THICK + 5, GAME_HEIGHT - TOP + 2 * THICK); // right wall
   addSolid(-THICK, GAME_HEIGHT - 4, GAME_WIDTH + 2 * THICK, THICK + 4);     // bottom wall (4 px on screen)
-
-  return floor;
 }
