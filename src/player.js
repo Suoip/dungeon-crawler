@@ -2,6 +2,10 @@ import { PLAYER_SPEED } from "./config.js";
 import { puffDust, during, addShadow } from "./effects.js";
 import { getSetting } from "./settings.js";
 import { playSound } from "./sound.js";
+import { joystickDirection } from "./touch.js";
+import { keepInRoom } from "./room.js";
+
+export const PLAYER_FEET = [10, 6]; // the box at his feet that collides, in px
 
 // In the run animation (frames 4-7 of each hero's strip), frame 4 is the one
 // where his foot is planted on the ground. That's when we play a step.
@@ -15,7 +19,7 @@ export function addPlayer(x, y) {
     anchor("bot"), // pos is the point between his feet, not his top-left corner
     // Only his feet collide (10x6 px), not his whole 16x28 body. That's what
     // lets him walk "in front of" the wall instead of stopping at his head.
-    area({ shape: new Rect(vec2(0), 10, 6) }),
+    area({ shape: new Rect(vec2(0), ...PLAYER_FEET) }),
     body(),
     opacity(1),
     rotate(0),
@@ -33,17 +37,18 @@ export function addPlayer(x, y) {
   return player;
 }
 
-// True if any of the given keys is being held down.
-const held = (...keys) => keys.some((k) => isKeyDown(k));
-
-// The direction the movement keys point, e.g. (1, -1) for up and right.
+// Which way he's being told to go: the movement keys (WASD or the arrows,
+// see the buttons in main.js), or else the touch joystick. Its length is 1
+// for keys, and 0 to 1 for the joystick, so a small push walks slowly.
 function heldDirection() {
   const dir = vec2(0, 0);
-  if (held("a", "left")) dir.x -= 1;
-  if (held("d", "right")) dir.x += 1;
-  if (held("w", "up")) dir.y -= 1;
-  if (held("s", "down")) dir.y += 1;
-  return dir;
+  if (isButtonDown("left")) dir.x -= 1;
+  if (isButtonDown("right")) dir.x += 1;
+  if (isButtonDown("up")) dir.y -= 1;
+  if (isButtonDown("down")) dir.y += 1;
+  // unit() makes diagonal movement the same speed as straight movement.
+  // Without it, moving diagonally would be about 41% faster.
+  return dir.len() > 0 ? dir.unit() : joystickDirection();
 }
 
 export function setupPlayerMovement(player) {
@@ -58,9 +63,8 @@ export function setupPlayerMovement(player) {
     const dir = heldDirection();
 
     if (dir.len() > 0) {
-      // unit() makes diagonal movement the same speed as straight movement.
-      // Without it, moving diagonally would be about 41% faster.
-      player.move(dir.unit().scale(PLAYER_SPEED));
+      player.move(dir.scale(PLAYER_SPEED));
+      keepInRoom(player, PLAYER_FEET);
       player.facing = dir.unit();
       if (dir.x !== 0) player.flipX = dir.x < 0; // face the way he's walking
       if (player.getCurAnim().name !== "run") player.play("run");
@@ -80,7 +84,7 @@ export function setupPlayerMovement(player) {
   });
 }
 
-// Shift: a quick dash in the direction he's moving (or facing, if he's
+// Shift (or the Dash button): a quick dash in the direction he's moving (or facing, if he's
 // standing still), for getting into position. It doesn't make him safe
 // from hits; it's only for moving. Afterimages trail behind him, and a small
 // bar under his feet fills up until he can dash again.
@@ -91,7 +95,7 @@ const DASH_COOLDOWN = 1;  // seconds
 export function setupDash(player) {
   let readyAt = 0;
 
-  onKeyPress("shift", async () => {
+  onButtonPress("dash", async () => {
     if (player.frozen || player.dashing || time() < readyAt) return;
     const keys = heldDirection();
     const way = keys.len() > 0 ? keys.unit() : player.facing;
@@ -104,6 +108,7 @@ export function setupDash(player) {
     await during(DASH_TIME, (elapsed) => {
       // move() (not setting pos) so walls still stop him.
       player.move(way.scale(DASH_DISTANCE / DASH_TIME));
+      keepInRoom(player, PLAYER_FEET);
       if (elapsed - lastGhost > 0.035) {
         lastGhost = elapsed;
         addAfterimage(player);

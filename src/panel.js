@@ -1,5 +1,6 @@
 import { LETTERS, LETTER_COLORS } from "./config.js";
 import { runTime } from "./dungeon.js";
+import { showUseButton, hideUseButton } from "./touch.js";
 
 // Everything outside the game canvas: the question panel above it, and the
 // game over / victory screens laid over it. This is plain HTML, not Kaplay.
@@ -33,6 +34,7 @@ function focusGame() {
 // The top row: the dungeon's name, then "Depth 3/10 · 1:23" (depth and time).
 let shownDepth = 1;
 function setDepth(run, depth) {
+  lockToDungeon();
   shownDepth = Math.min(depth, run.rooms.length);
   $("dungeon-title").textContent = run.dungeon.title;
   tickTimer(run);
@@ -45,7 +47,7 @@ export function tickTimer(run) {
 
 // These two fill in a panel's question line and answer list. They take the
 // elements to fill as arguments, so they work both on the real panel and on
-// the invisible copy that lockPanelHeight() measures.
+// the invisible copy that measureTallest() measures.
 function fillQuestion(questionEl, answersEl, question, answers) {
   questionEl.textContent = question;
   answersEl.replaceChildren(...answers.map((answer, i) => {
@@ -72,14 +74,20 @@ export function crossOutAnswer(index) {
 }
 
 // The game fills whatever space the panel leaves, so every time the panel
-// changed height, the whole game got squeezed or stretched. To stop that, we
-// work out the tallest the panel will ever need to be for this dungeon and
-// keep it at that height the whole time.
+// changed height, the whole game got squeezed or stretched. To stop that, the
+// panel's height is locked:
+//   - in the dungeon, to the tallest of all its questions, so it never
+//     changes during a run
+//   - in each menu room, to that room's own panel
+// It only changes when a new room is set up, which happens while the screen
+// is black (every room fades in), so you never see the game jump. Locking per
+// room, instead of to the tallest panel of all, lets the game be bigger: the
+// credits list was the tallest, and every room had to make space for it.
 //
 // We measure on an invisible copy of the panel, so the real one isn't touched.
 // Text wraps differently at different widths, so this runs again whenever the
 // window is resized.
-function measureTallestPanel(dungeon, menuPanels) {
+function measureTallest(fillers) {
   const panel = $("panel");
   const copy = panel.cloneNode(true);
   copy.removeAttribute("id"); // its styling comes from the "panel" class, so it still looks the same
@@ -87,38 +95,43 @@ function measureTallestPanel(dungeon, menuPanels) {
   copy.style.cssText = `position: absolute; left: 0; top: 0; width: ${panel.offsetWidth}px; visibility: hidden; min-height: 0;`;
   document.body.append(copy);
 
-  // The top row is still empty when this first runs, so fill it in too, or
-  // it would count as zero height.
-  copy.querySelector("#dungeon-title").textContent = dungeon.title;
-  copy.querySelector("#progress").textContent = `Depth ${dungeon.rooms.length}/${dungeon.rooms.length}`;
-
-  const questionEl = copy.querySelector("#question");
-  const answersEl = copy.querySelector("#answers");
   let tallest = 0;
-  const measure = () => (tallest = Math.max(tallest, copy.offsetHeight));
-
-  for (const room of dungeon.rooms) {
-    const answers = [room.correct, ...room.wrong];
-    fillQuestion(questionEl, answersEl, room.question, answers);
-    measure();
+  for (const fill of fillers) {
+    fill(copy);
+    tallest = Math.max(tallest, copy.offsetHeight);
   }
-
-  // And the menu rooms' panels (the credits list can be the tallest of all).
-  for (const content of menuPanels) {
-    fillMenu(copy, content());
-    measure();
-  }
-
   copy.remove();
   return tallest;
 }
 
-// `menuPanels` are functions that return the content of each menu room's
-// panel, so those get measured too.
-export function lockPanelHeight(dungeon, menuPanels = []) {
-  const lock = () => ($("panel").style.minHeight = `${measureTallestPanel(dungeon, menuPanels)}px`);
-  lock();
-  window.addEventListener("resize", lock);
+// Every question of the dungeon, filled into the copy one at a time.
+const questionFillers = (dungeon) => dungeon.rooms.map((room) => (copy) => {
+  copy.querySelector("#dungeon-title").textContent = dungeon.title;
+  copy.querySelector("#progress").textContent = `Depth ${dungeon.rooms.length}/${dungeon.rooms.length} · 0:00`;
+  fillQuestion(copy.querySelector("#question"), copy.querySelector("#answers"), room.question, [room.correct, ...room.wrong]);
+});
+
+let lockedDungeon = null;
+let lockedTo = null; // "dungeon", or the content of the menu room we're in
+
+function applyLock() {
+  if (!lockedTo) return;
+  const fillers = lockedTo === "dungeon"
+    ? questionFillers(lockedDungeon)
+    : [(copy) => fillMenu(copy, lockedTo)];
+  $("panel").style.minHeight = `${measureTallest(fillers)}px`;
+}
+
+// Called once, with the dungeon whose questions the run will ask.
+export function lockPanelHeight(dungeon) {
+  lockedDungeon = dungeon;
+  window.addEventListener("resize", applyLock);
+}
+
+function lockToDungeon() {
+  if (lockedTo === "dungeon") return; // already locked for the run
+  lockedTo = "dungeon";
+  applyLock();
 }
 
 // Replaces the question with a message, e.g. after the last room.
@@ -127,13 +140,11 @@ export function showMessage(message) {
   $("answers").replaceChildren();
 }
 
-// True on phones and tablets (no mouse to hover with).
-export const isTouchScreen = () => window.matchMedia("(hover: none)").matches;
-
 // The prompt row under the question. While the player stands at something
 // they can use (a door, a lever, a hero...), it shows a button like
 // "Open door B  [E]"; otherwise it shows a hint. The button is for
-// mouse and touch; on a keyboard, E does the same thing.
+// mouse and touch; on a keyboard, E does the same thing. On touch screens
+// the same action also shows on the Use button by the thumbs (touch.js).
 // `content` is a list of text and elements, e.g. ["Open door ", letterBadge(1)].
 export function setPrompt(content, onUse, hint) {
   const button = $("door-button");
@@ -143,6 +154,7 @@ export function setPrompt(content, onUse, hint) {
     button.hidden = true;
     hintEl.hidden = false;
     hintEl.textContent = hint;
+    hideUseButton();
     return;
   }
 
@@ -153,16 +165,18 @@ export function setPrompt(content, onUse, hint) {
     focusGame();
     onUse();
   };
+  showUseButton(content, onUse);
 }
 
 export function hidePrompt() {
   $("door-button").hidden = true;
   $("door-hint").hidden = true;
+  hideUseButton();
 }
 
 // Fills a panel for the menu rooms: a heading row, one line of text, and a
 // list of items (text or elements, laid out like the answers). Works on the
-// real panel or on the invisible copy lockPanelHeight() measures.
+// real panel or on the invisible copy measureTallest() measures.
 function fillMenu(panelEl, { left = "", right = "", line, items = [] }) {
   panelEl.querySelector("#dungeon-title").textContent = left;
   panelEl.querySelector("#progress").textContent = right;
@@ -174,7 +188,14 @@ function fillMenu(panelEl, { left = "", right = "", line, items = [] }) {
   }));
 }
 
-export const showMenuPanel = (content) => fillMenu($("panel"), content);
+// A menu room's panel, with the panel locked to its height. (Measure first:
+// filling the copy borrows the content's links, and filling the real panel
+// afterwards takes them back.)
+export function showMenuPanel(content) {
+  lockedTo = content;
+  applyLock();
+  fillMenu($("panel"), content);
+}
 
 // A link that opens in a new tab.
 export function link(text, href) {

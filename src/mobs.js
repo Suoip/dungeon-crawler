@@ -2,6 +2,7 @@ import { TILE, TOP, GAME_WIDTH, GAME_HEIGHT } from "./config.js";
 import { sleep, animate, puffDust, hitStop, addShadow, addSpawnHole, sparks } from "./effects.js";
 import { playSound } from "./sound.js";
 import { setupBoss } from "./boss.js";
+import { keepInRoom } from "./room.js";
 
 // The monsters. `feet` is the size of the box at their feet that collides
 // (like the hero's), `speed` is in pixels per second, `hp` is how many hits
@@ -204,6 +205,7 @@ function setupBrain(mob, room) {
     if (mob.knockTime > 0) {
       mob.knockTime -= dt();
       mob.move(mob.knockVel);
+      keepInRoom(mob, mob.def.feet);
       return;
     }
 
@@ -211,6 +213,7 @@ function setupBrain(mob, room) {
     const toPlayer = room.player.pos.sub(mob.pos);
     if (toPlayer.len() > 2) {
       mob.move(toPlayer.unit().scale(mob.speed));
+      keepInRoom(mob, mob.def.feet);
       mob.flipX = toPlayer.x < 0;
       if (mob.getCurAnim()?.name !== "run") mob.play("run");
     }

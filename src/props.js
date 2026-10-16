@@ -69,6 +69,23 @@ export function addKeycap(x, y, label) {
   return width;
 }
 
+// The touch controls, drawn small for the title room: the joystick (a ring
+// with a knob in it) or one of the round buttons, like the real ones.
+export function addTouchIcon(x, y, kind) {
+  if (kind === "stick") {
+    add([circle(11), pos(x, y), anchor("center"), color(24, 20, 37)]);
+    add([circle(10), pos(x, y), anchor("center"), color(90, 77, 110)]);
+    add([circle(5), pos(x + 3, y - 2), anchor("center"), color(24, 20, 37)]);
+    add([circle(4), pos(x + 3, y - 2), anchor("center"), color(214, 206, 224)]);
+    return;
+  }
+  const radius = kind === "attack" ? 11 : kind === "use" ? 9 : 9;
+  const ring = { attack: [230, 72, 46], use: [255, 205, 70], dash: [120, 110, 140] }[kind];
+  add([circle(radius + 1), pos(x, y + 1), anchor("center"), color(18, 15, 28)]); // its shadow, so it looks raised
+  add([circle(radius), pos(x, y), anchor("center"), color(...ring)]);
+  add([circle(radius - 2), pos(x, y), anchor("center"), color(58, 47, 74)]);
+}
+
 // Text in the pixel font with a dark shadow under it, so it stands out on
 // the floor.
 export function addShadowText(content, x, y, size, rgb) {

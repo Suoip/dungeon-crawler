@@ -3,6 +3,8 @@ import { heroById } from "./heroes.js";
 import { getSetting } from "./settings.js";
 import { hurtMob } from "./mobs.js";
 import { SHOT_HEIGHT } from "./boss.js";
+import { keepInRoom } from "./room.js";
+import { PLAYER_FEET } from "./player.js";
 import { flashScreen, shakeScreen, hitStop } from "./effects.js";
 import { playSound } from "./sound.js";
 
@@ -42,14 +44,15 @@ const directionOf = (angle) => vec2(Math.sin((angle * Math.PI) / 180), -Math.cos
 // The difference between two angles, from -180° to 180°.
 const turnBetween = (from, to) => ((to - from + 540) % 360) - 180;
 
-// Space swings the hero's weapon in the direction they're facing. It works
+// Space (or the Attack button) swings the hero's weapon in the direction
+// they're facing. It works
 // in every room (try it in the title room); `room` is only passed in rooms
 // with mobs to hit.
 export function setupAttack(player, room = null) {
   let ready = 0;
   let side = 1; // swings alternate: one way, then back the other way
 
-  onKeyPress("space", () => {
+  onButtonPress("attack", () => {
     if (player.frozen || time() < ready) return;
     ready = time() + SWING_COOLDOWN;
     swing(player, room, side);
@@ -262,6 +265,7 @@ export function setupHurt(player, run, heartsHud, room, onDeath) {
     if (knockTime > 0) {
       knockTime -= dt();
       player.move(knockVel);
+      keepInRoom(player, PLAYER_FEET);
     }
 
     const blinking = time() < invincibleUntil;

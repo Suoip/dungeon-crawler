@@ -9,9 +9,10 @@ import {
   fallIn, walkThroughDoor, climbLadder, climbOutOfHatch, besideHatch, giveControl, LAND_X, LAND_Y,
 } from "./cutscenes.js";
 import { addFader, fadeIn, puffDust, shakeScreen } from "./effects.js";
-import { addLadder, addHatch, addLever, addKeycap, addShadowText } from "./props.js";
+import { addLadder, addHatch, addLever, addKeycap, addTouchIcon, addShadowText } from "./props.js";
 import { playSound, setMusicPlaying } from "./sound.js";
-import { showMenuPanel, hidePrompt, link, isTouchScreen } from "./panel.js";
+import { showMenuPanel, hidePrompt, link } from "./panel.js";
+import { isTouch, useHint } from "./touch.js";
 import { setupAttack } from "./combat.js";
 import { BOSSES } from "./mobs.js";
 
@@ -23,21 +24,19 @@ const MENU_LABEL_COLOR = [240, 230, 210];
 const strong = (text) => Object.assign(document.createElement("strong"), { textContent: text });
 
 // ---------------------------------------------------------------------------
-// What the panel shows in each menu room. They're functions so lockPanelHeight
-// can measure them too (see main.js).
+// What the panel shows in each menu room. They're functions, so they always
+// show the current settings (like which hero you are).
 // ---------------------------------------------------------------------------
 
 const titlePanel = () => ({
   left: "Main menu",
-  line: isTouchScreen()
-    ? "Best played with a keyboard. Touch controls are coming soon!"
-    : "Every room asks a question, and the doors are the answers. Pick a door to begin.",
+  line: "Every room asks a question, and the doors are the answers. Pick a door to begin.",
 });
 
 const heroesPanel = () => ({
   left: "Heroes",
   line: ["You are the ", strong(heroById(getSetting("hero")).name), "."],
-  items: ["Walk up to another hero and press E to swap."],
+  items: [`Walk up to another hero and ${useHint()} to swap.`],
 });
 
 const onOff = (on) => (on ? "ON" : "OFF");
@@ -70,8 +69,6 @@ const bossesPanel = () => ({
   items: BOSSES.map((boss) => [strong(boss.name), `: ${boss.blurb}`]),
 });
 
-export const MENU_PANELS = [titlePanel, heroesPanel, optionsPanel, creditsPanel, bossesPanel];
-
 // ---------------------------------------------------------------------------
 // The title room
 // ---------------------------------------------------------------------------
@@ -90,22 +87,27 @@ function registerTitle(dungeon) {
     buildRoom();
     const doors = addDoors(MENU.map((item) => ({ text: item.label, color: MENU_LABEL_COLOR })));
 
-    // The title, and the controls drawn as keyboard keys.
+    // The title, and the controls: drawn as keyboard keys, or on a touch
+    // screen as the joystick and buttons.
     addShadowText("WHO WANTS TO BE A", 160, 60, 8, [240, 230, 210]);
     addShadowText("DUNGEON CRAWLER", 160, 76, 16, [255, 205, 70]);
 
     const LABEL = [169, 155, 185];
-    addKeycap(52, 94, "W");
-    [38, 52, 66].forEach((x, i) => addKeycap(x, 109, "ASD"[i]));
+    if (isTouch()) {
+      addTouchIcon(52, 112, "stick");
+      addTouchIcon(122, 112, "use");
+      addTouchIcon(194, 112, "attack");
+      addTouchIcon(268, 112, "dash");
+    } else {
+      addKeycap(52, 94, "W");
+      [38, 52, 66].forEach((x, i) => addKeycap(x, 109, "ASD"[i]));
+      addKeycap(122, 109, "E");
+      addKeycap(194, 109, "SPACE");
+      addKeycap(268, 109, "SHIFT");
+    }
     addShadowText("MOVE", 52, 132, 8, LABEL);
-
-    addKeycap(122, 109, "E");
     addShadowText("USE", 122, 132, 8, LABEL);
-
-    addKeycap(194, 109, "SPACE");
     addShadowText("ATTACK", 194, 132, 8, LABEL);
-
-    addKeycap(268, 109, "SHIFT");
     addShadowText("DASH", 268, 132, 8, LABEL);
 
     const hatch = addHatch(9, 9);
@@ -126,7 +128,7 @@ function registerTitle(dungeon) {
         MENU[i].scene();
         return true; // he left the room
       })),
-      () => (isTouchScreen() ? "" : "Walk up to a door and press E."),
+      () => `Walk up to a door and ${useHint()}.`,
     );
 
     (async () => {
@@ -183,7 +185,7 @@ function registerSubRoom(name, panel, setup, { ladderX = LAND_X } = {}) {
   });
 }
 
-// All the heroes stand in two rows. Walk up to one and press E to swap places:
+// All the heroes stand in two rows. Walk up to one and use it to swap places:
 // you become them, and the hero you were takes their spot.
 function setupHeroes(player) {
   const figures = HEROES.map((hero, i) => {

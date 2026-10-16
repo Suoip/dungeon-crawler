@@ -1,7 +1,7 @@
 import { setPrompt, hidePrompt } from "./panel.js";
 
 // Doors, levers, heroes and the ladder all work the same way: stand next to
-// one, and the panel offers it; press E (or tap the button) to use
+// one, and the panel offers it; press E (or tap a button) to use
 // it. This handles that for any list of "things", each an object with:
 //   zone        an invisible area in front of it; standing in it = "I'm here"
 //   prompt      what the panel button says, e.g. ["Open door ", badge], or a
@@ -29,7 +29,7 @@ export function setupInteractions(player, things, hint) {
     setPrompt(null, useActive, hint()); // the next frame works out what's nearby again
   }
 
-  onKeyPress("e", useActive); // (Space is for attacking, see combat.js)
+  onButtonPress("use", useActive); // E (Space is for attacking, see combat.js)
 
   onUpdate(() => {
     if (!enabled || busy) return;
