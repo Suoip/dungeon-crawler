@@ -10,6 +10,10 @@
 //   and the median (middle) result is the one checked. The player is the
 //   efficient one, who plays well.
 //
+// And how the start feels: with no upgrades, room 1 must be out of reach,
+// even for a sharp player (with a margin: how much more time he'd need); it
+// should open after about 6-8 upgrades.
+//
 // It plays with two kinds of shopper, because real players fall somewhere in
 // between:
 //   value     buys whatever helps most for its price (it tries each one out)
@@ -33,6 +37,10 @@ const MARGIN = 1.3;         // warn when a golden-rule run earns less than this 
 const MAX_RUNS = 400;       // if it's not done by then, it's stuck
 const MEDIAN_OF = 101;      // dice rolls per golden-rule check (an odd number has a middle)
 const WORTH_OF = 10;        // dice rolls when a shopper tries an upgrade out
+const BARE_RUNS = 1000;     // dice rolls for the no-upgrades check
+// A player sharper than the efficient one, for that check: he walks and
+// dodges better (nobody swings faster than the swing's timer).
+const SHARP = { clearTime: 0.8, gold: 1, danger: 0.8 };
 
 const startingLevels = () => Object.fromEntries(BALANCE.tree.filter((n) => n.owned).map((n) => [n.id, 1]));
 
@@ -68,6 +76,13 @@ function worth(levels, player) {
     worthCache.set(key, mean((r) => r.gold / (r.wall + MODEL.hubPerRun) + (r.ending === "boss" ? 1000 : 0) + r.deepest * 0.01));
   }
   return worthCache.get(key);
+}
+
+// The cheapest level on sale that adds time to the clock, if he can afford it.
+const TIME_STATS = new Set(["startTime", "timePerSubDepth"]);
+function moreTime(levels, gold) {
+  const offers = forSale(levels).filter((o) => o.price <= gold && TIME_STATS.has(o.node.effect?.stat));
+  return offers.sort((a, b) => a.price - b.price)[0] ?? null;
 }
 
 const SHOPPERS = {
@@ -109,7 +124,13 @@ function playDepth(shopperName, player, nextRun) {
     const cheapest = offers.length ? Math.min(...offers.map((o) => o.price)) : null;
 
     const bought = [];
-    for (let pick = shop(levels, bank, player); pick; pick = shop(levels, bank, player)) {
+    // The clock stopped him again where it stopped him before (no deeper
+    // than his best run, by a tenth of a room): anyone would buy more time
+    // first. (The value shopper can't see it: a few seconds more often don't
+    // pay until they get him well into the next room.)
+    const stuck = run.ending === "time" && runs.length && run.deepest < Math.max(...runs.map((r) => r.deepest)) + 0.1;
+    const first = stuck ? moreTime(levels, bank) : null;
+    for (let pick = first ?? shop(levels, bank, player); pick; pick = shop(levels, bank, player)) {
       bank -= pick.price;
       levels[pick.node.id] = (levels[pick.node.id] ?? 0) + 1;
       bought.push(`${pick.node.name} ${levels[pick.node.id]}`);
@@ -148,7 +169,7 @@ function walls(runs) {
   let best = 0;
   let since = null;
   for (const run of runs) {
-    if (run.deepest > best + 0.1) {
+    if (run.deepest > best + 0.1 || run.ending === "boss") { // (a boss kill ends a stretch at the boss)
       if (since && run.n - since.n >= 4) found.push({ from: since.n, to: run.n - 1, at: best, minutes: run.minutes - since.minutes });
       best = run.deepest;
       since = run;
@@ -200,6 +221,17 @@ export function spread(shopperName, player, seeds) {
   const minutes = plays.map((p) => p.runs.at(-1).minutes).sort((a, b) => a - b);
   const runs = plays.map((p) => p.runs.length).sort((a, b) => a - b);
   const allRuns = plays.flatMap((p) => p.runs).filter((r) => r.cheapest !== null);
+  // The first run that got through room 1, and the upgrades bought before it.
+  const opens = plays.map((p) => {
+    const at = p.runs.findIndex((r) => r.deepest >= 1);
+    if (at < 0) return { run: Infinity, upgrades: Infinity }; // never (it can't happen if the boss falls)
+    return { run: at + 1, upgrades: p.runs.slice(0, at).reduce((sum, r) => sum + r.bought.length, 0) };
+  });
+  const sortedBy = (f) => opens.map(f).sort((a, b) => a - b);
+  const longest = plays.map((p) => Math.max(0, ...walls(p.runs).map((w) => w.to - w.from + 1)));
+  // The minute each room is first cleared (room 10: the boss beaten), median.
+  const firstClear = (runs, room) => runs.find((r) => r.deepest >= room && (room < 10 || r.ending === "boss"))?.minutes ?? Infinity;
+  const clears = Array.from({ length: 10 }, (_, i) => percentile(plays.map((p) => firstClear(p.runs, i + 1)).sort((a, b) => a - b), 0.5));
   return {
     minutes: { mean: minutes.reduce((a, b) => a + b, 0) / seeds, p10: percentile(minutes, 0.1), p90: percentile(minutes, 0.9), all: minutes },
     runs: { median: percentile(runs, 0.5) },
@@ -207,7 +239,26 @@ export function spread(shopperName, player, seeds) {
     buysNothing: allRuns.filter((r) => r.gold < r.cheapest).length / allRuns.length,
     maxBuys: Math.max(...plays.flatMap((p) => p.runs.map((r) => r.bought.length))),
     rhythm: rhythm(plays.map((p) => p.runs)),
+    roomOne: { run: percentile(sortedBy((o) => o.run), 0.5), upgrades: percentile(sortedBy((o) => o.upgrades), 0.5) },
+    walls: { share: longest.filter((l) => l > 0).length / seeds, longest: Math.max(...longest) },
+    clears,
   };
+}
+
+// With no upgrades at all (and `extra` more seconds on the clock): the share
+// of runs that get through room 1.
+export function bareRoomOne(player, extra = 0, count = BARE_RUNS) {
+  const stats = { ...heroStats(startingLevels()) };
+  stats.startTime += extra;
+  const runs = Array.from({ length: count }, (_, i) => simulateRun(stats, makeDice(7_000_001 + i), player));
+  return runs.filter((r) => r.deepest >= 1).length / runs.length;
+}
+
+// The margin: how many more seconds on the first clock it would take for a
+// player with no upgrades to get through room 1 now and then (1 run in 100).
+export function bareMargin(player) {
+  for (let extra = 0; extra <= 60; extra++) if (bareRoomOne(player, extra, 300) >= 0.01) return extra;
+  return Infinity;
 }
 
 function summarize(shopperName, path, typical, efficient) {
@@ -239,13 +290,21 @@ function summarize(shopperName, path, typical, efficient) {
   const beat = (r) => `${fmt(100 * r.none)}% none, ${fmt(100 * r.one)}% one, ${fmt(100 * r.few)}% 2-4, ${fmt(100 * r.many)}% 5+`
     + ` (5+ before the last stretch: ${fmt(100 * r.manyEarly)}%; biggest spree ${fmt(r.spree, 1)} on average, ${typical.maxBuys} at most)`;
   lines.push(`  upgrades bought per run (typical player): ${beat(typical.rhythm)}`);
+  lines.push(`  room 1 first cleared (median): run ${typical.roomOne.run} after ${typical.roomOne.upgrades} upgrades (typical player), `
+    + `run ${efficient.roomOne.run} after ${efficient.roomOne.upgrades} (efficient)  [target 6-8 upgrades]`);
   lines.push(`  first run: reached ${fmt(path.runs[0].deepest, 1)}, earned ${path.runs[0].gold} gold, bought ${path.runs[0].bought.join(", ") || "nothing"}`);
   lines.push(`  tree bought when the boss fell: ${boughtLevels} of ${allLevels} levels`
     + (earlyLevels ? `, plus ${earlyLevels} of the next depth's, bought early` : ""));
   const stuck = walls(path.runs);
+  const where = (w) => (w.at >= 9.99 ? "at the boss" : `at ${fmt(w.at, 1)}`); // (9.999: the boss room's bar is full)
   lines.push(stuck.length
-    ? `  walls: ${stuck.map((w) => `runs ${w.from}-${w.to} ${w.open ? "still stuck at the end" : "stuck"} at ${fmt(w.at, 1)} (${fmt(w.minutes, 1)} min)`).join("; ")}`
+    ? `  walls: ${stuck.map((w) => `runs ${w.from}-${w.to} ${w.open ? "still stuck at the end" : "stuck"} ${where(w)} (${fmt(w.minutes, 1)} min)`).join("; ")}`
     : "  walls: none longer than 3 runs");
+  const took = typical.clears.map((m, i) => m - (i ? typical.clears[i - 1] : 0));
+  const slowest = took.slice(0, 9).reduce((best, m, i) => (m > took[best] ? i : best), 0);
+  lines.push(`  minutes until each room is first cleared (typical player, median): ${typical.clears.map((m) => fmt(m, 1)).join(", ")}`
+    + `  (the slowest before the boss: room ${slowest + 1}, ${fmt(took[slowest], 1)} min)`);
+  lines.push(`  walls with real luck (typical player): in ${fmt(100 * typical.walls.share)}% of playthroughs, the longest ${typical.walls.longest} runs`);
   const unbought = BALANCE.tree.filter((n) => (n.depth ?? 1) <= DEPTH && (path.levels[n.id] ?? 0) === 0).map((n) => n.name);
   if (unbought.length) lines.push(`  never bought: ${unbought.join(", ")}`);
   return lines.join("\n");
@@ -270,6 +329,10 @@ function main(args) {
     typical: spread(shopper, PLAYERS.typical, seeds),
     efficient: spread(shopper, PLAYERS.efficient, seeds),
   }));
+  const bare = { efficient: bareRoomOne(PLAYERS.efficient), sharp: bareRoomOne(SHARP), margin: bareMargin(SHARP) };
+  console.log(`no upgrades: room 1 cleared in ${fmt(100 * bare.efficient, 1)}% of runs (efficient player), ${fmt(100 * bare.sharp, 1)}% (a sharp player)`
+    + (bare.sharp > 0 ? "  <- should be 0" : `; a sharp player would need ${bare.margin} s more on the first clock`));
+  console.log();
   for (const r of results) {
     console.log(summarize(r.shopper, r.path, r.typical, r.efficient));
     if (args.includes("--runs")) console.log(`  the golden-rule path, run by run:\n${runTable(r.path.runs)}`);
@@ -282,4 +345,5 @@ function main(args) {
   }
   // Exit with an error if the golden rule broke, so it can't be missed.
   if (results.some((r) => golden(r.path.runs).broken.length)) process.exitCode = 1;
+  if (bare.sharp > 0) process.exitCode = 1;
 }

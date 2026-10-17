@@ -108,9 +108,10 @@ export const LAYOUTS = [
   ],
   // ---- Sub-depth 3 ----
   [
-    // Four posts: four pillars in a wide square around the middle, so you get
-    // your first cover from skeleton charges and the centre lanes stay wide
-    // open, with the pots in the two bottom corners.
+    // Four posts: four pillars in a wide square around the middle, the
+    // crypt's first pillars to weave around while the tiny zombies chase
+    // you, with the centre lanes wide open and the pots in the two bottom
+    // corners.
     [
       "....................",
       "....................",

@@ -20,6 +20,13 @@ export const MODEL = {
   dustTime: 0.8,        // the warning dust part of that: a full bar cancels a spawn that's still in it
   bossEntrance: 2.7,    // from the full bar to the hero moving again: the crumble, the rise, the roar (3.0 s with the shove)
   approach: 1.0,        // seconds until a risen monster is up close, at the starting reach
+  // Wanderers (balance.js `wanders`), measured against a bot playing room 1
+  // in the game (seconds per slug with 1-hit and 3-hit slugs, at three swing
+  // speeds and a longer reach, all within about 5%):
+  wanderWalk: 0.9,      // seconds walking over to one, on average (reach hardly matters)...
+  wanderSpread: 0.5,    // ...give or take this share (where it rose, which way it crawled)
+  wanderNearest: 0,     // ...times (how many are about)^-this: with more about, the nearest is closer (the fit didn't need it)
+  wanderDrift: 0.15,    // while he's fighting, the chance per swing, for each one about, that it crawls into his swing too
   doorWalk: 2.0,        // walking to the door once the bar is full
   collectPerRoom: 1.2,  // gathering the room's coins on the way, with the starting magnet
   perBreakable: 0.5,    // walking over to a breakable (on top of the swings it takes)
@@ -117,7 +124,9 @@ export function simulateRun(stats, dice, player = PLAYERS.efficient) {
   const { step } = BALANCE.drops.heart;
   const walk = walking(stats);
   const danger = safety(stats) * player.danger;
-  const swing = stats.swingEvery * player.clearTime; // seconds between swings that count
+  // The swing is on a timer (combat.js): nobody swings faster, a slower
+  // player just wastes some.
+  const swing = stats.swingEvery * Math.max(1, player.clearTime); // seconds between swings that count
   const orbs = stats.unlocked.has("timeOrbs");
   let clock = stats.startTime; // seconds left on the run's clock
   let hearts = stats.hearts;
@@ -144,10 +153,22 @@ export function simulateRun(stats, dice, player = PLAYERS.efficient) {
     let nextHorde = stats.hordeEvery;
 
     // The rise is the game's own animation; only getting to the monster takes a typical player longer.
-    const arriveIn = MODEL.riseTime + MODEL.approach * (BALANCE.hero.reach / stats.reach) * walk * player.clearTime;
+    const approach = MODEL.approach * (BALANCE.hero.reach / stats.reach) * walk * player.clearTime;
+    const arriveIn = MODEL.riseTime + approach;
+    // A chaser comes to him. A wanderer doesn't: once it's up, it waits
+    // (`waiting`) until he walks over to it, one at a time, when nothing
+    // else is on him, and it never crowds him with the others.
+    const arriveOf = (type) => (BALANCE.mobs[type].wanders ? MODEL.riseTime : arriveIn);
+    const wanderWalk = MODEL.wanderWalk * walk * player.clearTime;
+    const waiting = [];     // { type, upAt }: wanderers up, in the order they got up
+    let walk2 = null;       // { from, need }: the walk to the next one, once he's on his way
     const spawn = (count, type = null) => {
       // `born`: when its warning dust starts.
-      for (let i = 0; i < count; i++) rising.push({ at: t + arriveIn + 0.1 * i, born: t + 0.1 * i, type: type ?? pick(room.spawns, dice) });
+      for (let i = 0; i < count; i++) {
+        const kind = type ?? pick(room.spawns, dice);
+        rising.push({ at: t + arriveOf(kind) + 0.1 * i, born: t + 0.1 * i, type: kind });
+      }
+      rising.sort((a, b) => a.at - b.at); // they arrive in order of when they get close
     };
     const swingsFor = (type) => Math.ceil((BALANCE.mobs[type].hp * scale.hp) / stats.damage);
     const comeClose = (type) => {
@@ -177,6 +198,7 @@ export function simulateRun(stats, dice, player = PLAYERS.efficient) {
           roomGold += crumbleCoins(type);
         }
         close = [];
+        for (const { type } of waiting.splice(0)) roomGold += crumbleCoins(type);
         // The ones up but not close yet crumble too (with coins, once they've
         // finished popping up).
         for (const r of rising) if (t - r.born >= MODEL.riseTime) roomGold += crumbleCoins(r.type);
@@ -192,7 +214,7 @@ export function simulateRun(stats, dice, player = PLAYERS.efficient) {
       xp += def.xp * (1 + stats.xpBonus);
       if (!full && xp >= room.xp) fill();
       roomGold += coins(def.gold * scale.gold * (1 + stats.goldBonus));
-      // A slug's tiny slugs, right there (unless its kill just started the
+      // A splitter's children, right there (unless its kill just started the
       // boss's entrance, which cancels them).
       if (!(isBossRoom && full)) for (const child of def.splitsInto ?? []) comeClose(child);
       if (hearts < stats.hearts) {
@@ -224,8 +246,9 @@ export function simulateRun(stats, dice, player = PLAYERS.efficient) {
       // Monsters arrive, and hordes come on their timer.
       let arrived = 0;
       while (arrived < rising.length && rising[arrived].at <= t) {
-        const { type } = rising[arrived++];
+        const { type, at } = rising[arrived++];
         if (type === "boss") boss = { left: Math.ceil(BALANCE.boss.hp / stats.damage), nextRaise: t + MODEL.bossRaiseEvery };
+        else if (BALANCE.mobs[type].wanders) waiting.push({ type, upAt: at });
         else comeClose(type);
       }
       if (arrived) rising.splice(0, arrived);
@@ -251,6 +274,27 @@ export function simulateRun(stats, dice, player = PLAYERS.efficient) {
         if (hearts <= 0) return end("died", t);
       }
 
+      // Nobody on him: he walks over to the next wanderer, and the first swing
+      // after he gets there hits it (the swing keeps its rhythm). How far it
+      // is varies, so some walks fit between two swings and some don't. Once
+      // the bar is full he heads for the door instead.
+      // He sets off as soon as he's free (after the last swing) and it's up.
+      let walkingOver = false;
+      if (!close.length && waiting.length && !full) {
+        walkingOver = true;
+        walk2 ??= {
+          from: Math.max(waiting[0].upAt, t - swing),
+          need: wanderWalk * (1 - MODEL.wanderSpread + 2 * MODEL.wanderSpread * dice()) * waiting.length ** -MODEL.wanderNearest,
+        };
+        if (t >= walk2.from + walk2.need) {
+          walk2 = null;
+          comeClose(waiting.shift().type);
+        }
+      } else if (close.length && waiting.length && dice() < MODEL.wanderDrift * waiting.length) {
+        // A wanderer crawls into his swing while he's busy with something else.
+        comeClose(waiting.shift().type);
+      }
+
       // The swing: it hits the monsters up close, oldest first.
       if (close.length) {
         const share = hitsPerSwing(stats, close.length);
@@ -265,15 +309,17 @@ export function simulateRun(stats, dice, player = PLAYERS.efficient) {
           }
         }
       } else if (!full && !boss) {
-        // Nobody to fight yet: smash a breakable while waiting.
-        const next = breakables.find((b) => b.left === null || b.left > 0);
+        // Nobody to fight: smash a breakable, walking over to it. On his way
+        // to a wanderer, only one the swing breaks in one go (no detour).
+        const swingsLeft = (b) => b.left ?? Math.ceil((BALANCE.breakables[b.name].hp * scale.hp) / stats.damage);
+        const next = walkingOver
+          ? breakables.find((b) => b.left === null && swingsLeft(b) === 1)
+          : breakables.find((b) => swingsLeft(b) > 0);
         if (next) {
           const thing = BALANCE.breakables[next.name];
-          if (next.left === null) {
-            next.left = Math.ceil((thing.hp * scale.hp) / stats.damage);
-            t += MODEL.perBreakable * walk * player.clearTime;
-          }
-          if (--next.left <= 0) roomGold += coins(thing.gold * scale.gold * (1 + stats.breakableBonus));
+          if (next.left === null && !walkingOver) t += MODEL.perBreakable * walk * player.clearTime;
+          next.left = swingsLeft(next) - 1;
+          if (next.left <= 0) roomGold += coins(thing.gold * scale.gold * (1 + stats.breakableBonus));
         }
       }
       // The boss takes a hit when a swing gets through its moves.
@@ -283,7 +329,7 @@ export function simulateRun(stats, dice, player = PLAYERS.efficient) {
       }
 
       // Never an empty room: one more rises when the last one falls.
-      if (!full && !close.length && !rising.length) spawn(1);
+      if (!full && !close.length && !rising.length && !waiting.length) spawn(1);
     }
 
     // Through the door.

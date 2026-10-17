@@ -40,7 +40,6 @@ export function loadAssets() {
     tiny_zombie: monster(368, 16, 16, 16),
     skeleton: monster(368, 88, 16, 16),
     slug: wriggler(368, 369, 16, 23),
-    tiny_slug: wriggler(432, 376, 16, 16),
     goblin: monster(368, 40, 16, 16),
     orc_warrior: monster(368, 177, 16, 23),
     big_demon: monster(16, 428, 32, 36),

@@ -99,22 +99,27 @@ The quiz is gone. The new game is pure linear progression.
 
 ### Draft: depth 1, the crypt
 
-Mobs: tiny zombies (chasers), skeletons (rushers: they wind up, then charge
-in a line) and slugs (splitters: each splits into two tiny slugs). Chest
-mimics are the surprise late in the depth.
+Mobs, in the order they're met: slugs (wanderers: they crawl about slowly
+and never come after you, so the first rooms are calm practice for moving
+and the swing's timing), tiny zombies (chasers) and skeletons (rushers:
+they wind up, then charge in a line). Chest mimics are the surprise late in
+the depth. (Slugs used to split into tiny slugs; since they became the
+wanderers, they don't.) Each monster gets more common for a few rooms
+after it's introduced, until a newer one eats into its share; by room 10
+it's about a third each.
 
-| Sub-depth | What's new | What spawns |
+| Sub-depth | What's new | Spawns: slugs / zombies / skeletons |
 |---|---|---|
-| 1 | Tiny zombies, pots | Tiny zombies |
-| 2 | | Tiny zombies, a bigger bar |
-| 3 | Skeletons, the first pillars | Mostly zombies, some skeletons |
-| 4 | Floor spikes | More skeletons |
-| 5 | Slugs | Zombies, skeletons and slugs |
-| 6 | Crates (a few hits), bones start dropping | All three mixed evenly |
-| 7 | Chests that may be mimics | Zombies, skeletons and slugs, evenly |
-| 8 | More spikes, tighter layouts | Mostly skeletons |
-| 9 | A big sturdy breakable (many hits, lots of gold) | The hardest mix in the depth |
-| 10 | **Big Zombie** | Its bar fills first; then it appears and raises tiny zombies |
+| 1 | Slugs, pots | 100% / – / – |
+| 2 | | 100% / – / – |
+| 3 | Tiny zombies, the first pillars | 75% / 25% / – |
+| 4 | Floor spikes | 60% / 40% / – |
+| 5 | Skeletons | 50% / 40% / 10% |
+| 6 | Crates (a few hits), bones start dropping | 45% / 38% / 17% |
+| 7 | Chests that may be mimics | 40% / 37% / 23% |
+| 8 | More spikes, tighter layouts | 36% / 35% / 29% |
+| 9 | A big sturdy breakable (many hits, lots of gold) | 33% / 34% / 33% |
+| 10 | **Big Zombie** | 30% / 35% / 35% until its bar fills; then the boss appears and raises tiny zombies |
 
 What's in the rooms (built in step 6):
 
@@ -217,10 +222,12 @@ to:
   hit. Your first swing does 1. Late in the game you hit for thousands
   against mobs with thousands of HP.
 - **Mob behaviors** across the game:
-  - chasers (walk at you) and rushers (wind up, then charge in a line)
+  - wanderers (crawl about and never hunt; they hurt on contact, but they
+    never come after you), chasers (walk at you) and rushers (wind up, then
+    charge in a line)
   - shooters that keep their distance and fire projectiles
-  - summoners (the necromancer raises skeletons) and splitters (slugs split
-    into tiny slugs)
+  - summoners (the necromancer raises skeletons) and splitters (something
+    that splits in two when it falls; none in the crypt now)
   - bombers that run up and explode, and mimics: chests that turn out to be
     monsters
 - **The tileset has enough monsters** for five themed depths: tiny zombie,
@@ -328,7 +335,7 @@ to:
   panel says "EARLY 3X" and which depth it's for. It's for players who want
   to save up and overpower depth 1. In the pacing simulator, the shoppers
   pick up a few levels of Bigger hordes, Restless dead and sometimes Orb
-  finder about 80% of the way through, which costs them about two minutes
+  finder about 90% of the way through, which costs them about two minutes
   over the whole depth.
 - **Every node works:** since step 6 (the breakables, for Smash), every
   node does what it says.
@@ -384,11 +391,14 @@ live in `src/balance.js`.
   upgrades straight away. The whole loop makes sense within the first
   minute.
 - **No upgrades, no room 2.** Without upgrades, room 1's bar can't be
-  filled, however well you play: the first clock is 15 s, the tiny zombies
-  take 3 hits, and the bar is big enough. Room 2 opens up after about 6–8
-  upgrades, around the fourth or fifth run. The simulator checks both: room
-  1 must stay out of reach of a sharp player with no upgrades, with a
-  margin to spare.
+  filled, however well you play: the first clock is 15 s, the slugs take 3
+  hits (and have to be walked to), and the bar is big enough. Room 2 opens
+  up after about 6–8 upgrades, around the fourth or fifth run. The
+  simulator checks both: with no upgrades, not even a sharp player (one who
+  walks and dodges 20% better than its efficient one; nobody swings faster
+  than the swing's timer) gets through room 1, and it fails if one does. It
+  also reports the margin (how many more seconds on the first clock he'd
+  need), and the run and number of upgrades room 1 takes.
 - **Costs multiply per level** by a fixed factor of about ×1.4–1.6,
   different for each node.
 - **The golden rule: a typical careful run always buys something.** A run
@@ -412,13 +422,17 @@ live in `src/balance.js`.
   save for them.
 - **Walls** (where the cheap upgrades run out and the next room is too
   hard) should be short. A short wall is satisfying to break; a long one is
-  where people quit.
+  where people quit. No single room should drag either: each takes a few
+  minutes to get through the first time (the boss longer).
 - **A pacing simulator** tunes the numbers. It's a small Node script in
   `tools/` that reads the same data file as the game, plays the economy by
   the numbers (room times from damage and time, hits and drops rolled with
-  dice, buying upgrades the way a player would), and reports how long depth
-  1 takes, its spread, and where the walls are. After that, the numbers are
-  fine-tuned by playing.
+  dice, buying upgrades the way a player would, including more time when
+  the clock keeps stopping them at the same spot), and reports how long
+  depth 1 takes, its spread, how long each room takes to get through, and
+  where the walls are. Its guesses about players are checked against the
+  game where they can be: the walk over to a slug was measured with a bot
+  playing room 1. After that, the numbers are fine-tuned by playing.
 
 A rough estimate to size things by:
 
