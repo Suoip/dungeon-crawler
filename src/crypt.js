@@ -1,6 +1,6 @@
 import { TILE, TOP } from "./config.js";
 import { BALANCE } from "./balance.js";
-import { subDepthScale, coins } from "./stats.js";
+import { roomScale, coins } from "./stats.js";
 import { LAYOUTS } from "./layouts.js";
 import { dropCoins } from "./coins.js";
 import { wakeMimic } from "./mobs.js";
@@ -111,12 +111,12 @@ function runSpikes(spikes, fight) {
 
 // A pot, a crate or the urn: solid until it's smashed. Every swing that
 // passes through it does his damage (its number pops up, it shakes); when
-// it breaks, it bursts into bits and its gold (grown with the sub-depth,
-// plus Smash) spills out as coins. Swings find it by its "strikeable" tag
+// it breaks, it bursts into bits and its gold (grown with the sub-depth and
+// the depth, plus Smash) spills out as coins. Swings find it by its "strikeable" tag
 // (combat.js), with `struck()`.
 function addBreakable(type, col, row, fight, run) {
   const data = BALANCE.breakables[type];
-  const scale = subDepthScale(fight.sub);
+  const scale = roomScale(fight.depth, fight.sub);
   const foot = vec2(tileX(col) + TILE / 2, tileY(row) + TILE - 1); // the middle of its bottom edge
   const height = { pot: 11, crate: 19, urn: 20 }[type];
   const thing = add([
@@ -210,7 +210,7 @@ const MIMIC_WAKES = 28; // px: this close, it can't wait any longer
 function addChest(col, row, isMimic, fight, run) {
   const foot = vec2(tileX(col) + TILE / 2, tileY(row) + TILE);
   const data = BALANCE.breakables.chest;
-  const scale = subDepthScale(fight.sub);
+  const scale = roomScale(fight.depth, fight.sub);
   const chest = add([
     sprite(isMimic ? "mimic" : "chest_loot", { frame: 0 }),
     pos(foot),

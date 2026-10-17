@@ -11,6 +11,7 @@ import { addLadder, addShadowText, addSign, addAltar } from "./props.js";
 import { openTree, canBuyAnything } from "./tree.js";
 import { playSound } from "./sound.js";
 import { hidePrompt, showRoomName } from "./panel.js";
+import { shortGold } from "./hud.js";
 
 // Every run ends in the underworld (DESIGN.md section 9): dragged down when
 // the clock ran out or the last heart went, or down the well after beating
@@ -79,7 +80,7 @@ function underworld(run, ending) {
       openTree(() => {
         player.frozen = false;
         altar.setLit(canBuyAnything());
-        total?.setText(`TOTAL ${getSave().gold}`);
+        total?.setText(`TOTAL ${shortGold(getSave().gold)}`);
         done(false); // still in the room
       });
     }),
@@ -127,8 +128,8 @@ async function writeResults(run, ending) {
   const reached = ending === "boss" ? run.deepest : Math.min(Math.floor(run.deepest) + 1, 10);
   const lines = [
     { text: ENDINGS[ending].text, size: 16, color: ENDINGS[ending].color },
-    { text: `GOLD EARNED ${run.gold}`, color: [255, 205, 70] },
-    { text: `TOTAL ${getSave().gold}` },
+    { text: `GOLD EARNED ${shortGold(run.gold)}`, color: [255, 205, 70] },
+    { text: `TOTAL ${shortGold(getSave().gold)}` },
     { text: `DEEPEST ${depthLabel(run.depth, reached)}` },
     { text: `KILLS ${run.kills}${run.bones ? `  BONES ${run.bones}` : ""}` },
     // The first time a depth's boss falls, the next depth opens.

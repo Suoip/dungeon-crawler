@@ -64,11 +64,17 @@ export function costOf(node, level, early = false) {
 // beaten so far (save.js): depth 2's nodes, until depth 1's boss falls.
 export const isEarly = (node, cleared) => (node.depth ?? 1) > cleared + 1;
 
-// How much tougher and richer monsters are in sub-depth `sub` (1 to 10).
-export const subDepthScale = (sub) => ({
-  hp: BALANCE.growth.hp ** (sub - 1),
-  gold: BALANCE.growth.gold ** (sub - 1),
-});
+// How much tougher and richer monsters and breakables are in sub-depth `sub`
+// (1 to 10) of `depth`: grown by the sub-depth (balance.js `growth`, or the
+// depth's own), times the depth's own `scale`.
+export const roomScale = (depth, sub) => {
+  const { scale, growth: own } = BALANCE.depths[depth - 1];
+  const growth = { ...BALANCE.growth, ...own };
+  return {
+    hp: scale.hp * growth.hp ** (sub - 1),
+    gold: scale.gold * growth.gold ** (sub - 1),
+  };
+};
 
 // The game drops whole coins: gold is rounded to the nearest coin, at least 1.
 export const coins = (gold) => Math.max(1, Math.round(gold));

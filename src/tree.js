@@ -6,12 +6,13 @@ import { playSound } from "./sound.js";
 import { puffDust } from "./effects.js";
 import { getGamePixel } from "./display.js";
 import { setPrompt } from "./panel.js";
+import { shortGold } from "./hud.js";
 
 // The skill tree page (DESIGN.md section 7), opened at the underworld's altar.
 // It's drawn in the game itself, over the dimmed room, like a stone tablet:
 // a web out from Descend in the middle, six branches around it, each node a
-// round frame with an icon and pips for its levels. Depth 2's nodes (the
-// second ring) sit further out on each branch. You see the nodes next to the
+// round frame with an icon and pips for its levels. Each deeper depth's
+// nodes (its ring) sit further out on each branch. You see the nodes next to the
 // ones you own; the ones further out are dark outlines.
 //
 // Mouse: point at a node to read it, click it to pick it, click it again to
@@ -70,6 +71,16 @@ const PLACES = {
   time5: { branch: "time", ring: 8, fork: -1 }, wind5: { branch: "time", ring: 9, fork: -1 },
   greed5: { branch: "money", ring: 7 },
   hordes5: { branch: "horde", ring: 8 }, restless5: { branch: "horde", ring: 9 }, crowded5: { branch: "horde", ring: 9, fork: -1.4 },
+  // Depths 3-5's copies of depth 2's extras: each ring's Critical hits off to
+  // the side, one ring past its own edge; the hearts and Quick feet one ring
+  // further out per depth, and the orb pair two (a ring each for Orb finder
+  // and Bigger orbs).
+  crit3: { branch: "weapon", ring: 8, fork: 1 }, crit4: { branch: "weapon", ring: 9, fork: 1 }, crit5: { branch: "weapon", ring: 10, fork: 1 },
+  heart3: { branch: "hearts", ring: 4 }, heart4: { branch: "hearts", ring: 5 }, heart5: { branch: "hearts", ring: 6 },
+  orbFinder3: { branch: "time", ring: 6 }, biggerOrbs3: { branch: "time", ring: 7 },
+  orbFinder4: { branch: "time", ring: 8 }, biggerOrbs4: { branch: "time", ring: 9 },
+  orbFinder5: { branch: "time", ring: 10 }, biggerOrbs5: { branch: "time", ring: 11 },
+  feet3: { branch: "dash", ring: 5 }, feet4: { branch: "dash", ring: 6 }, feet5: { branch: "dash", ring: 7 },
 };
 
 // A node's spot in the web, in px from the middle at 1x.
@@ -129,6 +140,13 @@ const ICONS = {
   greed5: { draw: "gemPurple" },
   hordes5: { sprite: "pumpkin_dude", box: [2, 4, 12, 17] }, restless5: { sprite: "skull", box: [5, 7, 6, 6], scale: 2 },
   crowded5: { sprite: "chort", box: [2, 4, 12, 17] },
+  // Depths 3-5's copies of depth 2's extras look like the originals.
+  crit3: { draw: "crit" }, crit4: { draw: "crit" }, crit5: { draw: "crit" },
+  heart3: { sprite: "heart_full" }, heart4: { sprite: "heart_full" }, heart5: { sprite: "heart_full" },
+  orbFinder3: { sprite: "flask_big_blue", box: [3, 3, 10, 11] }, biggerOrbs3: { sprite: "flask_big_green", box: [3, 3, 10, 11] },
+  orbFinder4: { sprite: "flask_big_blue", box: [3, 3, 10, 11] }, biggerOrbs4: { sprite: "flask_big_green", box: [3, 3, 10, 11] },
+  orbFinder5: { sprite: "flask_big_blue", box: [3, 3, 10, 11] }, biggerOrbs5: { sprite: "flask_big_green", box: [3, 3, 10, 11] },
+  feet3: { draw: "dash3" }, feet4: { draw: "dash3" }, feet5: { draw: "dash3" },
 };
 
 // The page's colors. Kaplay's rgb() only exists once the game has started,
@@ -319,7 +337,7 @@ export function openTree(onClose) {
     if (!shown(node)) return say("BUY THE ONE BEFORE IT FIRST"), playSound("locked");
     if (level >= node.levels) return say("ALREADY MAXED", C.muted), playSound("locked");
     const price = nextPrice(node);
-    if (save.gold < price) return say(`NEEDS ${price} GOLD`), playSound("locked");
+    if (save.gold < price) return say(`NEEDS ${shortGold(price)} GOLD`), playSound("locked");
     buyLevel(id, price);
     flashes[id] = time();
     playSound("unlock");
@@ -463,7 +481,7 @@ export function openTree(onClose) {
     // The title bar.
     drawRect({ pos: vec2(0, 0), width: GAME_WIDTH, height: TOP_BAR, color: C.ink });
     drawText({ text: "SKILL TREE", pos: vec2(6, 2), size: 8, font: "pixel", color: C.light });
-    const gold = String(save.gold);
+    const gold = shortGold(save.gold);
     drawText({ text: gold, pos: vec2(GAME_WIDTH - 6, 2), size: 8, font: "pixel", color: C.gold, anchor: "topright" });
     drawSprite({ sprite: "coin", frame: 0, pos: vec2(GAME_WIDTH - 17 - gold.length * 8, 2) });
     drawText({ text: `${zoom}X`, pos: vec2(GAME_WIDTH / 2, 2), size: 8, font: "pixel", color: C.muted, anchor: "top" });
@@ -569,10 +587,11 @@ export function openTree(onClose) {
       // costs more for now.
       const price = nextPrice(node);
       const afford = save.gold >= price;
+      const cost = shortGold(price);
       const tag = early(node) ? `EARLY ${BALANCE.earlyPrice}X: ` : "";
-      if (!afford) status = [`${tag}COSTS ${price} GOLD`, C.red];
-      else if (id === selected) status = [early(node) ? `${tag}${price} GOLD, CLICK OR E` : `BUY ${price} GOLD: CLICK OR E`, C.green];
-      else status = [`${tag}${price} GOLD${early(node) ? "," : ":"} CLICK TO PICK`, C.green];
+      if (!afford) status = [`${tag}COSTS ${cost} GOLD`, C.red];
+      else if (id === selected) status = [early(node) ? `${tag}${cost} GOLD, CLICK OR E` : `BUY ${cost} GOLD: CLICK OR E`, C.green];
+      else status = [`${tag}${cost} GOLD${early(node) ? "," : ":"} CLICK TO PICK`, C.green];
     }
     text(status[0], 30, PANEL_Y + 26, status[1]);
   }

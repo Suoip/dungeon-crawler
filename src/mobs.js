@@ -1,6 +1,6 @@
 import { TILE, TOP, GAME_WIDTH, GAME_HEIGHT } from "./config.js";
 import { BALANCE } from "./balance.js";
-import { subDepthScale } from "./stats.js";
+import { roomScale } from "./stats.js";
 import { sleep, during, animate, puffDust, addShadow, addSpawnHole, sparks, shakeScreen } from "./effects.js";
 import { playSound } from "./sound.js";
 import { setupBoss } from "./boss.js";
@@ -52,8 +52,8 @@ function numbersFor(type, room) {
   if (type === depth.boss.type) return { hp: depth.boss.hp, gold: depth.boss.gold, xp: 0 };
   const data = BALANCE.mobs[type];
   if (!data) return { hp: MOB_TYPES[type].hp, gold: 1, xp: 1 };
-  const scale = subDepthScale(room.sub);
-  return { hp: Math.ceil(data.hp * scale.hp * depth.scale.hp), gold: data.gold * scale.gold * depth.scale.gold, xp: data.xp };
+  const scale = roomScale(room.depth, room.sub);
+  return { hp: Math.ceil(data.hp * scale.hp), gold: data.gold * scale.gold, xp: data.xp };
 }
 
 // ---- Spawning ------------------------------------------------------------------

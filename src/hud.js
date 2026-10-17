@@ -30,12 +30,14 @@ function drawShadowText(content, at, size, rgb, anchorName, opacity = 1) {
 }
 const rgb_ = (c) => rgb(...c);
 
-// A big amount of gold, short enough for the HUD: up to 99999 as it is, then
-// "123K", then "12.3M" (the deep depths' runs earn millions).
+// A big amount of gold, short enough to read at a glance: up to 99999 as it
+// is, then "123K", "12.3M", "12.3B" and "12.3T" (from depth 3 on, each depth
+// pays hundreds of times the one before).
 export const shortGold = (gold) => {
   if (gold < 100000) return String(gold);
   if (gold < 10000000) return `${Math.floor(gold / 1000)}K`;
-  return `${(Math.floor(gold / 100000) / 10).toFixed(1)}M`;
+  const [unit, size] = gold < 1e9 ? ["M", 1e6] : gold < 1e12 ? ["B", 1e9] : ["T", 1e12];
+  return `${(Math.floor((gold / size) * 10) / 10).toFixed(1)}${unit}`;
 };
 
 // The clock as people read it: "18", or "1:05" from a minute up.

@@ -163,10 +163,15 @@ What's in the rooms (built in step 6):
 The same kind of rooms as the crypt, tinted a warm, earthy brown, with
 their own three layouts per room (the same breakables, spikes and chests as
 the crypt's room at that sub-depth, arranged as burrows). Its monsters have
-10x the hp and 10x the gold of their numbers in `balance.js` (the depth's
-`scale`), so the power curve starts over: the 11 damage that one-shots the
-crypt's monsters by its end takes 3 hits on a 30 hp goblin, the way 1
-damage did on a 3 hp slug at the crypt's start. The clock and the spawns
+their own hp and gold scale (the depth's `scale` in `balance.js`), so the
+power curve starts over: a goblin starts at 126 hp, about a dozen hits for
+the 11 damage the hero has by the crypt's end (where its last room's
+monsters take 3-4). That's more
+hits than a slug took at the crypt's start (3), because everything else
+carries over (a swing more than twice as fast, an arc that catches several
+at once), so it's about the same struggle. Each room's monsters are 8%
+tougher than the last room's (`growth` in the depth's entry; the crypt's
+grow 26.5% a room), and the rooms' bars are bigger than the crypt's. The clock and the spawns
 start over too (see "Each depth starts over" in section 7). Its monsters
 follow the crypt's spawn rule:
 
@@ -200,13 +205,15 @@ follow the crypt's spawn rule:
 
 Each one follows the warrens' recipe: the same kind of rooms with three
 layouts of their own per room, a tint and something on the back wall, three
-monsters met in rooms 1, 3 and 5 with the same spawn rule, monsters with 10x
-the hp and gold of the depth before, and a ring of its own in the tree. A
+monsters met in rooms 1, 3 and 5 with the same spawn rule, monsters scaled
+up from the depth before (their hp, gold and growth per room, and the room
+bars, are each depth's own, set with the pacing simulator), and a ring of
+its own in the tree. A
 stand-in boss waits in room 10 for now (each depth's real boss and its
 special gimmick come later).
 
 **Depth 3, the orc fort:** cold grey-blue stone, red banners on the back
-wall, 100x the crypt's numbers (an orc warrior has 300 hp). The ogre stands
+wall (an orc warrior starts at about 1,900 hp). The ogre stands
 in as the boss, raising orc warriors.
 - **Orc warriors** (rooms 1–2) are brutes: chasers whose hits shove the hero
   far, and that barely budge when he hits them.
@@ -219,8 +226,8 @@ in as the boss, raising orc warriors.
   of its damage (a grey number and a clank), one from the side or behind
   does it all. Circling one, or dashing past it, gets round the shield.
 
-**Depth 4, the sunken swamp:** murky green, goo dripping down the back wall,
-1000x the crypt's numbers. A swamp-green Big Zombie, the "Bog Zombie",
+**Depth 4, the sunken swamp:** murky green, goo dripping down the back wall
+(a swampy starts at 33,000 hp). A swamp-green Big Zombie, the "Bog Zombie",
 stands in as the boss, raising swampies.
 - **Swampies** (rooms 1–2) are slime blobs that split into two small
   swamplets when they fall (1 hp in balance.js, before the depth's scale).
@@ -233,7 +240,7 @@ stands in as the boss, raising swampies.
   stop once the bar is full, like the room's own spawns.
 
 **Depth 5, the demon pit:** deep red, lava pouring from two fountains in the
-back wall, 10000x the crypt's numbers. The Big Demon waits in room 10,
+back wall (a chort starts at about 280,000 hp). The Big Demon waits in room 10,
 raising chorts.
 - **Chorts** (rooms 1–2) chase him, and every few seconds, when he's close,
   one marks a spot right next to him with a swirl of dark smoke, then
@@ -411,7 +418,9 @@ to:
 - **The layout:** Descend in the middle, the weapon branch to the left and
   time to the right (the two longest), hearts and money above, dash and the
   horde below. Hearts and the horde split early, so they sit across from
-  each other. At 1x the whole web fits on the screen.
+  each other. At 1x the first rings fit on the screen; the deeper depths'
+  rings, further out, are reached by dragging the view or moving to them
+  with the keys.
 - **Mouse and keyboard.** Point at a node to read it; click to pick it and
   click again to buy. Hold and drag to look around; the wheel zooms between
   1x, 2x and 3x (whole sizes, so the pixels stay crisp) around the cursor.
@@ -428,11 +437,14 @@ to:
 - **Buying early:** a depth-2 node can be bought before depth 1's boss is
   beaten, at ten times the price (`earlyPrice` in `src/balance.js`); the
   panel says "EARLY 10X" and which depth it's for. It's for players who want
-  to save up and overpower depth 1. Depth 2's nodes are priced in depth 2's
-  gold, ten times richer, so ten times is what keeps it a real choice: Keen
-  edge's first level (+10 damage) costs 200 gold early, a bit more than all
-  ten levels of Sharper blade. In the pacing simulator, a shopper who goes
-  for it finishes depth 1 in about 35 minutes instead of about 43.
+  to save up and overpower depth 1. The same goes for every deeper ring:
+  its nodes can be bought before the depth before it is beaten, at ten
+  times the price. Each ring is priced in its own depth's gold, which is
+  much richer than the depth before (depth 2 about 30 times the crypt, and
+  each depth after it hundreds of times the one before), so buying early
+  is a big saving-up goal rather than something a player falls into: Keen
+  edge's first level (+10 damage) costs 1,900 gold early, about four of
+  depth 1's last runs (each earns about 400-550 gold).
 - **Each depth starts over.** Some nodes only work in their own depth (the
   panel says "DEPTH 1 ONLY" or "DEPTH 2 ONLY"): the run's pacing, which is
   More time, Second wind, Crowded rooms, Bigger hordes and Restless dead.
@@ -495,13 +507,21 @@ gold:
 | Horde | Bigger hordes | 10 | +1 monster per horde (start: 7; depth 2 only) |
 | Horde | Restless dead | 5 | Hordes come 2 s sooner (start: every 20 s; depth 2 only) |
 
-Each depth after that gets a ring of the same seven, further out again and
-priced ten times higher: an edge (Brutal edge: +100 damage per level in
-depth 3, and ten times more each depth after), its own More time, Second
-wind, Crowded rooms, Bigger hordes and Restless dead, and another Greed.
+Each depth after that gets a ring of the same twelve, further out again
+and priced in its own depth's gold: an edge (Brutal edge: +100 damage per
+level in depth 3, and ten times more each depth after), its own More time,
+Second wind, Crowded rooms, Bigger hordes and Restless dead, another Greed,
+and a copy of each of depth 2's extras (Critical hits, Extra heart, Orb
+finder, Bigger orbs and Quick feet), so every ring has as many levels to
+buy as depth 2's. (Each depth's special upgrade will join its ring later.)
 On the tree page, the per-depth clock upgrades run along their own track
 beside the time branch, one depth after another, and each depth's horde
-upgrades sit two rings further out than the depth before's.
+upgrades sit two rings further out than the depth before's. Each ring's
+Critical hits sits off to the side, one ring past its own edge, and its
+Extra heart, orbs and Quick feet carry on outward along their branches.
+The hearts at the bottom of the screen are drawn at 2x up to the 7 that
+depth 2's ring allows, and at 1x past that (mostly on the bottom wall), so
+the deeper rings' Extra hearts don't spread them over more of the floor.
 
 Depth 1's rooms fill their bars before most hordes arrive, so the horde
 upgrades start in depth 2. A deeper depth's nodes can be bought early at
@@ -515,6 +535,25 @@ exact effects) live in `src/balance.js`.
   typical player is a bit slower than perfect: about 20% slower clears, 10%
   of the gold missed, and more hits taken. A sharp player is faster (about
   30 minutes).
+- **Where it stands:** the pacing simulator, playing the whole game 100
+  times per shopper (each depth starting with what the depths before left),
+  has the typical player at:
+
+  | Depth | Value shopper | Cheapest shopper |
+  |---|---|---|
+  | 1, the crypt | 41 min | 44 min |
+  | 2, the goblin warrens | 43 min | 45 min |
+  | 3, the orc fort | 41 min | 37 min |
+  | 4, the sunken swamp | 40 min | 42 min |
+  | 5, the demon pit | 40 min | 35 min |
+  | The whole game | about 3.4 hours | about 3.4 hours |
+
+  Rooms 1–9 each take about 1–7 minutes to get through the first time; the
+  boss rooms take longer (about 9–17 minutes, longest in depths 3 and 4).
+  The golden rule holds in every depth. Each depth's numbers (its monsters'
+  hp and gold, their growth per room, the room bars, the boss, and its
+  ring's prices) were set with the simulator, one depth at a time, from
+  where the depths before leave the player.
 - **The first run:** you die fast, but you earn enough for 1–2 cheap
   upgrades straight away. The whole loop makes sense within the first
   minute.
@@ -555,10 +594,15 @@ exact effects) live in `src/balance.js`.
 - **A pacing simulator** tunes the numbers. It's a small Node script in
   `tools/` that reads the same data file as the game, plays the economy by
   the numbers (room times from damage and time, hits and drops rolled with
-  dice, buying upgrades the way a player would, including more time when
-  the clock keeps stopping them at the same spot), and reports how long
-  depth 1 takes, its spread, how long each room takes to get through, and
-  where the walls are. Its guesses about players are checked against the
+  dice, buying upgrades the way a player would: more time first when the
+  clock keeps stopping them at the same spot, damage first when a deeper
+  depth's first room stops them, and a run back up in the depth above for
+  gold when three runs in a row can't get through a deeper depth's first
+  room or pay for anything there). It plays all five depths in a row, each
+  starting with what the depths before left (`--depths N` stops earlier),
+  and reports for each depth how long it takes, its spread, how long each
+  room takes to get through, where the walls are, and whether its first
+  room is a struggle with only the earlier depths' upgrades. Its guesses about players are checked against the
   game where they can be: the walk over to a slug was measured with a bot
   playing room 1. After that, the numbers are fine-tuned by playing.
 
