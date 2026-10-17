@@ -4,9 +4,10 @@ import { BALANCE } from "./balance.js";
 // (tools/model.mjs), so the two can never disagree about what an upgrade
 // does or what it costs.
 
-// What the hero is like with these upgrades. `levels` is { nodeId: level }
-// (see save.js). Every node's effect is applied once per level bought.
-export function heroStats(levels) {
+// What the hero is like with these upgrades, in a run in `depth`. `levels`
+// is { nodeId: level } (see save.js). Every node's effect is applied once
+// per level bought, except a `perDepth` node's outside its own depth.
+export function heroStats(levels, depth = 1) {
   const { hero, run, drops, spawning } = BALANCE;
   const stats = {
     hearts: hero.hearts,
@@ -15,6 +16,8 @@ export function heroStats(levels) {
     reach: hero.reach,
     arc: hero.arc,
     invincibleFor: hero.invincibleFor,
+    critChance: hero.critChance,
+    critDamage: hero.critDamage,
     magnetRange: hero.magnetRange,
     startTime: run.startTime,
     timePerSubDepth: 0,
@@ -33,6 +36,7 @@ export function heroStats(levels) {
     unlocked: new Set(),
   };
   for (const node of BALANCE.tree) {
+    if (node.perDepth && (node.depth ?? 1) !== depth) continue; // it only works in its own depth
     const level = levels[node.id] ?? 0;
     for (let i = 0; i < level; i++) {
       const { stat, add, mul, unlock } = node.effect;

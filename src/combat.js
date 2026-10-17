@@ -134,7 +134,9 @@ function hitSwept(player, fromAngle, toAngle, alreadyHit, room, stats) {
     const extra = mob.def.boss ? 14 : 6; // so hitting the edge of a mob counts
     if (sweptThrough(mob.pos.add(0, -mob.def.size / 2), extra)) {
       alreadyHit.add(mob);
-      hurtMob(mob, player.pos, room, stats.damage);
+      // A critical hit (Critical hits in the tree) does critDamage times as much.
+      const crit = Math.random() < stats.critChance;
+      hurtMob(mob, player.pos, room, crit ? stats.damage * stats.critDamage : stats.damage, crit);
     }
   }
 }

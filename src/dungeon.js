@@ -17,7 +17,7 @@ export const chosenDepth = () => Math.min(getSave().depth, unlockedDepths());
 // counts down only while you're in control, and hearts that carry over from
 // room to room.
 export function newRun(depth = chosenDepth()) {
-  const stats = heroStats(getSave().levels);
+  const stats = heroStats(getSave().levels, depth);
   return {
     depth,                    // which depth, 1 = the crypt
     index: 0,                 // the room he's in, 0 = the first
