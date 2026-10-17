@@ -15,6 +15,8 @@ import { heroStats, costOf, subDepthScale, coins } from "../src/stats.js";
 
 export { heroStats, costOf }; // the tree's rules live in the game (src/stats.js)
 
+const CRYPT = BALANCE.depths[0]; // the depth it plays: depth 1
+
 export const MODEL = {
   riseTime: 1.05,       // seconds a spawned monster spends rising (dust 0.8 s, then 0.25 s popping up)
   dustTime: 0.8,        // the warning dust part of that: a full bar cancels a spawn that's still in it
@@ -135,7 +137,7 @@ export function simulateRun(stats, dice, player = PLAYERS.efficient) {
   let gold = 0;
 
   for (let sub = 1; sub <= 10; sub++) {
-    const room = BALANCE.rooms[sub - 1];
+    const room = CRYPT.rooms[sub - 1];
     const scale = subDepthScale(sub);
     const isBossRoom = sub === 10;
     let t = 0;              // seconds since landing in this room
@@ -247,7 +249,7 @@ export function simulateRun(stats, dice, player = PLAYERS.efficient) {
       let arrived = 0;
       while (arrived < rising.length && rising[arrived].at <= t) {
         const { type, at } = rising[arrived++];
-        if (type === "boss") boss = { left: Math.ceil(BALANCE.boss.hp / stats.damage), nextRaise: t + MODEL.bossRaiseEvery };
+        if (type === "boss") boss = { left: Math.ceil(CRYPT.boss.hp / stats.damage), nextRaise: t + MODEL.bossRaiseEvery };
         else if (BALANCE.mobs[type].wanders) waiting.push({ type, upAt: at });
         else comeClose(type);
       }
@@ -260,13 +262,13 @@ export function simulateRun(stats, dice, player = PLAYERS.efficient) {
       // is still up (boss.js).
       if (boss && t >= boss.nextRaise) {
         boss.nextRaise = t + MODEL.bossRaiseEvery;
-        if (close.length <= 1) spawn(3, BALANCE.boss.minion);
+        if (close.length <= 1) spawn(3, CRYPT.boss.minion);
       }
 
       // The danger since the last swing: everything up close (and spikes)
       // can land a hit, but not while he's still invincible from the last
       // one, so only the part of the swing after that counts.
-      const perSecond = (threat + (boss ? BALANCE.boss.threat : 0) + (room.hazard ?? 0)) * danger;
+      const perSecond = (threat + (boss ? CRYPT.boss.threat : 0) + (room.hazard ?? 0)) * danger;
       const exposed = Math.min(swing, t - invincibleUntil);
       if (exposed > 0 && perSecond > 0 && dice() < 1 - Math.exp(-perSecond * exposed)) {
         hearts--;
@@ -324,7 +326,7 @@ export function simulateRun(stats, dice, player = PLAYERS.efficient) {
       }
       // The boss takes a hit when a swing gets through its moves.
       if (boss && dice() < 1 / MODEL.dodgeTime && --boss.left <= 0) {
-        roomGold += coins(BALANCE.boss.gold * (1 + stats.goldBonus)); // its pile of coins
+        roomGold += coins(CRYPT.boss.gold * (1 + stats.goldBonus)); // its pile of coins
         return end("boss", t);
       }
 

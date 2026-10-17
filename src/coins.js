@@ -10,27 +10,38 @@ import { roomLimits } from "./room.js";
 // taken away; collectFloor() then adds any that didn't make it in time to
 // the run's total. Bones (dropBone) work the same way.
 //
-// A big amount is split over a handful of coins, each worth a share, so the
-// boss's pile doesn't become hundreds of sprites.
-const MOST_COINS = 12;     // coins shown for one drop at most
+// Gold drops as green gems worth GEM gold each, plus coins for the rest: 8
+// gold is a gem and 3 coins. So a room full of kills doesn't bury the floor
+// in coins, and the gems themselves show the hero is earning more. A big
+// amount is split over a handful of pieces, so the boss's pile doesn't
+// become hundreds of sprites: past MOST_COINS, each gem is worth a share of
+// the gems' gold.
+const GEM = 5;             // gold a gem is worth
+const MOST_COINS = 12;     // pieces shown for one drop at most
 const PICKUP = 6;          // px: this close, it's picked up
 const FLY_SPEED = 140;     // px per second, once the magnet has it
 const SWEEP_SPEED = 330;   // px per second at most, for a swept coin (it speeds up on the way)
 
 let lastJingle = 0;
 
-// Drops `amount` gold (whole coins) at `at`. `run.gold` is what they add to;
-// `magnet()` is the hero's magnet range right now, in px.
+// Drops `amount` gold (whole coins) at `at`, as gems and coins. `run.gold`
+// is what they add to; `magnet()` is the hero's magnet range right now, in px.
 export function dropCoins(at, amount, run, player, magnet, { spread = 10 } = {}) {
-  const count = Math.min(amount, MOST_COINS);
+  const coins = amount % GEM;
+  const gemGold = amount - coins;
+  // How many gems to show (fewer, each worth more, if there'd be too many),
+  // the first few taking any remainder.
+  const gems = Math.min(gemGold / GEM, Math.max(1, MOST_COINS - coins));
+  const values = [
+    ...Array.from({ length: gems }, (_, i) => ["gem", Math.floor(gemGold / gems) + (i < gemGold % gems ? 1 : 0)]),
+    ...Array.from({ length: Math.min(coins, MOST_COINS) }, () => ["coin", 1]),
+  ];
   const limits = roomLimits([6, 4]);
-  for (let i = 0; i < count; i++) {
-    // Share the amount out evenly, the first few coins taking the remainder.
-    const value = Math.floor(amount / count) + (i < amount % count ? 1 : 0);
+  for (const [kind, value] of values) {
     const angle = rand(0, Math.PI * 2);
     const land = at.add(Math.cos(angle) * rand(2, spread), Math.sin(angle) * rand(1, spread * 0.6));
     const target = vec2(clamp(land.x, limits.left, limits.right), clamp(land.y, limits.top, limits.bottom));
-    addPickup(at, target, "coin", value, run, player, magnet);
+    addPickup(at, target, kind, value, run, player, magnet);
   }
 }
 
@@ -51,19 +62,38 @@ function drawBone() {
   for (const [x, y, w, h] of BONE) drawRect({ pos: vec2(x, y), width: w, height: h, color: rgb(232, 224, 208) });
 }
 
-// A coin or a bone, hopping out to `to` and lying there until the magnet
-// (or the end-of-run sweep) brings it to him.
+// The gem isn't in the tileset either: a small green cut stone, outlined,
+// with a light facet on top and a dark one below, that twinkles now and then.
+const GEM_SHAPE = [[-2, -8, 5, 1], [-3, -7, 7, 2], [-2, -5, 5, 1], [-1, -4, 3, 1], [0, -3, 1, 1]];
+function drawGem(twinkleAt) {
+  for (const [x, y, w, h] of GEM_SHAPE) drawRect({ pos: vec2(x - 1, y - 1), width: w + 2, height: h + 2, color: rgb(24, 20, 37) });
+  for (const [x, y, w, h] of GEM_SHAPE) drawRect({ pos: vec2(x, y), width: w, height: h, color: rgb(56, 183, 100) });
+  drawRect({ pos: vec2(-2, -8), width: 3, height: 1, color: rgb(160, 236, 150) }); // light facet
+  drawRect({ pos: vec2(-3, -7), width: 2, height: 1, color: rgb(160, 236, 150) });
+  drawRect({ pos: vec2(1, -5), width: 2, height: 1, color: rgb(30, 120, 64) });    // dark facet
+  drawRect({ pos: vec2(0, -4), width: 2, height: 1, color: rgb(30, 120, 64) });
+  if ((time() + twinkleAt) % 2.5 < 0.12) drawRect({ pos: vec2(-1, -7), width: 1, height: 1, color: rgb(255, 255, 255) });
+}
+
+// A coin, a gem or a bone, hopping out to `to` and lying there until the
+// magnet (or the end-of-run sweep) brings it to him. Gems are tagged "coin"
+// too: they're gold.
 function addPickup(from, to, kind, value, run, player, magnet) {
   const born = time();
   const coin = add([
     ...(kind === "coin" ? [sprite("coin", { frame: choose([0, 0, 3]) }), anchor("bot")] : []), // frame 1 is the white shine, 2 edge-on
     pos(from),
     z(8),
+    kind === "gem" ? "coin" : kind,
     kind,
     "pickup",
     { value },
   ]);
   if (kind === "bone") coin.onDraw(drawBone);
+  if (kind === "gem") {
+    const twinkleAt = rand(0, 2.5);
+    coin.onDraw(() => drawGem(twinkleAt));
+  }
   let flying = false;
   let flewFor = 0; // seconds since it started flying
   coin.onUpdate(() => {
@@ -87,7 +117,7 @@ function addPickup(from, to, kind, value, run, player, magnet) {
       } else {
         run.gold += coin.value;
         if (time() - lastJingle > 0.06) {
-          playSound("coin");
+          playSound(kind === "gem" ? "gem" : "coin");
           lastJingle = time();
         }
       }
@@ -101,14 +131,14 @@ function addPickup(from, to, kind, value, run, player, magnet) {
   });
 }
 
-// The run is over: every coin and bone on the floor flies to him, as if his
+// The run is over: every coin, gem and bone on the floor flies to him, as if his
 // magnet covered the whole room (ones still hopping out join in when they
 // land).
 export function sweepFloor() {
   for (const pickup of get("pickup")) pickup.swept = true;
 }
 
-// What's still on the floor (or still flying): the coins' gold, and the bones.
+// What's still on the floor (or still flying): the gold in coins and gems, and the bones.
 export const floorValue = () => get("coin").reduce((sum, coin) => sum + coin.value, 0);
 export const floorBones = () => get("bone").reduce((sum, bone) => sum + bone.value, 0);
 

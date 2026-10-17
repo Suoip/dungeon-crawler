@@ -1,6 +1,7 @@
 import { TILE, TOP, GAME_WIDTH, GAME_HEIGHT } from "./config.js";
-import { raiseMob, hurtMob } from "./mobs.js";
-import { sleep, during, puffDust, shakeScreen, flashScreen, showBanner, sparks } from "./effects.js";
+import { raiseMob } from "./mobs.js";
+import { addShot } from "./shots.js";
+import { sleep, during, puffDust, shakeScreen, flashScreen, showBanner } from "./effects.js";
 import { playSound } from "./sound.js";
 import { roomLimits } from "./room.js";
 
@@ -8,7 +9,8 @@ import { roomLimits } from "./room.js";
 // seconds it casts one of three moves at random, each with its own warning
 // so you can tell what's coming:
 //   dash   flashes red, then dashes at you, leaving a trail of fire
-//   vomit  flashes green, then spits a ring of 12 projectiles
+//   vomit  flashes green, then spits a ring of 12 projectiles (they can only
+//          be dodged: shots.js)
 //   spawn  flashes purple, then raises 3 minions around itself
 // Each boss casts its favorite move twice as often as the others. Below
 // half health it becomes enraged, and every move gets stronger.
@@ -24,13 +26,6 @@ const FIRE_LIFE = 4;               // seconds the fire trail burns
 
 const SHOTS = 12;                  // projectiles per ring, 30° apart
 const SHOT_SPEED = 70;
-export const SHOT_HEIGHT = 12;     // px above the floor they fly at
-const BAT_AFTER = 36;              // px a shot must fly before it can be batted back
-const BATTED_SPEED = 170;
-
-// Where flying things are allowed to be: inside the room's walls.
-const ROOM = { left: 6, right: GAME_WIDTH - 6, top: TOP + 2 * TILE, bottom: GAME_HEIGHT - 5 };
-const inRoom = (p) => p.x > ROOM.left && p.x < ROOM.right && p.y > ROOM.top && p.y < ROOM.bottom;
 
 const WARNING_COLORS = {
   dash: [255, 90, 90],
@@ -131,7 +126,7 @@ const MOVES = {
   },
 
   // Raises 3 minions around itself. A boss with its own `minions` (the Big
-  // Zombie's tiny zombies, which fit the crypt) raises those in both phases;
+  // Zombie's tiny zombies, the ogre's goblins) raises those in both phases;
   // the others raise tougher ones once enraged.
   async spawn(boss, room) {
     if (!(await windUp(boss, room, "spawn", 0.6, "summon"))) return;
@@ -281,69 +276,7 @@ function ring(boss, room, turn) {
   shakeScreen(2);
   for (let i = 0; i < SHOTS; i++) {
     const angle = ((turn + (i * 360) / SHOTS) * Math.PI) / 180;
-    addShot(boss, room, vec2(Math.cos(angle), Math.sin(angle)));
+    const dir = vec2(Math.cos(angle), Math.sin(angle));
+    addShot(boss.pos.add(dir.scale(14)), dir, { speed: SHOT_SPEED, look: "spit" });
   }
-}
-
-// One projectile. Its position is the spot on the floor under it; it's drawn
-// SHOT_HEIGHT px up, with a small shadow under it. It starts dark green and
-// can't be batted back; once it's flown BAT_AFTER px it turns bright yellow,
-// and a swing sends it back at the boss (see combat.js).
-function addShot(boss, room, dir) {
-  const shot = add([
-    pos(boss.pos.add(dir.scale(14))),
-    z(10),
-    "hazard",
-    "shot",
-    {
-      dir,
-      speed: SHOT_SPEED,
-      travelled: 0,
-      batable: false,
-      batted: false,
-      touches: (player) => !shot.batted && shot.pos.dist(player.pos) < 7,
-      onHit: () => pop(shot),
-      // A swing hit it: off it goes, back toward the boss.
-      batBack() {
-        shot.batted = true;
-        shot.speed = BATTED_SPEED;
-        shot.dir = boss.pos.sub(shot.pos).unit();
-        playSound("bat");
-        sparks(shot.pos.x, shot.pos.y - SHOT_HEIGHT, 4);
-      },
-    },
-  ]);
-
-  shot.onUpdate(() => {
-    shot.z = 10 + shot.pos.y / 1000;
-    if (shot.batted && boss.exists()) {
-      // Steers a little toward the boss, so a good hit doesn't just miss.
-      shot.dir = shot.dir.lerp(boss.pos.sub(shot.pos).unit(), 0.12).unit();
-    }
-    const step = shot.dir.scale(shot.speed * dt());
-    shot.pos = shot.pos.add(step);
-    shot.travelled += step.len();
-    if (!shot.batable && shot.travelled >= BAT_AFTER) shot.batable = true;
-
-    if (!inRoom(shot.pos)) return pop(shot);
-    if (shot.batted && boss.exists() && boss.active && shot.pos.dist(boss.pos) < 16) {
-      hurtMob(boss, shot.pos, room, room.stats?.damage ?? 1); // as hard as a swing
-      pop(shot);
-    }
-  });
-
-  shot.onDraw(() => {
-    drawEllipse({ pos: vec2(0, 0), radiusX: 3, radiusY: 1.2, color: rgb(0, 0, 0), opacity: 0.35 });
-    const [outer, inner] = shot.batted
-      ? [[140, 220, 255], [240, 250, 255]]
-      : shot.batable ? [[255, 205, 60], [255, 245, 180]] : [[60, 110, 40], [110, 160, 60]];
-    drawCircle({ pos: vec2(0, -SHOT_HEIGHT), radius: 3, color: rgb(...outer) });
-    drawCircle({ pos: vec2(-0.5, -SHOT_HEIGHT - 0.5), radius: 1.5, color: rgb(...inner) });
-  });
-}
-
-function pop(shot) {
-  if (!shot.exists()) return;
-  puffDust(shot.pos.x, shot.pos.y - SHOT_HEIGHT, 3, 5, 11);
-  destroy(shot);
 }

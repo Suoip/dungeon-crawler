@@ -94,3 +94,9 @@ export function buildRoom() {
   addSolid(GAME_WIDTH - 5, TOP - THICK, THICK + 5, GAME_HEIGHT - TOP + 2 * THICK); // right wall
   addSolid(-THICK, GAME_HEIGHT - 4, GAME_WIDTH + 2 * THICK, THICK + 4);     // bottom wall (4 px on screen)
 }
+
+// Tints everything drawn so far (call it right after building the room: the
+// floor, the walls and the door) with `rgb`, so each depth has its own look.
+export function tintRoom(rgb) {
+  get("*").filter((part) => part.has("sprite")).forEach((part) => part.use(color(...rgb)));
+}

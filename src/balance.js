@@ -8,8 +8,8 @@
 //     buy something (DESIGN.md section 8)
 // To tune the game, change numbers here and run the simulator again.
 //
-// Only depth 1 (the crypt) exists so far. Times are in seconds, distances in
-// game pixels, chances from 0 (never) to 1 (always).
+// Depths 1 (the crypt) and 2 (the goblin warrens) exist so far. Times are in
+// seconds, distances in game pixels, chances from 0 (never) to 1 (always).
 
 export const BALANCE = {
   // ---- The run ----------------------------------------------------------
@@ -36,21 +36,27 @@ export const BALANCE = {
   },
 
   // ---- Monsters ---------------------------------------------------------
-  // `hp` and `gold` are for sub-depth 1. Deeper sub-depths multiply them (see
-  // `growth`). A kill drops its gold as whole coins: the gold (with Greed) is
+  // `hp` and `gold` are for sub-depth 1 of the depth the monster belongs to.
+  // Deeper sub-depths multiply them (see `growth`), and so does a deeper
+  // depth (its `scale`, in `depths`). A kill drops its gold as whole coins: the gold (with Greed) is
   // rounded to the nearest coin, and is always at least 1. `xp` fills the
   // room's bar (see `rooms`). `threat` is how dangerous a monster is while
   // it's up close: roughly the chance per second that it lands a hit on a
   // careful player (the simulator uses it to guess how often you get hit; in
   // the game, it comes from how the monster moves and attacks).
   // `wanders`: it never comes after the hero, it just crawls about (mobs.js),
-  // so the first rooms are calm practice. `splitsInto` (none in the crypt
-  // now): what pops out of it when it falls.
+  // so the first rooms are calm practice. `splitsInto` (none now): what pops
+  // out of it when it falls.
   mobs: {
+    // The crypt
     slug:        { hp: 3, gold: 1, xp: 1, threat: 0.008, wanders: true }, // wanders slowly; hurts on contact, but never comes after you
     tiny_zombie: { hp: 3, gold: 1.4, xp: 1, threat: 0.02 }, // slow chaser (1.4: 2 coins from room 3 on, or with a little Greed)
     skeleton:    { hp: 4, gold: 3, xp: 2, threat: 0.06 },   // winds up, then charges in a line
     mimic:       { hp: 12, gold: 10, xp: 5, threat: 0.12 }, // a chest that bites (see `chest` in rooms)
+    // The goblin warrens (before the depth's `scale`)
+    goblin:      { hp: 3, gold: 1.4, xp: 1, threat: 0.03 },  // fast chaser
+    imp:         { hp: 3, gold: 2, xp: 1, threat: 0.05 },    // keeps its distance and throws fireballs (the threat is mostly them)
+    wogol:       { hp: 4, gold: 3, xp: 2, threat: 0.07 },    // runs up and explodes, even when it's beaten
   },
 
   // How much tougher and richer each sub-depth is than the one above:
@@ -80,43 +86,78 @@ export const BALANCE = {
     chest: { hp: 6, gold: 12 },   // a real chest (not a mimic): it opens into a pile of coins
   },
 
-  // ---- Depth 1: the crypt -------------------------------------------------
-  // One entry per sub-depth, 1 to 10. `xp` is the size of the room's bar:
-  // fill it and the door opens (in sub-depth 10, the boss appears).
-  // `spawns` are the monsters that can rise there, with how likely each is,
-  // in percent. Each monster gets more common for a few rooms after it's
-  // introduced, until a newer one eats into its share: slugs go from all of
-  // them in rooms 1-2 to about a third in room 10, zombies (from room 3) and
-  // skeletons (from room 5) grow to about a third each. `breakables` and `hazard`
-  // (extra danger per second from floor spikes, 0 = none) are what else is
-  // in the room; where they stand comes from the room's layout (layouts.js).
-  // `chest`: the room may have a chest (`chance`), and it's a mimic that
-  // bites (`mimic` of the time) instead of loot. Both look the same, closed.
-  rooms: [
-    { xp: 6, spawns: { slug: 100 }, breakables: ["pot", "pot"] },
-    { xp: 5, spawns: { slug: 100 }, breakables: ["pot", "pot"] },
-    { xp: 9, spawns: { slug: 75, tiny_zombie: 25 }, breakables: ["pot", "pot"] },
-    { xp: 10, spawns: { slug: 60, tiny_zombie: 40 }, breakables: ["pot", "pot"], hazard: 0.005 },
-    { xp: 12, spawns: { slug: 50, tiny_zombie: 40, skeleton: 10 }, breakables: ["pot", "pot"], hazard: 0.005 },
-    { xp: 13, spawns: { slug: 45, tiny_zombie: 38, skeleton: 17 }, breakables: ["pot", "crate", "crate"], hazard: 0.005, chest: { chance: 0.6, mimic: 0 } },
-    { xp: 15, spawns: { slug: 40, tiny_zombie: 37, skeleton: 23 }, breakables: ["pot", "crate", "crate"], hazard: 0.005, chest: { chance: 0.7, mimic: 0.5 } },
-    { xp: 17, spawns: { slug: 36, tiny_zombie: 35, skeleton: 29 }, breakables: ["pot", "crate", "crate"], hazard: 0.01, chest: { chance: 0.7, mimic: 0.5 } },
-    { xp: 20, spawns: { slug: 33, tiny_zombie: 34, skeleton: 33 }, breakables: ["crate", "crate", "urn"], hazard: 0.01, chest: { chance: 0.7, mimic: 0.6 } },
-    { xp: 23, spawns: { slug: 30, tiny_zombie: 35, skeleton: 35 }, breakables: ["crate", "crate"] }, // then the boss
+  // ---- The depths --------------------------------------------------------
+  // One entry per depth. Each has:
+  //   name    shown on the sign where you pick the depth (in the underworld)
+  //   scale   how much tougher (hp) and richer (gold) its monsters are than
+  //           their numbers in `mobs`, so each depth starts the power curve
+  //           over with bigger numbers
+  //   tint    the color its floor and walls are tinted (none: as drawn)
+  //   bones   whether its kills drop bones (the crypt's material, see drops)
+  //   rooms   one entry per sub-depth, 1 to 10 (see below)
+  //   boss    its boss (see below)
+  //
+  // A room's `xp` is the size of its bar: fill it and the door opens (in
+  // sub-depth 10, the boss appears). `spawns` are the monsters that can rise
+  // there, with how likely each is, in percent. In every depth, each monster
+  // gets more common for a few rooms after it's introduced, until a newer one
+  // eats into its share: the first one is all of them in rooms 1-2 and about
+  // a third in room 10, the second (from room 3) and the third (from room 5)
+  // grow to about a third each. `breakables` and `hazard` (extra danger per
+  // second from floor spikes, 0 = none) are what else is in the room; where
+  // they stand comes from the room's layout (layouts.js). `chest`: the room
+  // may have a chest (`chance`), and it's a mimic that bites (`mimic` of the
+  // time) instead of loot. Both look the same, closed.
+  //
+  // The boss appears in sub-depth 10 when that room's bar is full, and then
+  // the run clock stops. Its hp and gold are its own (not grown by sub-depth
+  // or the depth's scale). It raises 3 minions around itself every so often,
+  // in both of its phases (its own, set in mobs.js). `threat` is for the
+  // pacing simulator.
+  depths: [
+    {
+      name: "CRYPT",
+      scale: { hp: 1, gold: 1 },
+      tint: null,
+      bones: true,
+      rooms: [
+        { xp: 6, spawns: { slug: 100 }, breakables: ["pot", "pot"] },
+        { xp: 5, spawns: { slug: 100 }, breakables: ["pot", "pot"] },
+        { xp: 9, spawns: { slug: 75, tiny_zombie: 25 }, breakables: ["pot", "pot"] },
+        { xp: 10, spawns: { slug: 60, tiny_zombie: 40 }, breakables: ["pot", "pot"], hazard: 0.005 },
+        { xp: 12, spawns: { slug: 50, tiny_zombie: 40, skeleton: 10 }, breakables: ["pot", "pot"], hazard: 0.005 },
+        { xp: 13, spawns: { slug: 45, tiny_zombie: 38, skeleton: 17 }, breakables: ["pot", "crate", "crate"], hazard: 0.005, chest: { chance: 0.6, mimic: 0 } },
+        { xp: 15, spawns: { slug: 40, tiny_zombie: 37, skeleton: 23 }, breakables: ["pot", "crate", "crate"], hazard: 0.005, chest: { chance: 0.7, mimic: 0.5 } },
+        { xp: 17, spawns: { slug: 36, tiny_zombie: 35, skeleton: 29 }, breakables: ["pot", "crate", "crate"], hazard: 0.01, chest: { chance: 0.7, mimic: 0.5 } },
+        { xp: 20, spawns: { slug: 33, tiny_zombie: 34, skeleton: 33 }, breakables: ["crate", "crate", "urn"], hazard: 0.01, chest: { chance: 0.7, mimic: 0.6 } },
+        { xp: 23, spawns: { slug: 30, tiny_zombie: 35, skeleton: 35 }, breakables: ["crate", "crate"] }, // then the boss
+      ],
+      boss: { type: "big_zombie", hp: 300, gold: 300, threat: 0.08, minion: "tiny_zombie" },
+    },
+    {
+      // The goblin warrens: goblins chase, imps (from room 3) keep their
+      // distance and throw fireballs, and wogols (from room 5) run up and
+      // explode. The ogre stands in for the depth's boss until it has its
+      // own.
+      name: "WARRENS",
+      scale: { hp: 6, gold: 3 },
+      tint: [196, 168, 120],
+      bones: false,
+      rooms: [
+        { xp: 6, spawns: { goblin: 100 }, breakables: ["pot", "pot"] },
+        { xp: 5, spawns: { goblin: 100 }, breakables: ["pot", "pot"] },
+        { xp: 9, spawns: { goblin: 75, imp: 25 }, breakables: ["pot", "pot"] },
+        { xp: 10, spawns: { goblin: 60, imp: 40 }, breakables: ["pot", "pot"], hazard: 0.005 },
+        { xp: 12, spawns: { goblin: 50, imp: 40, wogol: 10 }, breakables: ["pot", "pot"], hazard: 0.005 },
+        { xp: 13, spawns: { goblin: 45, imp: 38, wogol: 17 }, breakables: ["pot", "crate", "crate"], hazard: 0.005, chest: { chance: 0.6, mimic: 0 } },
+        { xp: 15, spawns: { goblin: 40, imp: 37, wogol: 23 }, breakables: ["pot", "crate", "crate"], hazard: 0.005, chest: { chance: 0.7, mimic: 0.5 } },
+        { xp: 17, spawns: { goblin: 36, imp: 35, wogol: 29 }, breakables: ["pot", "crate", "crate"], hazard: 0.01, chest: { chance: 0.7, mimic: 0.5 } },
+        { xp: 20, spawns: { goblin: 33, imp: 34, wogol: 33 }, breakables: ["crate", "crate", "urn"], hazard: 0.01, chest: { chance: 0.7, mimic: 0.6 } },
+        { xp: 23, spawns: { goblin: 30, imp: 35, wogol: 35 }, breakables: ["crate", "crate"] }, // then the boss
+      ],
+      boss: { type: "ogre", hp: 2400, gold: 2000, threat: 0.1, minion: "goblin" },
+    },
   ],
-
-  // The boss: it appears in sub-depth 10 when that room's bar is full, and
-  // then the run clock stops. Its hp and gold are its own (not grown by
-  // sub-depth). It raises 3 minions around itself every so often, in both of
-  // its phases. (boss.js raises goblins and an orc once a boss is enraged;
-  // for the Big Zombie that becomes tiny zombies, which fit the crypt.)
-  boss: {
-    type: "big_zombie",
-    hp: 300,
-    gold: 300,           // its pile of coins, on every kill, the first one and repeats
-    threat: 0.08,        // chance per second, while it's up close, that it lands a hit
-    minion: "tiny_zombie",
-  },
 
   // ---- Drops --------------------------------------------------------------
   drops: {

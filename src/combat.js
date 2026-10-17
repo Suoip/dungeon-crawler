@@ -3,7 +3,6 @@ import { BALANCE } from "./balance.js";
 import { heroById } from "./heroes.js";
 import { getSetting } from "./settings.js";
 import { hurtMob } from "./mobs.js";
-import { SHOT_HEIGHT } from "./boss.js";
 import { keepInRoom } from "./room.js";
 import { PLAYER_FEET } from "./player.js";
 import { flashScreen, shakeScreen } from "./effects.js";
@@ -104,7 +103,6 @@ function swing(player, room, side, stats) {
 
 // Hits every mob the weapon passed through since the last frame: close
 // enough, and between the angle it was at then and the angle it's at now.
-// It also bats back the boss's shots, once they've turned yellow.
 function hitSwept(player, fromAngle, toAngle, alreadyHit, room, stats) {
   if (room.over) return; // a swing still in the air when the run ended hits nothing
   const chest = chestOf(player);
@@ -137,11 +135,6 @@ function hitSwept(player, fromAngle, toAngle, alreadyHit, room, stats) {
     if (sweptThrough(mob.pos.add(0, -mob.def.size / 2), extra)) {
       alreadyHit.add(mob);
       hurtMob(mob, player.pos, room, stats.damage);
-    }
-  }
-  for (const shot of get("shot")) {
-    if (shot.batable && !shot.batted && sweptThrough(shot.pos.add(0, -SHOT_HEIGHT), 4)) {
-      shot.batBack();
     }
   }
 }
@@ -276,7 +269,7 @@ export function addHearts(run) {
 }
 
 // Mobs hurt the hero by touching him, and so does anything tagged "hazard"
-// (the boss's fire and shots, the crypt's floor spikes), when its
+// (the boss's fire, shots, the crypt's floor spikes, a wogol's blast), when its
 // touches(player) says so. Each hit
 // costs a whole heart, knocks him back, and makes him blink for a moment,
 // during which he can't be hit again. `onDeath` runs when the last heart is

@@ -27,14 +27,15 @@ The game needs a keyboard. On phones and tablets, a notice says so.
 - **Rooms that fill an XP bar:** monsters rise as you land, a horde arrives every 20 seconds whether or not the room is clear, and when the last monster falls, another rises at once. Every kill fills the room's bar, split in two halves on either side of the door, and a full bar unchains it. The monsters still up stay, for their gold, if you want it.
 - **A clock that ends the run:** 15 seconds at the start, counting down only while you're in control, red and ticking for the last five. Each hit costs a whole heart, and you start with one.
 - **The crypt's monsters:** slugs crawl about without hunting you, so the first rooms are calm practice; from room 3, tiny zombies chase you; from room 5, skeletons rattle as a warning and then charge in a straight line. Each kind gets more common after it first shows up, until the next one arrives, so room 10 is about a third of each. Deeper rooms bring more monsters, with more health. Every hit's damage pops up as a number.
+- **Depth 2, the goblin warrens:** beating the Big Zombie opens a second depth, picked at a signpost in the underworld. Its rooms are tinted earthy brown, with their own layouts and monsters several times tougher: goblins rush you, imps keep their distance, spread out around you and throw fireballs you have to dodge, and wogols run up, flash and explode, even after they're beaten. An ogre waits in the last room.
 - **Rooms with something in them:** every room is one of three designed layouts, picked at random: pillars to hide behind, floor spikes that pop up on a beat (with a warning), and pots, crates and a big urn to smash for gold. From room 6, a chest might be waiting: hit it and it opens into coins, unless it's a mimic, which snaps open and comes after you. Bones start dropping there too.
-- **Gold on the floor:** kills drop coins, and a small magnet pulls in the ones you get close to. Coins left behind when you go through the door are lost; when a run ends, the ones still on the floor fly to you from all over the room as you're dragged down.
+- **Gold on the floor:** kills drop green gems worth 5 gold and coins for the rest (8 gold is a gem and 3 coins), and a small magnet pulls in the ones you get close to. Gold left behind when you go through the door are lost; when a run ends, the ones still on the floor fly to you from all over the room as you're dragged down.
 - **The underworld:** every run ends there, dragged down by the hands, with the results on the floor (how it ended, the gold earned and banked, how deep it got, the kills), an altar in the middle and ladders to try again or return to the menu. The altar's sigil glows when there's something you can afford.
 - **A skill tree at the altar:** a web of 24 nodes drawn over the room, growing out of Descend in the middle into six branches: weapon, hearts, time, dash, money and the horde. Each node is a round frame with an icon (from the tileset, or a few hand-drawn pixels) and, for nodes with more than one level, a pip per level. You see the nodes next to the ones you own; the ones further out are dark outlines. Depth-2 nodes can be bought early, at three times the price. The panel at the bottom shows what the next level does ("DAMAGE 1 > 2", or "MAGNET RANGE +25%") and what it costs.
 - **Saved progress:** banked gold and bought upgrades are saved in the browser after every run and every purchase. The Options room has a red reset button that asks twice before it erases them.
 - **A dash and time orbs from the tree:** the dash (Shift) is bought at the altar. Each dash uses a charge that takes 2.5 s to fill; Quick feet shortens it and Second charge adds another, shown as small bars under the hero's feet. Time orbs are rare drops that add seconds to the clock when picked up.
 - **Hearts to win back:** with more than one heart, monsters can drop a heart while you're missing one. A bad-luck counter makes sure the drops don't dry up, and a dropped heart blinks out after a few seconds.
-- **A boss fight that keeps you moving:** the Big Zombie makes its entrance in the last room once its bar is full, and the clock stops for it. It casts a random move every couple of seconds, each with its own warning flash: a dash that leaves a trail of fire, a ring of 12 projectiles, or raising tiny zombies. Once the projectiles turn yellow, a swing bats them back at it. Below half health it becomes enraged: it dashes twice and fires a second ring that covers the gaps in the first.
+- **A boss fight that keeps you moving:** the Big Zombie makes its entrance in the last room once its bar is full, and the clock stops for it. It casts a random move every couple of seconds, each with its own warning flash: a dash that leaves a trail of fire, a ring of 12 projectiles you have to dodge, or raising tiny zombies. Below half health it becomes enraged: it dashes twice and fires a second ring that covers the gaps in the first.
 - **10 playable heroes, each with their own weapon:** pick one in the Heroes room, and it's remembered.
 - **A volume mixer you walk around in:** sound effects and music each have a slider on the floor, a stone block you bump along a rail from 0 to 10, one notch per bump, so you can set your own mix of effects and music. Screen shake is a lever. All of it is remembered between visits.
 - **Sound and music made in code:** sound effects are generated with ZzFX, and the background music is a chiptune loop composed in code with the Web Audio API. There are no audio files.
@@ -67,16 +68,17 @@ src/
   cutscenes.js        falling in, walking through doors, ladders, the well, being dragged down
   interact.js         using doors, levers, heroes, ladders and plaques
   combat.js           the automatic swing, hearts, heart and time-orb drops, getting hurt
-  mobs.js             monster types, spawning, rising from the floor, chasing, the skeleton's charge, the mimic
-  crypt.js            the crypt's rooms: pillars, floor spikes, breakables, chests
-  layouts.js          each room's designed layouts, as small text grids
+  mobs.js             monster types, spawning, rising from the floor, chasing, the skeleton's charge, the mimic, the imp's distance-keeping, the wogol's blast
+  shots.js            fireballs and spit: thrown at the hero, dodged, stopped by walls and pillars
+  crypt.js            the rooms' pillars, floor spikes, breakables and chests
+  layouts.js          each depth's designed room layouts, as small text grids
   coins.js            coins and bones on the floor, and the magnet
   hud.js              the clock (and the seconds time orbs add), the XP bar, the gold, and damage numbers
   boss.js             the boss's moves: dash and fire trail, projectile rings, raising minions, rage
   player.js           the hero: walking and dashing
   doors.js, room.js, props.js, heroes.js   building the rooms and characters
   panel.js            what the strip says
-  dungeon.js          a run: its hero, hearts, clock and gold
+  dungeon.js          a run: its depth, hero, hearts, clock and gold
   stats.js            what the skill tree's upgrades do to the hero, and what they cost
   save.js             banked gold, bought upgrades and the reset (localStorage)
   sound.js, music.js  sound effects and music

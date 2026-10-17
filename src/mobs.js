@@ -1,10 +1,11 @@
 import { TILE, TOP, GAME_WIDTH, GAME_HEIGHT } from "./config.js";
 import { BALANCE } from "./balance.js";
 import { subDepthScale } from "./stats.js";
-import { sleep, during, animate, puffDust, addShadow, addSpawnHole, sparks } from "./effects.js";
+import { sleep, during, animate, puffDust, addShadow, addSpawnHole, sparks, shakeScreen } from "./effects.js";
 import { playSound } from "./sound.js";
 import { setupBoss } from "./boss.js";
-import { keepInRoom } from "./room.js";
+import { addShot } from "./shots.js";
+import { keepInRoom, roomLimits } from "./room.js";
 import { popNumber } from "./hud.js";
 
 // How the monsters look and move. `feet` is the size of the box at their
@@ -13,26 +14,33 @@ import { popNumber } from "./hud.js";
 // src/balance.js, grown by how deep the room is. A boss's `favorite` is the
 // move it casts most often, and `minions` are what it raises (boss.js).
 export const MOB_TYPES = {
+  // The crypt
   tiny_zombie: { speed: 26, feet: [10, 6], size: 16 },
   skeleton:    { speed: 30, feet: [10, 6], size: 16, rusher: true }, // winds up, then charges in a line
   slug:        { speed: 14, feet: [12, 6], size: 23 },               // wanders about, never hunts (balance.js `wanders`)
   mimic:       { speed: 40, feet: [12, 6], size: 16, rusher: true },  // a chest that woke up (crypt.js): lunges like a skeleton
-  // Other depths' monsters (not in balance.js yet), for the other bosses' minions.
-  goblin:      { speed: 52, feet: [10, 6], size: 16, hp: 3 },
+  // The goblin warrens
+  goblin:      { speed: 52, feet: [10, 6], size: 16 },
+  imp:         { speed: 40, feet: [10, 6], size: 16, shooter: true }, // keeps its distance and throws fireballs
+  wogol:       { speed: 38, feet: [10, 6], size: 23, bomber: true },  // runs up and explodes
+  // Others, for the old bosses' minions (not in balance.js: a fixed hp).
   orc_warrior: { speed: 36, feet: [10, 6], size: 23, hp: 5 },
-  big_demon:   { speed: 28, feet: [22, 8], size: 36, boss: true, name: "BIG DEMON", favorite: "dash", hp: 24 },
-  ogre:        { speed: 30, feet: [22, 8], size: 36, boss: true, name: "OGRE", favorite: "vomit", knockback: 3, hp: 42 },
+  // Bosses
+  big_demon:   { speed: 28, feet: [22, 8], size: 36, boss: true, name: "BIG DEMON", favorite: "dash" },
+  ogre:        { speed: 30, feet: [22, 8], size: 36, boss: true, name: "OGRE", favorite: "vomit", knockback: 3, minions: ["goblin"] },
   big_zombie:  { speed: 16, feet: [22, 8], size: 36, boss: true, name: "BIG ZOMBIE", favorite: "spawn", minions: ["tiny_zombie"] },
 };
 
-// A monster's hp, gold and XP in sub-depth `sub`. The depth's boss has its
-// own numbers in balance.js; anything else not in balance.js has a fixed hp.
-function numbersFor(type, sub) {
-  if (type === BALANCE.boss.type) return { hp: BALANCE.boss.hp, gold: BALANCE.boss.gold, xp: 0 };
+// A monster's hp, gold and XP in this room (`room.sub` of `room.depth`). The
+// depth's boss has its own numbers in balance.js; anything not in balance.js
+// has a fixed hp.
+function numbersFor(type, room) {
+  const depth = BALANCE.depths[room.depth - 1];
+  if (type === depth.boss.type) return { hp: depth.boss.hp, gold: depth.boss.gold, xp: 0 };
   const data = BALANCE.mobs[type];
   if (!data) return { hp: MOB_TYPES[type].hp, gold: 1, xp: 1 };
-  const scale = subDepthScale(sub);
-  return { hp: Math.ceil(data.hp * scale.hp), gold: data.gold * scale.gold, xp: data.xp };
+  const scale = subDepthScale(room.sub);
+  return { hp: Math.ceil(data.hp * scale.hp * depth.scale.hp), gold: data.gold * scale.gold * depth.scale.gold, xp: data.xp };
 }
 
 // ---- Spawning ------------------------------------------------------------------
@@ -153,7 +161,7 @@ export function wakeMimic(at, room) {
 // (scale 0 tall), for raiseMob or wakeMimic to bring to life.
 function addMob(type, spot, room, onDeath) {
   const def = MOB_TYPES[type];
-  const numbers = numbersFor(type, room.sub);
+  const numbers = numbersFor(type, room);
   const mob = add([
     sprite(type, { anim: "idle" }),
     pos(spot),
@@ -211,6 +219,8 @@ export function hurtMob(mob, from, room, damage = 1) {
   mob.dead = true; // beaten: already counted out, already on its way down
   playSound("mobDie");
   puffDust(mob.pos.x, mob.pos.y - mob.def.size / 2, 10, 14, 11);
+  // A wogol goes off anyway, a moment later, where it fell.
+  if (mob.def.bomber) blowUp(mob.pos.clone(), room, mob.fuseLeft ?? BOMB.afterDeath);
   // A splitter (balance.js `splitsInto`) splits: its children pop out where it fell.
   for (const [i, child] of (BALANCE.mobs[mob.type]?.splitsInto ?? []).entries()) {
     const side = i % 2 ? 1 : -1;
@@ -226,10 +236,13 @@ export function hurtMob(mob, from, room, damage = 1) {
 
 // What a mob does every frame: get knocked back, or chase the player, or
 // (for bosses) their special move, or (for skeletons) charge, or (for
-// slugs) wander about.
+// slugs) wander about, or (for imps) keep their distance and shoot, or (for
+// wogols) go off when they're close.
 function setupBrain(mob, room) {
   const rush = mob.def.rusher ? setupRush(mob, room) : null;
   const wander = BALANCE.mobs[mob.type]?.wanders ? setupWander(mob) : null;
+  const shoot = mob.def.shooter ? setupShooter(mob, room) : null;
+  const bomb = mob.def.bomber ? setupBomber(mob, room) : null;
   mob.onUpdate(() => {
     mob.z = 10 + mob.pos.y / 1000; // lower on screen = drawn in front
     if (!mob.active || room.frozen) {
@@ -246,6 +259,8 @@ function setupBrain(mob, room) {
 
     if (mob.def.boss && mob.bossTurn()) return; // busy casting a move
     if (wander) return wander();                // it doesn't hunt
+    if (shoot) return shoot();                  // it keeps its distance
+    if (bomb && bomb()) return;                 // its fuse is lit
     if (rush && rush()) return;                 // winding up or charging
     const toPlayer = room.player.pos.sub(mob.pos);
     if (toPlayer.len() > 2) {
@@ -286,6 +301,159 @@ function setupWander(mob) {
     mob.flipX = way.x < 0;
     if (mob.getCurAnim()?.name !== "run") mob.play("run");
   };
+}
+
+// An imp keeps its distance. It heads for a spot SHOOT.keep px from the
+// hero on its own side of him, nudged around him away from the other imps,
+// so they spread out and come at him from different angles. It never runs
+// off to a far corner: the spot is always about that far from him (pressed
+// against a wall if it must). Every few seconds it stops, glows orange (the
+// warning), and throws a fireball at where he is. The fireball can only be
+// dodged (shots.js), and pillars and crates stop it.
+const SHOOT = {
+  keep: 80,            // px it likes to be from the hero
+  spread: 1.6,         // radians (about 90°): closer than this around him, imps push apart
+  every: [2.2, 3.4],   // seconds between throws, picked at random
+  range: 170,          // px: it only throws from closer than this
+  windUp: 0.5,         // seconds of glowing before it throws
+  speed: 72,           // px per second (a little slower than the hero walks)
+};
+function setupShooter(mob, room) {
+  let nextShot = time() + rand(1, 2); // they don't all throw the moment they're up
+  let throwAt = null;                 // while winding up: when it throws
+  const limits = roomLimits(mob.def.feet);
+  return () => {
+    const now = time();
+    const hero = room.player.pos;
+    mob.flipX = hero.x < mob.pos.x; // it always faces him
+
+    if (throwAt !== null) {
+      mob.color = Math.floor(now * 16) % 2 ? rgb(255, 150, 60) : mob.tint;
+      if (now < throwAt) return;
+      mob.color = mob.tint;
+      throwAt = null;
+      nextShot = now + rand(...SHOOT.every);
+      const dir = hero.sub(mob.pos).unit();
+      addShot(mob.pos.add(dir.scale(8)), dir, { speed: SHOOT.speed, look: "fire" });
+      playSound("fireball");
+      return;
+    }
+    if (now >= nextShot && hero.dist(mob.pos) < SHOOT.range) {
+      throwAt = now + SHOOT.windUp;
+      mob.play("idle");
+      playSound("charge");
+      return;
+    }
+
+    // Where to stand: on its side of him, pushed around him away from the
+    // imps that are close to it (by angle).
+    const angleOf = (p) => Math.atan2(p.y - hero.y, p.x - hero.x);
+    const mine = angleOf(mob.pos);
+    let push = 0;
+    for (const other of get("mob")) {
+      if (other === mob || !other.active || !other.def.shooter) continue;
+      let diff = mine - angleOf(other.pos);
+      diff = Math.atan2(Math.sin(diff), Math.cos(diff)); // -π to π
+      if (Math.abs(diff) < SHOOT.spread) push += (diff === 0 ? 1 : Math.sign(diff)) * (1 - Math.abs(diff) / SHOOT.spread);
+    }
+    const angle = mine + clamp(push, -1, 1) * 0.8;
+    const spot = vec2(
+      clamp(hero.x + Math.cos(angle) * SHOOT.keep, limits.left + 8, limits.right - 8),
+      clamp(hero.y + Math.sin(angle) * SHOOT.keep, limits.top + 4, limits.bottom - 4),
+    );
+    const toSpot = spot.sub(mob.pos);
+    if (toSpot.len() > 4) {
+      mob.move(toSpot.unit().scale(mob.speed));
+      keepInRoom(mob, mob.def.feet);
+      if (mob.getCurAnim()?.name !== "run") mob.play("run");
+    } else if (mob.getCurAnim()?.name !== "idle") mob.play("idle");
+  };
+}
+
+// A wogol runs at the hero, and once it's close it stops, flashes, swells,
+// and goes off, with the blast's reach marked on the floor while the fuse
+// burns. The blast hurts only the hero (not other monsters). Beating it
+// doesn't stop it: it goes off a moment later where it fell (hurtMob). When
+// it goes off by itself, it's gone, with no gold or XP. Returns the function
+// the brain calls every frame: true while its fuse is lit.
+const BOMB = {
+  range: 22,         // px: closer than this, its fuse is lit
+  fuse: 0.7,         // seconds from lighting to the blast
+  afterDeath: 0.45,  // seconds from being beaten to the blast
+  radius: 30,        // px the blast reaches sideways (70% of that up and down, like its mark on the floor)
+};
+// Whether `at` is inside the blast's reach around `middle`.
+const inBlast = (at, middle) => ((at.x - middle.x) / BOMB.radius) ** 2 + ((at.y - middle.y) / (BOMB.radius * 0.7)) ** 2 < 1;
+function setupBomber(mob, room) {
+  let blastAt = null;
+  mob.onDraw(() => {
+    if (blastAt !== null && mob.active) blastMark(vec2(0), blastAt - time());
+  });
+  return () => {
+    const now = time();
+    if (blastAt === null) {
+      if (room.player.pos.dist(mob.pos) > BOMB.range) return false; // still chasing him
+      blastAt = now + BOMB.fuse;
+      mob.play("idle");
+      playSound("fuse");
+    }
+    mob.fuseLeft = Math.max(0.05, blastAt - now); // if it's beaten now, the blast still comes on time
+    mob.color = Math.floor(now * 20) % 2 ? rgb(255, 255, 255) : rgb(255, 90, 90);
+    mob.scale = vec2(1 + 0.25 * (1 - (blastAt - now) / BOMB.fuse));
+    if (now < blastAt) return true;
+    // It goes off: it's gone, without counting as beaten.
+    mob.active = false;
+    mob.dead = true;
+    room.onVanish?.(mob);
+    explode(mob.pos.clone(), room);
+    destroy(mob);
+    return true;
+  };
+}
+
+// The blast's reach on the floor around `at` (relative to whatever draws it),
+// blinking faster as `left` (seconds until the blast) runs out.
+function blastMark(at, left) {
+  const blink = Math.floor(time() * (left < 0.25 ? 24 : 12)) % 2;
+  drawEllipse({
+    pos: at, radiusX: BOMB.radius, radiusY: BOMB.radius * 0.7,
+    fill: false, outline: { width: 1, color: blink ? rgb(255, 90, 90) : rgb(255, 205, 70) },
+  });
+}
+
+// A beaten wogol: its blast mark blinks where it fell, then it goes off.
+function blowUp(at, room, delay) {
+  const mark = add([pos(at), z(6)]);
+  const blastAt = time() + delay;
+  mark.onDraw(() => blastMark(vec2(0), blastAt - time()));
+  wait(delay, () => {
+    destroy(mark);
+    explode(at, room);
+  });
+}
+
+// The blast: smoke, sparks, a boom, and for a moment it's a hazard that
+// hurts the hero (setupHurt in combat.js) if he's within its reach. Nothing
+// happens once the room is over or frozen (the run ended, or the boss is
+// making its entrance).
+function explode(at, room) {
+  if (room.over || room.frozen) return;
+  playSound("boom");
+  shakeScreen(4);
+  puffDust(at.x, at.y - 4, 16, 20, 11);
+  for (let i = 0; i < 4; i++) sparks(at.x + rand(-10, 10), at.y - rand(2, 12), 3);
+  const born = time();
+  const blast = add([
+    pos(at),
+    z(11),
+    "hazard",
+    { touches: (player) => time() - born < 0.12 && inBlast(player.pos, at) },
+  ]);
+  blast.onDraw(() => {
+    const t = Math.min(1, (time() - born) / 0.25);
+    drawEllipse({ pos: vec2(0, -4), radiusX: Math.max(1, BOMB.radius * t), radiusY: Math.max(1, BOMB.radius * 0.7 * t), color: rgb(255, 205, 70), opacity: 0.6 * (1 - t) });
+  });
+  wait(0.25, () => destroy(blast));
 }
 
 // A skeleton walks at you slowly, and once it's close enough it stops,

@@ -41,6 +41,8 @@ export function loadAssets() {
     skeleton: monster(368, 88, 16, 16),
     slug: wriggler(368, 369, 16, 23),
     goblin: monster(368, 40, 16, 16),
+    imp: monster(368, 64, 16, 16),
+    wogol: monster(368, 249, 16, 23),
     orc_warrior: monster(368, 177, 16, 23),
     big_demon: monster(16, 428, 32, 36),
     ogre: monster(16, 380, 32, 36),

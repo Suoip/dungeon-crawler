@@ -2,7 +2,7 @@ import { ROOMS } from "./config.js";
 import { BALANCE } from "./balance.js";
 import { coins } from "./stats.js";
 import { endRun } from "./save.js";
-import { buildRoom } from "./room.js";
+import { buildRoom, tintRoom } from "./room.js";
 import { addPlayer, setupPlayerMovement, setupDash } from "./player.js";
 import { addDoors, doorInteraction, chainDoor, unchainDoor } from "./doors.js";
 import { setupInteractions } from "./interact.js";
@@ -18,6 +18,7 @@ import { addHud } from "./hud.js";
 import { addLadder, addWell } from "./props.js";
 import { playSound } from "./sound.js";
 import { showDepth, hidePrompt } from "./panel.js";
+import { depthData } from "./dungeon.js";
 
 // How far from the middle the hero is kept when the boss rises there (px).
 const BOSS_CLEARANCE = 40;
@@ -41,13 +42,15 @@ const BOSS_CLEARANCE = 40;
 export function registerRoomScene() {
   scene("room", (run) => {
     const sub = run.index + 1; // the sub-depth, 1 to ROOMS
-    const room = BALANCE.rooms[run.index];
+    const depth = depthData(run.depth);
+    const room = depth.rooms[run.index];
     const { stats } = run;
     const isBossRoom = sub === ROOMS;
-    const bossName = MOB_TYPES[BALANCE.boss.type].name;
+    const bossName = MOB_TYPES[depth.boss.type].name;
 
     buildRoom();
     const [door] = addDoors([null]);
+    if (depth.tint) tintRoom(depth.tint); // the floor, the walls and the door's frame
     chainDoor(door);
     const player = addPlayer(LAND_X, LAND_Y);
     setupPlayerMovement(player);
@@ -66,6 +69,7 @@ export function registerRoomScene() {
     // The fight in this room, shared with mobs.js, boss.js and combat.js.
     const fight = {
       player, sub, stats,
+      depth: run.depth,
       alive: 0,      // monsters up and about
       rising: 0,     // monsters still coming out of the floor
       over: false,   // the hero left the room, or the run ended
@@ -88,6 +92,8 @@ export function registerRoomScene() {
         // Death calls (a tree upgrade): a kill may call up another monster.
         if (stats.deathCall > 0 && Math.random() < stats.deathCall) spawner?.raise(1);
       },
+      // A monster gone without being beaten (a wogol that went off).
+      onVanish: () => fight.alive--,
     };
     // The room's layout (crypt.js): pillars, spikes, breakables, maybe a chest.
     fight.solid = buildLayout(fight, run);
@@ -96,7 +102,7 @@ export function registerRoomScene() {
     // Bones (the crypt's material): from sub-depth 6 on, a kill may drop one,
     // more often the deeper it is.
     const bones = BALANCE.drops.bones;
-    const boneChance = sub < bones.fromSubDepth ? 0 : bones.chance + bones.stepPerSubDepth * (sub - bones.fromSubDepth);
+    const boneChance = !depth.bones || sub < bones.fromSubDepth ? 0 : bones.chance + bones.stepPerSubDepth * (sub - bones.fromSubDepth);
     const maybeDropBone = (mob) => {
       if (Math.random() < boneChance) dropBone(mob.pos.clone(), run, player, () => stats.magnetRange);
     };
@@ -121,7 +127,7 @@ export function registerRoomScene() {
     });
 
     hidePrompt();
-    showDepth(sub);
+    showDepth(run.depth, sub);
 
     // The clock: only while he's in control, and not once the boss is up.
     let lastWhole = Math.ceil(run.clock);
@@ -194,7 +200,7 @@ export function registerRoomScene() {
       await sleep(0.4);
       await shoveAside(player, bossSpot(), BOSS_CLEARANCE);
       fight.frozen = false;
-      const boss = await raiseMob(BALANCE.boss.type, fight);
+      const boss = await raiseMob(depth.boss.type, fight);
       await boss?.ready; // its name, and its roar
       if (fight.over) return;
       player.frozen = false;
@@ -271,11 +277,12 @@ export function registerRoomScene() {
     }
 
     // The run's gold and bones (plus `gold` and `boneCount` more) go into the
-    // save: once per run, however it ends.
+    // save: once per run, however it ends. `run.unlocked`: this run beat the
+    // depth's boss for the first time, and the next depth is open now.
     function bank(gold = 0, boneCount = 0) {
       if (run.banked) return;
       run.banked = true;
-      endRun(run.gold + gold, run.deepest, bossDown, run.bones + boneCount);
+      run.unlocked = endRun({ gold: run.gold + gold, deepest: run.deepest, depth: run.depth, cleared: bossDown, bones: run.bones + boneCount });
     }
 
     // Through the door: on to the next room. Coins left on the floor stay

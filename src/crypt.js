@@ -8,9 +8,10 @@ import { sleep, puffDust, sparks } from "./effects.js";
 import { popNumber } from "./hud.js";
 import { playSound } from "./sound.js";
 
-// The crypt's rooms (DESIGN.md section 3). Each room is built from one of
-// its layouts (layouts.js), picked at random: pillars, floor spikes, things
-// to smash for gold, and sometimes a chest that may be a mimic.
+// What's in a room, in every depth (DESIGN.md section 3). Each room is built
+// from one of its depth's layouts (layouts.js), picked at random: pillars,
+// floor spikes, things to smash for gold, and sometimes a chest that may be
+// a mimic.
 
 // Where a layout tile is: layout row 0 is the first row of floor, under the
 // back wall (2 tiles tall).
@@ -20,12 +21,13 @@ const middleOf = (col, row) => vec2(tileX(col) + TILE / 2, tileY(row) + TILE / 2
 const BREAKABLES = { o: "pot", c: "crate", U: "urn" };
 const OUTLINE = [24, 20, 37];
 
-// Builds a layout for this room. `fight` is the room's fight (scenes.js),
-// `run` the run (for its stats and gold). Returns the middles of the solid
-// tiles, so no monster rises inside one (mobs.js spawnSpot).
+// Builds a layout for this room (one of its depth's, layouts.js). `fight` is
+// the room's fight (scenes.js), `run` the run (for its stats and gold).
+// Returns the middles of the solid tiles, so no monster rises inside one
+// (mobs.js spawnSpot).
 export function buildLayout(fight, run) {
-  const room = BALANCE.rooms[fight.sub - 1];
-  const rows = choose(LAYOUTS[fight.sub - 1]);
+  const room = BALANCE.depths[fight.depth - 1].rooms[fight.sub - 1];
+  const rows = choose(LAYOUTS[fight.depth - 1][fight.sub - 1]);
   if (!rows) return [];
   const solid = [];
   const spikes = [];
