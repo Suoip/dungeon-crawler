@@ -2,6 +2,8 @@ import { TILE, TOP, GAME_HEIGHT } from "./config.js";
 import { openDoor } from "./doors.js";
 import { sleep, animate, fadeOut, puffDust, shakeScreen, addSpawnHole } from "./effects.js";
 import { playSound } from "./sound.js";
+import { roomLimits } from "./room.js";
+import { PLAYER_FEET } from "./player.js";
 
 // The short scripted moments where the game moves the knight by itself.
 
@@ -64,6 +66,32 @@ export async function fallIn(player, at = vec2(LAND_X, LAND_Y)) {
   await animate(0, 1, 0.2, (t) => {
     player.scale = vec2(lerp(1.4, 1, t), lerp(0.6, 1, t));
   }, easings.easeOutBack);
+}
+
+// Something is about to rise where he's standing (the boss): if he's within
+// `radius` px of `spot`, the shaking floor shoves him straight away from it
+// (down, if he's right on top of it) to the nearest place that's clear,
+// skidding, and he ends up facing it. He must already be frozen.
+export async function shoveAside(player, spot, radius) {
+  const away = player.pos.sub(spot);
+  if (away.len() >= radius) return;
+  const way = away.len() > 1 ? away.unit() : vec2(0, 1);
+  const limits = roomLimits(PLAYER_FEET);
+  const target = spot.add(way.scale(radius));
+  const to = vec2(clamp(target.x, limits.left, limits.right), clamp(target.y, limits.top, limits.bottom));
+  playSound("dash");
+  const from = player.pos.clone();
+  let lastPuff = 0;
+  await animate(0, 1, 0.35, (t) => {
+    player.pos = from.lerp(to, t);
+    player.z = 10 + player.pos.y / 1000;
+    if (t - lastPuff > 0.15) {
+      lastPuff = t;
+      puffDust(player.pos.x, player.pos.y, 3, 6, 9);
+    }
+  }, easings.easeOutQuad);
+  player.facing = way.scale(-1); // toward it, so his first swing goes that way
+  if (Math.abs(way.x) > 0.1) player.flipX = way.x > 0;
 }
 
 // The run is over: a dark hole opens under the hero, little hands reach up

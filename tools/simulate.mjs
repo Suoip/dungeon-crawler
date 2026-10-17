@@ -25,8 +25,9 @@ import { writeFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 import { BALANCE } from "../src/balance.js";
 import { MODEL, PLAYERS, heroStats, costOf, simulateRun, makeDice } from "./model.mjs";
+import { isEarly } from "../src/stats.js";
 
-const DEPTH = 1;            // the depth being played (nodes for deeper depths aren't on sale)
+const DEPTH = 1;            // the depth being played (deeper depths' nodes cost BALANCE.earlyPrice times as much)
 const TARGET_MINUTES = 40;  // DESIGN.md section 8: about 40 minutes per depth, typical player
 const MARGIN = 1.3;         // warn when a golden-rule run earns less than this × the cheapest offer
 const MAX_RUNS = 400;       // if it's not done by then, it's stuck
@@ -35,14 +36,15 @@ const WORTH_OF = 10;        // dice rolls when a shopper tries an upgrade out
 
 const startingLevels = () => Object.fromEntries(BALANCE.tree.filter((n) => n.owned).map((n) => [n.id, 1]));
 
-// The nodes you could buy a level of right now (their parent is owned, they
-// aren't maxed, they belong to this depth), each with its next level's price.
+// The nodes you could buy a level of right now (their parent is owned and
+// they aren't maxed), each with its next level's price. A deeper depth's
+// nodes are on sale too, at the early price (this depth's boss isn't beaten
+// yet: that's what ends the playthrough).
 function forSale(levels) {
   return BALANCE.tree
-    .filter((node) => (node.depth ?? 1) <= DEPTH)
     .filter((node) => (levels[node.id] ?? 0) < node.levels)
     .filter((node) => !node.parent || (levels[node.parent] ?? 0) > 0)
-    .map((node) => ({ node, price: costOf(node, levels[node.id] ?? 0) }));
+    .map((node) => ({ node, price: costOf(node, levels[node.id] ?? 0, isEarly(node, DEPTH - 1)) }));
 }
 
 // Plays the same upgrades `count` times with the dice seeded 1, 2, 3...
@@ -212,7 +214,13 @@ function summarize(shopperName, path, typical, efficient) {
   const last = path.runs.at(-1);
   const check = golden(path.runs);
   const ratio = (r) => fmt(r.gold / r.cheapest, 2);
-  const boughtLevels = Object.entries(path.levels).reduce((sum, [id, l]) => sum + (BALANCE.tree.find((n) => n.id === id).owned ? 0 : l), 0);
+  // Levels of this depth's nodes, and of deeper ones bought early.
+  const levelsOf = (test) => Object.entries(path.levels).reduce((sum, [id, l]) => {
+    const node = BALANCE.tree.find((n) => n.id === id);
+    return sum + (!node.owned && test(node.depth ?? 1) ? l : 0);
+  }, 0);
+  const boughtLevels = levelsOf((depth) => depth <= DEPTH);
+  const earlyLevels = levelsOf((depth) => depth > DEPTH);
   const allLevels = BALANCE.tree.filter((n) => !n.owned && (n.depth ?? 1) <= DEPTH).reduce((sum, n) => sum + n.levels, 0);
   const span = (s) => `${fmt(s.minutes.mean, 1)} min on average (10% of players faster than ${fmt(s.minutes.p10, 1)}, 10% slower than ${fmt(s.minutes.p90, 1)}), ${s.runs.median} runs`
     + (s.unfinished ? `, ${s.unfinished} NEVER beat the boss` : "");
@@ -232,7 +240,8 @@ function summarize(shopperName, path, typical, efficient) {
     + ` (5+ before the last stretch: ${fmt(100 * r.manyEarly)}%; biggest spree ${fmt(r.spree, 1)} on average, ${typical.maxBuys} at most)`;
   lines.push(`  upgrades bought per run (typical player): ${beat(typical.rhythm)}`);
   lines.push(`  first run: reached ${fmt(path.runs[0].deepest, 1)}, earned ${path.runs[0].gold} gold, bought ${path.runs[0].bought.join(", ") || "nothing"}`);
-  lines.push(`  tree bought when the boss fell: ${boughtLevels} of ${allLevels} levels`);
+  lines.push(`  tree bought when the boss fell: ${boughtLevels} of ${allLevels} levels`
+    + (earlyLevels ? `, plus ${earlyLevels} of the next depth's, bought early` : ""));
   const stuck = walls(path.runs);
   lines.push(stuck.length
     ? `  walls: ${stuck.map((w) => `runs ${w.from}-${w.to} ${w.open ? "still stuck at the end" : "stuck"} at ${fmt(w.at, 1)} (${fmt(w.minutes, 1)} min)`).join("; ")}`

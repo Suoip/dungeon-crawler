@@ -129,7 +129,9 @@ export const BALANCE = {
   // 1.4 and 1.6 (DESIGN.md section 8). Each level applies `effect` once:
   //   add: x    adds x to the stat        mul: x   multiplies the stat by x
   //   unlock    turns something on (one level only)
-  // `depth: 2` marks a node that shows up dim until depth 2 is reached.
+  // `depth: 2` marks a node that belongs to depth 2. It can be bought
+  // before depth 1's boss is beaten, but at `earlyPrice` times the price.
+  earlyPrice: 3,
   tree: [
     { id: "descend", name: "Descend", parent: null, levels: 1, cost: 0, growth: 1, effect: { unlock: "descend" }, owned: true },
 
