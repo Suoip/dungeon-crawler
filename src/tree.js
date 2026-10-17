@@ -1,6 +1,6 @@
 import { GAME_WIDTH, GAME_HEIGHT } from "./config.js";
 import { BALANCE } from "./balance.js";
-import { heroStats, costOf } from "./stats.js";
+import { heroStats, costOf, isEarly } from "./stats.js";
 import { getSave, buyLevel } from "./save.js";
 import { playSound } from "./sound.js";
 import { puffDust } from "./effects.js";
@@ -130,13 +130,15 @@ function drawPixels(kind, at, zoom, opacity) {
 // ---- What a node says ------------------------------------------------------------
 
 // The stat each node changes, as people read it: a label and how to show
-// the number.
+// the number. `null` means it's shown as a percentage instead: a distance in
+// pixels means nothing to a player, but "+25%" of the range they've seen in
+// play does.
 const pct = (x) => `${Math.round(x * 1000) / 10}%`;
 const secs = (x) => `${x.toFixed(x < 10 ? 2 : 1)}S`;
 const STAT_TEXT = {
   damage: ["DAMAGE", (x) => `${x}`],
   swingEvery: ["SWING EVERY", secs],
-  reach: ["REACH", (x) => `${Math.round(x)}`],
+  reach: ["REACH", null],
   arc: ["SWING WIDTH", (x) => `${Math.round(x)} DEG`],
   hearts: ["HEARTS", (x) => `${x}`],
   invincibleFor: ["SAFE AFTER A HIT", secs],
@@ -148,7 +150,7 @@ const STAT_TEXT = {
   dashCooldown: ["DASH COOLDOWN", secs],
   dashCharges: ["DASH CHARGES", (x) => `${x}`],
   goldBonus: ["GOLD PER KILL", (x) => `+${Math.round(x * 100)}%`],
-  magnetRange: ["MAGNET", (x) => `${Math.round(x)}`],
+  magnetRange: ["MAGNET RANGE", null],
   breakableBonus: ["BREAKABLE GOLD", (x) => `+${Math.round(x * 100)}%`],
   onEnter: ["MONSTERS ON ENTRY", (x) => `${x}`],
   horde: ["HORDE SIZE", (x) => `${x}`],
@@ -158,15 +160,20 @@ const STAT_TEXT = {
 };
 const UNLOCK_TEXT = { descend: "WHERE EVERYTHING GROWS FROM", dash: "UNLOCKS THE DASH (SHIFT)", timeOrbs: "UNLOCKS TIME ORBS" };
 
-// "DAMAGE 3 > 4": what the next level changes, now and after.
+// "DAMAGE 3 > 4": what the next level changes, now and after. Or, for a
+// stat shown as a percentage, "MAGNET RANGE +25%": how much bigger the next
+// level makes it (and once it's maxed, how much bigger it is in all).
 function effectText(node, levels) {
   if (node.effect.unlock) return UNLOCK_TEXT[node.effect.unlock] ?? "UNLOCKS SOMETHING NEW";
-  const [label, show] = STAT_TEXT[node.effect.stat];
-  const now = heroStats(levels)[node.effect.stat];
+  const { stat } = node.effect;
+  const [label, show] = STAT_TEXT[stat];
+  const now = heroStats(levels)[stat];
   const level = levels[node.id] ?? 0;
-  if (level >= node.levels) return `${label} ${show(now)}`;
-  const next = heroStats({ ...levels, [node.id]: level + 1 })[node.effect.stat];
-  return `${label} ${show(now)} > ${show(next)}`;
+  const maxed = level >= node.levels;
+  const next = maxed ? now : heroStats({ ...levels, [node.id]: level + 1 })[stat];
+  const percent = (ratio) => `+${Math.round((ratio - 1) * 100)}%`;
+  if (!show) return maxed ? `${label} ${percent(now / heroStats({})[stat])} IN ALL` : `${label} ${percent(next / now)}`;
+  return maxed ? `${label} ${show(now)}` : `${label} ${show(now)} > ${show(next)}`;
 }
 
 // ---- The page -------------------------------------------------------------------
@@ -182,17 +189,18 @@ const FRAME = 9; // a node frame's radius at 1x
 const owned = (id) => (getSave().levels[id] ?? 0) > 0;
 // Seen: next to something owned (its parent is), or owned itself.
 const shown = (node) => owned(node.id) || !node.parent || owned(node.parent);
-// For a depth not reached yet: dim, and not on sale.
-const forLater = (node) => (node.depth ?? 1) > getSave().cleared + 1;
+// For a depth not reached yet (stats.js): on sale already, at the early
+// price (balance.js earlyPrice), for anyone who'd rather save up for it.
+const early = (node) => isEarly(node, getSave().cleared);
 // Nodes whose effect isn't in the game yet (the dash's cooldown and second
 // charge, and the time orbs, come in step 5; breakables in step 6). They're
 // shown, so the tree looks the way it will, but they aren't on sale.
 const COMING_SOON = new Set(["feet", "charge", "orbs", "orbFinder", "biggerOrbs", "smash"]);
-const notYet = (node) => forLater(node) || COMING_SOON.has(node.id);
+const notYet = (node) => COMING_SOON.has(node.id);
 // What its next level costs, or null when it's maxed.
 function nextPrice(node) {
   const level = getSave().levels[node.id] ?? 0;
-  return level < node.levels ? costOf(node, level) : null;
+  return level < node.levels ? costOf(node, level, early(node)) : null;
 }
 const canBuy = (node) => shown(node) && !notYet(node) && nextPrice(node) !== null && getSave().gold >= nextPrice(node);
 
@@ -233,7 +241,6 @@ export function openTree(onClose) {
     const say = (text, color = C.red) => (message = { id, text, color, until: time() + 1.6 });
     if (!shown(node)) return say("BUY THE ONE BEFORE IT FIRST"), playSound("locked");
     if (level >= node.levels) return say("ALREADY MAXED", C.muted), playSound("locked");
-    if (forLater(node)) return say(`OPENS AT DEPTH ${node.depth}`, C.muted), playSound("locked");
     if (COMING_SOON.has(id)) return say("COMING SOON", C.muted), playSound("locked");
     const price = nextPrice(node);
     if (save.gold < price) return say(`NEEDS ${price} GOLD`), playSound("locked");
@@ -470,23 +477,26 @@ export function openTree(onClose) {
     }
     drawIcon(id, vec2(15, PANEL_Y + 19), 1);
     text(node.name.toUpperCase(), 30, PANEL_Y + 4, C.gold);
-    if (node.levels > 1) text(`${level}/${node.levels}`, GAME_WIDTH - 6, PANEL_Y + 4, C.muted, "topright");
+    // Top right: its levels, and for an early node, the depth it's for.
+    const corner = [early(node) ? `DEPTH ${node.depth}` : "", node.levels > 1 ? `${level}/${node.levels}` : ""];
+    text(corner.filter(Boolean).join("  "), GAME_WIDTH - 6, PANEL_Y + 4, C.muted, "topright");
     text(effectText(node, levels), 30, PANEL_Y + 15);
 
     let status;
     if (message?.id === id && time() < message.until) status = [message.text, message.color];
     else if (!node.parent) status = ["OWNED", C.muted];
     else if (level >= node.levels) status = ["MAXED", C.gold];
-    else if (forLater(node)) status = [`OPENS AT DEPTH ${node.depth}`, C.muted];
     else if (COMING_SOON.has(id)) status = ["COMING SOON", C.muted];
     else {
       // The selected node is one click (or E) from bought; any other node the
-      // mouse is on is a click from being selected.
+      // mouse is on is a click from being selected. An early node says it
+      // costs more for now.
       const price = nextPrice(node);
       const afford = save.gold >= price;
-      if (!afford) status = [`COSTS ${price} GOLD`, C.red];
-      else if (id === selected) status = [`BUY ${price} GOLD: CLICK OR E`, C.green];
-      else status = [`${price} GOLD: CLICK TO PICK`, C.green];
+      const tag = early(node) ? `EARLY ${BALANCE.earlyPrice}X: ` : "";
+      if (!afford) status = [`${tag}COSTS ${price} GOLD`, C.red];
+      else if (id === selected) status = [early(node) ? `${tag}${price} GOLD, CLICK OR E` : `BUY ${price} GOLD: CLICK OR E`, C.green];
+      else status = [`${tag}${price} GOLD${early(node) ? "," : ":"} CLICK TO PICK`, C.green];
     }
     text(status[0], 30, PANEL_Y + 26, status[1]);
   }

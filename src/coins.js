@@ -4,14 +4,18 @@ import { roomLimits } from "./room.js";
 // Coins on the floor (DESIGN.md section 6). A kill drops its gold as coins
 // that hop out of the monster and lie where they land. Once the hero is
 // within the magnet's range, they fly to him and count toward the run's
-// gold. Coins left behind when he goes through the door are lost; when a run
-// ends, the ones still on the floor are collected (collectFloor).
+// gold. Coins left behind when he goes through the door are lost. When a run
+// ends, they're banked at once (floorValue), and sweepFloor() pulls every
+// coin still on the floor to him, from anywhere in the room, while he's
+// taken away; collectFloor() then adds any that didn't make it in time to
+// the run's total.
 //
 // A big amount is split over a handful of coins, each worth a share, so the
 // boss's pile doesn't become hundreds of sprites.
 const MOST_COINS = 12;     // coins shown for one drop at most
 const PICKUP = 6;          // px: this close, it's picked up
 const FLY_SPEED = 140;     // px per second, once the magnet has it
+const SWEEP_SPEED = 330;   // px per second at most, for a swept coin (it speeds up on the way)
 
 let lastJingle = 0;
 
@@ -41,6 +45,7 @@ function addCoin(from, to, value, run, player, magnet) {
     { value },
   ]);
   let flying = false;
+  let flewFor = 0; // seconds since it started flying
   coin.onUpdate(() => {
     const age = time() - born;
     if (age < 0.3) {
@@ -49,10 +54,12 @@ function addCoin(from, to, value, run, player, magnet) {
       coin.pos = from.lerp(to, t).sub(0, Math.sin(t * Math.PI) * 8);
       return;
     }
-    if (player.frozen && !flying) return;
+    // It starts flying once he's close enough and free to move, or as soon
+    // as the floor is swept, wherever it is.
     const distance = coin.pos.dist(player.pos);
-    if (!flying && distance > magnet()) return;
+    if (!flying && !coin.swept && (player.frozen || distance > magnet())) return;
     flying = true;
+    flewFor += dt();
     if (distance < PICKUP) {
       run.gold += coin.value;
       if (time() - lastJingle > 0.06) {
@@ -62,12 +69,25 @@ function addCoin(from, to, value, run, player, magnet) {
       destroy(coin);
       return;
     }
-    coin.pos = coin.pos.add(player.pos.sub(coin.pos).unit().scale(Math.min(distance, FLY_SPEED * dt())));
+    // A swept coin speeds up as it goes, so even one from across the room
+    // reaches him before he's gone.
+    const speed = coin.swept ? Math.min(SWEEP_SPEED, FLY_SPEED + 400 * flewFor) : FLY_SPEED;
+    coin.pos = coin.pos.add(player.pos.sub(coin.pos).unit().scale(Math.min(distance, speed * dt())));
   });
 }
 
-// Every coin still on the floor, collected at once (the run is over).
-// Returns how much they were worth.
+// The run is over: every coin on the floor flies to him, as if his magnet
+// covered the whole room (coins still hopping out join in when they land).
+export function sweepFloor() {
+  for (const coin of get("coin")) coin.swept = true;
+}
+
+// What the coins still on the floor (or still flying) are worth.
+export const floorValue = () => get("coin").reduce((sum, coin) => sum + coin.value, 0);
+
+// Every coin still on the floor (or still flying), collected at once: the
+// ones the sweep didn't bring in before the screen went dark. Returns how
+// much they were worth.
 export function collectFloor() {
   let total = 0;
   for (const coin of get("coin")) {

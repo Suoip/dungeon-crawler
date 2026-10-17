@@ -47,12 +47,18 @@ export function heroStats(levels) {
 
 // What level `level` (counting from 0) of a node costs, rounded to a tidy
 // number: whole gold under 100, then two significant figures (130, 2100...).
-export function costOf(node, level) {
-  const raw = node.cost * node.growth ** level;
+// `early`: it's for a depth not reached yet, so it costs BALANCE.earlyPrice
+// times as much.
+export function costOf(node, level, early = false) {
+  const raw = node.cost * node.growth ** level * (early ? BALANCE.earlyPrice : 1);
   if (raw < 100) return Math.round(raw);
   const step = 10 ** (Math.floor(Math.log10(raw)) - 1);
   return Math.round(raw / step) * step;
 }
+
+// Whether a node is for a depth not reached yet, with `cleared` depths
+// beaten so far (save.js): depth 2's nodes, until depth 1's boss falls.
+export const isEarly = (node, cleared) => (node.depth ?? 1) > cleared + 1;
 
 // How much tougher and richer monsters are in sub-depth `sub` (1 to 10).
 export const subDepthScale = (sub) => ({

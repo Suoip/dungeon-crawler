@@ -17,6 +17,8 @@ export { heroStats, costOf }; // the tree's rules live in the game (src/stats.js
 
 export const MODEL = {
   riseTime: 1.05,       // seconds a spawned monster spends rising (dust 0.8 s, then 0.25 s popping up)
+  dustTime: 0.8,        // the warning dust part of that: a full bar cancels a spawn that's still in it
+  bossEntrance: 2.7,    // from the full bar to the hero moving again: the crumble, the rise, the roar (3.0 s with the shove)
   approach: 1.0,        // seconds until a risen monster is up close, at the starting reach
   doorWalk: 2.0,        // walking to the door once the bar is full
   collectPerRoom: 1.2,  // gathering the room's coins on the way, with the starting magnet
@@ -144,7 +146,8 @@ export function simulateRun(stats, dice, player = PLAYERS.efficient) {
     // The rise is the game's own animation; only getting to the monster takes a typical player longer.
     const arriveIn = MODEL.riseTime + MODEL.approach * (BALANCE.hero.reach / stats.reach) * walk * player.clearTime;
     const spawn = (count, type = null) => {
-      for (let i = 0; i < count; i++) rising.push({ at: t + arriveIn + 0.1 * i, type: type ?? pick(room.spawns, dice) });
+      // `born`: when its warning dust starts.
+      for (let i = 0; i < count; i++) rising.push({ at: t + arriveIn + 0.1 * i, born: t + 0.1 * i, type: type ?? pick(room.spawns, dice) });
     };
     const swingsFor = (type) => Math.ceil((BALANCE.mobs[type].hp * scale.hp) / stats.damage);
     const comeClose = (type) => {
@@ -157,15 +160,28 @@ export function simulateRun(stats, dice, player = PLAYERS.efficient) {
       const progress = isBossRoom && full ? 1 : Math.min(1, xp / room.xp);
       return { deepest: ending === "boss" ? 10 : sub - 1 + Math.min(progress, 0.999), ending, gold, wall };
     };
-    // The bar fills: spawning stops at once. In the boss room, the boss
-    // appears and the clock stops; in the others, the door opens and he
-    // heads for it.
+    // The bar fills: spawning stops at once, even for the monsters still on
+    // their way up. In the boss room, the clock stops and the boss makes its
+    // entrance: everything up close crumbles (its coins drop, but it isn't a
+    // kill), and the hero can't touch the boss until it has roared. In the
+    // others, the door opens and he heads for it.
     const fill = () => {
       full = true;
+      const crumbleCoins = (type) => coins(BALANCE.mobs[type].gold * scale.gold * (1 + stats.goldBonus));
+      // Spawns still in their warning dust are cancelled; the rest are up.
+      for (let i = rising.length - 1; i >= 0; i--) if (t - rising[i].born < MODEL.dustTime) rising.splice(i, 1);
       if (isBossRoom) {
         clockStopped = true;
-        rising.push({ at: t + MODEL.riseTime, type: "boss" });
-        rising.sort((a, b) => a.at - b.at); // it rises quicker than the last spawns arrive
+        for (const { type } of close) {
+          threat -= BALANCE.mobs[type].threat;
+          roomGold += crumbleCoins(type);
+        }
+        close = [];
+        // The ones up but not close yet crumble too (with coins, once they've
+        // finished popping up).
+        for (const r of rising) if (t - r.born >= MODEL.riseTime) roomGold += crumbleCoins(r.type);
+        rising.length = 0;
+        rising.push({ at: t + MODEL.bossEntrance, type: "boss" });
       } else {
         const gather = MODEL.collectPerRoom * (BALANCE.hero.magnetRange / stats.magnetRange) ** 0.7;
         leaveAt = t + (MODEL.doorWalk + gather) * walk * player.clearTime;
@@ -176,7 +192,9 @@ export function simulateRun(stats, dice, player = PLAYERS.efficient) {
       xp += def.xp * (1 + stats.xpBonus);
       if (!full && xp >= room.xp) fill();
       roomGold += coins(def.gold * scale.gold * (1 + stats.goldBonus));
-      for (const child of def.splitsInto ?? []) comeClose(child); // a slug's tiny slugs, right there
+      // A slug's tiny slugs, right there (unless its kill just started the
+      // boss's entrance, which cancels them).
+      if (!(isBossRoom && full)) for (const child of def.splitsInto ?? []) comeClose(child);
       if (hearts < stats.hearts) {
         if (dice() < stats.heartChance + step * dryKills) {
           hearts++;

@@ -7,16 +7,19 @@ import { addPlayer, setupPlayerMovement, setupDash } from "./player.js";
 import { addDoors, doorInteraction, chainDoor, unchainDoor } from "./doors.js";
 import { setupInteractions } from "./interact.js";
 import {
-  fallIn, walkThroughDoor, giveControl, dragDown, climbLadder, climbIntoWell, LAND_X, LAND_Y,
+  fallIn, walkThroughDoor, giveControl, dragDown, climbLadder, climbIntoWell, shoveAside, LAND_X, LAND_Y,
 } from "./cutscenes.js";
 import { sleep, animate, addFader, fadeIn, fadeOut, shakeScreen, flashScreen, puffDust } from "./effects.js";
-import { startSpawning, raiseMob, MOB_TYPES } from "./mobs.js";
+import { startSpawning, raiseMob, bossSpot, MOB_TYPES } from "./mobs.js";
 import { setupAutoSwing, setupHurt, addHearts, setupHeartDrops } from "./combat.js";
-import { dropCoins, collectFloor } from "./coins.js";
+import { dropCoins, collectFloor, sweepFloor, floorValue } from "./coins.js";
 import { addHud } from "./hud.js";
 import { addLadder, addWell } from "./props.js";
 import { playSound } from "./sound.js";
 import { showDepth, hidePrompt } from "./panel.js";
+
+// How far from the middle the hero is kept when the boss rises there (px).
+const BOSS_CLEARANCE = 40;
 
 // One room of the dungeon (DESIGN.md section 3). Every room starts the same
 // way: he falls in. Monsters rise from the floor (some as he lands, hordes
@@ -127,18 +130,51 @@ export function registerRoomScene() {
     const progress = () => (bossDown ? ROOMS : sub - 1 + Math.min(xp / room.xp, 0.999));
 
     // The bar is full: spawning stops. In most rooms, the door opens. In the
-    // boss room, the boss rises and the clock stops.
+    // boss room, the boss makes its entrance.
     function barFull() {
       fight.full = true;
       playSound("unlock");
       flashScreen([255, 205, 70], 0.15, 0.4);
-      if (isBossRoom) {
-        clockStopped = true;
-        raiseMob(BALANCE.boss.type, fight);
-      } else {
-        unchainDoor(door);
-      }
+      if (isBossRoom) bossEntrance();
+      else unchainDoor(door);
       interactions.refresh();
+    }
+
+    // A monster crumbles to dust (when the boss arrives, or when it falls).
+    // At the boss's arrival, the ones that were up drop their coins too, as
+    // if they'd been beaten (but they don't count as kills).
+    function crumble(mob, { dropsCoins = false } = {}) {
+      if (mob.dead) return; // just beaten: it's already falling
+      if (dropsCoins && mob.active) {
+        dropCoins(mob.pos.clone(), coins(mob.gold * (1 + stats.goldBonus)), run, player, () => stats.magnetRange);
+      }
+      mob.active = false;
+      fight.alive--;
+      puffDust(mob.pos.x, mob.pos.y - 6, 6, 10);
+      animate(1, 0, 0.25, (t) => (mob.scale = vec2(1, t))).then(() => destroy(mob));
+    }
+
+    // The boss room's bar is full: the clock stops and the boss makes its
+    // entrance, with the hero held still. The room shakes, every monster
+    // crumbles, he's shoved off the middle if he's standing where the boss
+    // rises, and he gets his controls back once it has roared. So the fight
+    // starts with just the two of them.
+    async function bossEntrance() {
+      clockStopped = true;
+      player.frozen = true;
+      player.opacity = 1; // not stuck halfway through a blink
+      player.play("idle");
+      fight.frozen = true; // nothing moves, and nothing still rising comes up
+      shakeScreen(6);
+      playSound("crumble");
+      for (const mob of get("mob")) crumble(mob, { dropsCoins: true });
+      await sleep(0.4);
+      await shoveAside(player, bossSpot(), BOSS_CLEARANCE);
+      fight.frozen = false;
+      const boss = await raiseMob(BALANCE.boss.type, fight);
+      await boss?.ready; // its name, and its roar
+      if (fight.over) return;
+      player.frozen = false;
     }
 
     // The boss falls: everything of its goes with it (its minions, even the
@@ -150,10 +186,7 @@ export function registerRoomScene() {
       shakeScreen(6);
       fight.frozen = true;
       for (const mob of get("mob")) {
-        if (mob === boss) continue;
-        mob.active = false;
-        puffDust(mob.pos.x, mob.pos.y - 6, 6, 10);
-        animate(1, 0, 0.25, (t) => (mob.scale = vec2(1, t))).then(() => destroy(mob));
+        if (mob !== boss) crumble(mob);
       }
       for (const hazard of get("hazard")) {
         puffDust(hazard.pos.x, hazard.pos.y, 2, 6);
@@ -190,21 +223,36 @@ export function registerRoomScene() {
       });
     }
 
-    // Leaving the boss room: the coins still on the floor are his, and the
-    // run's gold is banked.
+    // Leaving the boss room: the run's gold is banked, coins on the floor
+    // included, and they fly to him on his way out.
     async function leaveBossRoom(cutscene) {
       fight.over = true;
       interactions.disable();
+      bankWithTheFloor();
       await cutscene();
-      run.gold += collectFloor();
-      bank();
+      collectTheRest();
     }
 
-    // The run's gold goes into the save: once per run, however it ends.
-    function bank() {
+    // The run is over: its gold goes into the save right away, counting the
+    // coins still on the floor (so closing the page during the cutscene loses
+    // nothing), and then those coins fly to him, just to show it.
+    function bankWithTheFloor() {
+      bank(floorValue());
+      sweepFloor();
+    }
+
+    // The coins the sweep didn't bring in before the screen went dark: they
+    // were banked already, so they only join the run's total on the results.
+    function collectTheRest() {
+      run.gold += collectFloor();
+    }
+
+    // The run's gold (plus `extra`) goes into the save: once per run, however
+    // it ends.
+    function bank(extra = 0) {
       if (run.banked) return;
       run.banked = true;
-      endRun(run.gold, run.deepest, bossDown);
+      endRun(run.gold + extra, run.deepest, bossDown);
     }
 
     // Through the door: on to the next room. Coins left on the floor stay
@@ -222,7 +270,8 @@ export function registerRoomScene() {
     }
 
     // The run is over (the clock, or his last heart): the room freezes, the
-    // coins on the floor are his, and the run's gold is banked.
+    // run's gold is banked, and every coin on the floor flies to him while
+    // he's taken down.
     function stopTheRun() {
       fight.over = true;
       fight.frozen = true;
@@ -230,8 +279,7 @@ export function registerRoomScene() {
       player.frozen = true;
       interactions.disable(); // the door, well and ladder can't be used now
       run.deepest = Math.max(run.deepest, progress());
-      run.gold += collectFloor();
-      bank();
+      bankWithTheFloor();
     }
 
     // The clock ran out: a gong, and the hands come for him where he stands.
@@ -243,6 +291,7 @@ export function registerRoomScene() {
       shakeScreen(3);
       await sleep(0.8);
       await dragDown(player, { standing: true });
+      collectTheRest();
       await fadeOut(fader, 0.5);
       go("underworld", run, { ending: "time" });
     }
@@ -257,6 +306,7 @@ export function registerRoomScene() {
       await animate(0, 90, 0.25, (angle) => (player.angle = angle)); // falls over
       await sleep(0.5);
       await dragDown(player);
+      collectTheRest();
       await fadeOut(fader, 0.5);
       go("underworld", run, { ending: "died" });
     }

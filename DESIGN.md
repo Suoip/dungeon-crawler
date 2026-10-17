@@ -75,9 +75,14 @@ The quiz is gone. The new game is pure linear progression.
   starts at its sub-depth 1 again. Beating sub-depth 10 unlocks the next
   depth.
 - **Sub-depth 10 is a boss room.** Monsters spawn as in any room. When its
-  bar is full, spawning stops, the boss appears, and **the run clock stops**:
-  you've already made it to sub-depth 10 in time, so the boss fight isn't a
-  race. Only your hearts can end it. The boss raises its own minions as it
+  bar is full, spawning stops and **the run clock stops**: you've already
+  made it to sub-depth 10 in time, so the boss fight isn't a race. Only your
+  hearts can end it. **The boss makes an entrance:** you're held still, the
+  room shakes, every monster still up crumbles (dropping its coins, though
+  it doesn't count as a kill), and if you're standing where the boss rises
+  (the middle of the room) the floor shoves you to the nearest clear spot,
+  facing it. It rises and roars, and then you're free to move: the fight
+  starts with just the two of you. The boss raises its own minions as it
   fights. When it falls, it bursts into a pile of coins (its reward), and a
   **well** (down to the underworld, to buy upgrades) and a **ladder** (up to
   the main room) appear. Beating it unlocks the next depth. The three
@@ -145,6 +150,9 @@ to:
   positioning and dodging.
 - **Swings go where you're facing.** You aim by moving, which takes some
   skill. A retreat means turning back to fight.
+- **No swinging at nothing:** when no monster is up (the room is empty, or
+  the next ones are still rising), the swing is skipped, but its timer
+  keeps the rhythm, so the next one comes exactly when it would have.
 - **The swing starts slow:** one every 1.5 s. Quicker swing brings it down
   to about 0.6 s late in the game, so getting faster is a reward you feel,
   and one more way to grow the hero.
@@ -205,8 +213,11 @@ to:
 - **Collecting:** drops land on the floor, and a small magnet pulls them in
   when you're close. The tree grows the magnet's range. Anything left behind
   when you go through the door is lost, so you choose between gold and time.
-  When a run ends (death or time), every coin still on the floor is
-  collected as you're dragged down.
+  When a run ends (death or time), the magnet covers the whole room for a
+  moment: every coin still on the floor flies to you while you're dragged
+  down, speeding up so even the far ones arrive, and any that don't make it
+  before the screen goes dark count anyway. Leaving the boss room down the
+  well or up the ladder does the same.
 - **Gold comes as whole coins.** A kill's gold (with Greed) is rounded to
   the nearest coin, and is always at least 1. Greed works on kills; Smash
   works on breakables.
@@ -221,8 +232,8 @@ to:
 - **Time orbs** don't drop at all until they're unlocked in the tree, and
   even then they're much rarer than hearts. Orbs come from kills, and depth
   1 has too few kills for orb upgrades to pay off, so **Orb finder and
-  Bigger orbs are an investment for depth 2**: they show up dim until depth
-  2 is reached.
+  Bigger orbs are an investment for depth 2** (see "Buying early" in
+  section 7).
 
 ## 7. The skill tree
 
@@ -261,8 +272,17 @@ to:
 - **The panel at the bottom** shows the node under the cursor, or the
   picked one once a key is pressed: its name, its levels, what the next
   level changes ("SWING EVERY 1.50S > 1.36S") and its price, or why it
-  can't be bought (maxed, the node before it isn't bought, or it opens at
-  depth 2).
+  can't be bought (maxed, or the node before it isn't bought). Distances
+  a player never sees as a number (the magnet's range and the swing's
+  reach) are shown as how much bigger the next level makes them: "MAGNET
+  RANGE +25%", and once maxed, "+205% IN ALL".
+- **Buying early:** a depth-2 node can be bought before depth 1's boss is
+  beaten, at three times the price (`earlyPrice` in `src/balance.js`); the
+  panel says "EARLY 3X" and which depth it's for. It's for players who want
+  to save up and overpower depth 1. In the pacing simulator, the shoppers
+  pick up a few levels of Bigger hordes, Restless dead and sometimes Orb
+  finder about 80% of the way through, which costs them about two minutes
+  over the whole depth.
 - **Coming soon:** until a node's effect is in the game (Quick feet,
   Second charge and the time orbs in step 5, Smash in step 6), it's shown
   but not on sale.
@@ -286,8 +306,8 @@ Every node costs gold. Costs are set in section 8.
 | Time | More time | 10 | +4 s at the start of a run |
 | Time | Second wind | 5 | +1.5 s every time you reach the next sub-depth |
 | Time | Time orbs | 1 | Unlocks time orbs: rare drops worth +1 s |
-| Time | Orb finder | 5 | Time orbs drop more often (from depth 2) |
-| Time | Bigger orbs | 3 | Time orbs are worth more (from depth 2) |
+| Time | Orb finder | 5 | Time orbs drop more often (for depth 2) |
+| Time | Bigger orbs | 3 | Time orbs are worth more (for depth 2) |
 | Dash | Dash | 1 | Unlocks the dash |
 | Dash | Quick feet | 5 | Dash cooldown 10% shorter per level |
 | Dash | Second charge | 1 | A second dash charge (it refills at half speed, see section 5) |
@@ -295,13 +315,14 @@ Every node costs gold. Costs are set in section 8.
 | Money | Greed | 10 | +10% gold per kill |
 | Money | Smash | 3 | Breakables drop more gold |
 | Horde | Crowded rooms | 10 | +1 monster when you enter a room (start: 5) |
-| Horde | Bigger hordes | 10 | +1 monster per horde (start: 7; from depth 2) |
-| Horde | Restless dead | 5 | Hordes come 2 s sooner (start: every 20 s; from depth 2) |
+| Horde | Bigger hordes | 10 | +1 monster per horde (start: 7; for depth 2) |
+| Horde | Restless dead | 5 | Hordes come 2 s sooner (start: every 20 s; for depth 2) |
 | Horde | Death calls | 5 | +5% chance that a kill spawns another monster |
 | Horde | Wisdom | 10 | +10% XP per kill |
 
-That's 24 nodes: 106 levels to buy in depth 1, and 23 more from depth 2
-(Orb finder, Bigger orbs, Bigger hordes and Restless dead). Depth 1's rooms
+That's 24 nodes: 106 levels for depth 1, and 23 more meant for depth 2
+(Orb finder, Bigger orbs, Bigger hordes and Restless dead), which can be
+bought early at three times the price (see "Buying early"). Depth 1's rooms
 fill their bars before most hordes arrive, so the horde upgrades pay off
 from depth 2. The tuned numbers (costs, and the exact effects)
 live in `src/balance.js`.

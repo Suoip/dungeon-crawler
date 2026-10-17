@@ -46,6 +46,10 @@ export function setupBoss(boss, room) {
   boss.raging = false;
   boss.minionsLeft = 0; // minions from its spawns that are still up
   let nextCast = null;
+  // Resolves once it has introduced itself (the boss room waits for its roar
+  // before giving the hero back his controls).
+  let introduced;
+  boss.ready = new Promise((resolve) => (introduced = resolve));
 
   boss.bossTurn = () => {
     if (!boss.raging && boss.hp <= boss.maxHp / 2) enrage(boss);
@@ -57,6 +61,7 @@ export function setupBoss(boss, room) {
       introduce(boss, room).then(() => {
         boss.busy = false;
         nextCast = time() + FIRST_CAST;
+        introduced();
       });
       return true;
     }

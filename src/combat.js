@@ -47,7 +47,9 @@ const turnBetween = (from, to) => ((to - from + 540) % 360) - 180;
 // direction he's facing (the way he last walked), so the player only moves.
 // Only in the dungeon: the menu rooms are calm. The timer counts game time,
 // so it waits during a hit-stop, and it doesn't run while he's frozen in a
-// cutscene.
+// cutscene. When there's nothing to hit (no monster up, and nothing to
+// smash), he lets the swing go by; the timer keeps its rhythm, so the next
+// swing comes exactly when it would have.
 export function setupAutoSwing(player, room, stats) {
   let side = 1; // swings alternate: one way, then back the other way
   let next = stats.swingEvery;
@@ -56,6 +58,7 @@ export function setupAutoSwing(player, room, stats) {
     next -= dt();
     if (next > 0) return;
     next += stats.swingEvery;
+    if (!get("mob").some((mob) => mob.active) && !get("strikeable").length) return; // nothing to swing at
     swing(player, room, side, stats);
     side = -side;
   });

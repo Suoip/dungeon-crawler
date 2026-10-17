@@ -1,7 +1,7 @@
 import { TILE, TOP, GAME_WIDTH, GAME_HEIGHT } from "./config.js";
 import { BALANCE } from "./balance.js";
 import { subDepthScale } from "./stats.js";
-import { sleep, animate, puffDust, hitStop, addShadow, addSpawnHole, sparks } from "./effects.js";
+import { sleep, during, animate, puffDust, hitStop, addShadow, addSpawnHole, sparks } from "./effects.js";
 import { playSound } from "./sound.js";
 import { setupBoss } from "./boss.js";
 import { keepInRoom } from "./room.js";
@@ -54,7 +54,7 @@ export function startSpawning(room, { spawns, onEnter, horde, hordeEvery }) {
     return pool.at(-1)[0];
   };
   const raise = (count) => {
-    for (let i = 0; i < count; i++) raiseMob(pick(), room, { delay: i * 0.12 });
+    for (let i = 0; i < count; i++) raiseMob(pick(), room, { delay: i * 0.12, untilFull: true });
   };
 
   raise(onEnter);
@@ -71,6 +71,9 @@ export function startSpawning(room, { spawns, onEnter, horde, hordeEvery }) {
   });
   return { raise };
 }
+
+// Where a depth's boss rises: the middle of the room.
+export const bossSpot = () => vec2(GAME_WIDTH / 2, TOP + 6 * TILE);
 
 // A random spot on the floor, not too close to the player (so a mob never
 // appears right on top of them).
@@ -90,26 +93,30 @@ export function spawnSpot(player) {
 // it's empty while one is still appearing. `onDeath` is called when this mob
 // is beaten. With `quick`, it skips the dust and just pops out (a slug's
 // tiny slugs).
-export async function raiseMob(type, room, { at = null, delay = 0, onDeath = null, quick = false } = {}) {
+// `untilFull`: it's one of the room's own spawns, which stop when the XP bar
+// fills, even the ones already on their way up.
+export async function raiseMob(type, room, { at = null, delay = 0, onDeath = null, quick = false, untilFull = false } = {}) {
   const def = MOB_TYPES[type];
+  const called = () => room.over || room.frozen || (untilFull && room.full); // not wanted any more
   room.rising++;
   await sleep(delay);
-  if (room.over || room.frozen) {
+  if (called()) {
     room.rising--;
     return null;
   }
-  const spot = at ?? (def.boss ? vec2(GAME_WIDTH / 2, TOP + 6 * TILE) : spawnSpot(room.player));
+  const spot = at ?? (def.boss ? bossSpot() : spawnSpot(room.player));
 
   const closeHole = quick ? () => {} : addSpawnHole(spot, def.feet[0]);
   if (!quick) {
+    // The warning dust, which stops early if it's not wanted any more.
     const dust = loop(0.12, () => puffDust(spot.x, spot.y, 2, def.boss ? 14 : 6, 9));
-    await sleep(0.8);
+    await during(0.8, () => {}, () => !called());
     dust.cancel();
   }
   room.rising--;
-  if (room.over || room.frozen) {
+  if (called()) {
     closeHole();
-    return null; // the room ended while we waited
+    return null; // the room ended, froze or filled while we waited
   }
 
   if (!quick) playSound("spawn");
@@ -143,7 +150,9 @@ export async function raiseMob(type, room, { at = null, delay = 0, onDeath = nul
 
   await animate(0, 1, quick ? 0.12 : 0.25, (t) => (mob.scale = vec2(1, t)), easings.easeOutBack);
   closeHole();
-  mob.active = true;
+  // If the room froze while it was coming up (the boss arriving or falling),
+  // it's already crumbling: it never gets to move.
+  if (!room.frozen && !room.over) mob.active = true;
   return mob;
 }
 
@@ -172,6 +181,7 @@ export function hurtMob(mob, from, room, damage = 1) {
 
   if (mob.hp > 0) return false;
   mob.active = false;
+  mob.dead = true; // beaten: already counted out, already on its way down
   playSound("mobDie");
   puffDust(mob.pos.x, mob.pos.y - mob.def.size / 2, 10, 14, 11);
   // A slug splits: its tiny slugs pop out where it fell.
