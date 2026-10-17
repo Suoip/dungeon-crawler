@@ -293,7 +293,7 @@ export function setupHurt(player, run, heartsHud, room, onDeath, stats) {
     // Frozen (the run is over, or the boss is down): nothing can hit him.
     if (player.frozen || blinking || room.over || room.frozen || run.hearts <= 0) return;
 
-    const attacker = get("mob").find((mob) => mob.active && player.isColliding(mob))
+    const attacker = get("mob").find((mob) => mob.active && !mob.airborne && player.isColliding(mob)) // a leaping one is over his head
       ?? get("hazard").find((hazard) => hazard.touches(player));
     if (!attacker) return;
     attacker.onHit?.(); // a shot breaks when it hits

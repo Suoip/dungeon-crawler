@@ -65,6 +65,11 @@ const PLACES = {
   time4: { branch: "time", ring: 6, fork: -1 }, wind4: { branch: "time", ring: 7, fork: -1 },
   greed4: { branch: "money", ring: 6 },
   hordes4: { branch: "horde", ring: 6 }, restless4: { branch: "horde", ring: 7 }, crowded4: { branch: "horde", ring: 7, fork: -1.4 },
+  // Depth 5's ring
+  edge5: { branch: "weapon", ring: 9 },
+  time5: { branch: "time", ring: 8, fork: -1 }, wind5: { branch: "time", ring: 9, fork: -1 },
+  greed5: { branch: "money", ring: 7 },
+  hordes5: { branch: "horde", ring: 8 }, restless5: { branch: "horde", ring: 9 }, crowded5: { branch: "horde", ring: 9, fork: -1.4 },
 };
 
 // A node's spot in the web, in px from the middle at 1x.
@@ -118,6 +123,12 @@ const ICONS = {
   greed4: { draw: "gemRed" },
   hordes4: { sprite: "muddy", box: [1, 3, 14, 13] }, restless4: { sprite: "skull", box: [5, 7, 6, 6], scale: 2 },
   crowded4: { sprite: "swampy", box: [1, 3, 14, 13] },
+  // Depth 5's ring
+  edge5: { sprite: "weapon_saw_sword", box: [0, 11, 10, 14] },
+  time5: { draw: "hourglass5" }, wind5: { sprite: "flask_red", box: [4, 3, 8, 11] },
+  greed5: { draw: "gemPurple" },
+  hordes5: { sprite: "pumpkin_dude", box: [2, 4, 12, 17] }, restless5: { sprite: "skull", box: [5, 7, 6, 6], scale: 2 },
+  crowded5: { sprite: "chort", box: [2, 4, 12, 17] },
 };
 
 // The page's colors. Kaplay's rgb() only exists once the game has started,
@@ -128,6 +139,7 @@ const PALETTE = {
   gold: [255, 205, 70], green: [99, 199, 77], red: [230, 72, 46],
   blue: [120, 190, 255], pale: [220, 240, 255], // a time orb
   gem: [56, 183, 100], gemLight: [160, 236, 150], gemDark: [30, 120, 64], // a gem
+  purple: [160, 90, 220], lilac: [220, 190, 250],
 };
 let C = null;
 
@@ -182,6 +194,11 @@ const PIXELS = {
     [-1, 0, 2, 1, "light"], [-2, 1, 4, 1, "red"], [-3, 2, 6, 2, "red"]],
   gemRed: [[-3, -5, 6, 1, "light"], [-5, -4, 10, 3, "red"], [-4, -1, 8, 2, "red"], [-2, 1, 4, 2, "red"], [-1, 3, 2, 1, "red"],
     [-4, -4, 3, 1, "light"], [1, 0, 3, 1, "ink"]],
+  // Depth 5's: a purple hourglass and a purple gem.
+  hourglass5: [[-4, -6, 8, 2, "purple"], [-4, 4, 8, 2, "purple"], [-3, -4, 6, 2, "light"], [-2, -2, 4, 2, "light"],
+    [-1, 0, 2, 1, "light"], [-2, 1, 4, 1, "purple"], [-3, 2, 6, 2, "purple"]],
+  gemPurple: [[-3, -5, 6, 1, "lilac"], [-5, -4, 10, 3, "purple"], [-4, -1, 8, 2, "purple"], [-2, 1, 4, 2, "purple"], [-1, 3, 2, 1, "purple"],
+    [-4, -4, 3, 1, "lilac"], [1, 0, 3, 1, "ink"]],
 };
 function drawPixels(kind, at, zoom, opacity) {
   for (const [x, y, w, h, color] of PIXELS[kind]) {

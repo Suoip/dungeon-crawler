@@ -54,6 +54,9 @@ const SOUNDS = {
   block:    [0.3, 0.05, 700, 0, 0.02, 0.1, 3, 1, -20, 0, 0, 0, 0, 0.2],     // a hit on a masked orc's shield: a clank
   mend:     [0.25, 0, 330, 0.05, 0.15, 0.3, 0, 1, 0, 0, 165, 0.1],         // a shaman's healing pulse
 
+  // The demon pit
+  glass:    [0.35, 0.1, 1400, 0, 0.02, 0.15, 4, 1, 0, 0, 0, 0, 0.02, 0.3],    // a plague doctor's flask bursting
+
   // The boss's moves
   gurgle:   [0.35, 0.1, 110, 0.05, 0.3, 0.15, 2, 1, 0, 0, 0, 0, 0.05, 0.5, 15],
   vomit:    [0.4, 0.1, 200, 0, 0.05, 0.25, 4, 1, -8, 0, 0, 0, 0, 1],
@@ -92,6 +95,7 @@ const EQ = {
   fuse:    { lowpass: 2500, shelf: -8, shelfFrom: 1500 },
   boom:    { lowpass: 1200, shelf: -8, shelfFrom: 800 },
   block:   { lowpass: 2500, shelf: -8, shelfFrom: 1500 },
+  glass:   { lowpass: 3000, shelf: -10, shelfFrom: 1800 },
   smash:   { lowpass: 1800, shelf: -10, shelfFrom: 1200 },
   spikes:  { lowpass: 2000, shelf: -6, shelfFrom: 1500 },
   chomp:   { lowpass: 1600, shelf: -8, shelfFrom: 1000 },

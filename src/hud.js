@@ -30,6 +30,14 @@ function drawShadowText(content, at, size, rgb, anchorName, opacity = 1) {
 }
 const rgb_ = (c) => rgb(...c);
 
+// A big amount of gold, short enough for the HUD: up to 99999 as it is, then
+// "123K", then "12.3M" (the deep depths' runs earn millions).
+export const shortGold = (gold) => {
+  if (gold < 100000) return String(gold);
+  if (gold < 10000000) return `${Math.floor(gold / 1000)}K`;
+  return `${(Math.floor(gold / 100000) / 10).toFixed(1)}M`;
+};
+
 // The clock as people read it: "18", or "1:05" from a minute up.
 export const clockText = (seconds) => {
   const whole = Math.max(0, Math.ceil(seconds));
@@ -73,8 +81,9 @@ export function addHud(state) {
     }
 
     // The run's gold, with a coin.
-    drawShadowText(String(gold), vec2(GAME_WIDTH - 6, 9), 8, GOLD, "right");
-    const coinX = GAME_WIDTH - 10 - formatText({ text: String(gold), size: 8, font: "pixel" }).width;
+    const goldText = shortGold(gold);
+    drawShadowText(goldText, vec2(GAME_WIDTH - 6, 9), 8, GOLD, "right");
+    const coinX = GAME_WIDTH - 10 - formatText({ text: goldText, size: 8, font: "pixel" }).width;
     drawSprite({ sprite: "coin", frame: 0, pos: vec2(coinX - 6, 5) });
   });
   return hud;
