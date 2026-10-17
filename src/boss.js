@@ -216,7 +216,7 @@ async function dashOnce(boss, room, speed, { toWall = false } = {}) {
 // As soon as it's up: it stands still, its name appears, and it roars.
 async function introduce(boss, room) {
   boss.play("idle");
-  showBanner(boss.def.name, [255, 205, 70], TOP + 2 * TILE + 7); // just under the top wall, clear of its health bar
+  showBanner(room.bossName ?? boss.def.name, [255, 205, 70], TOP + 2 * TILE + 7); // just under the top wall, clear of its health bar
   await sleep(0.3);
   playSound("roar");
   shakeScreen(5);

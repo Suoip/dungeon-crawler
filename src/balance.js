@@ -63,6 +63,12 @@ export const BALANCE = {
     orc_warrior: { hp: 3, gold: 1.4, xp: 1, threat: 0.05 },  // a brute: chases, and its hits shove you far
     orc_shaman:  { hp: 3, gold: 2, xp: 1, threat: 0.01 },    // keeps its distance and heals the monsters near it
     masked_orc:  { hp: 4, gold: 3, xp: 2, threat: 0.06 },    // shielded in front: hit it from the side or back
+    // The sunken swamp
+    swampy:      { hp: 3, gold: 1.4, xp: 1, threat: 0.03, splitsInto: ["swamplet", "swamplet"] }, // splits into two small ones
+    swamplet:    { hp: 1, gold: 0.6, xp: 1, threat: 0.02 },  // a small swampy
+    muddy:       { hp: 3, gold: 2, xp: 1, threat: 0.03 },    // chases, leaving mud that slows you
+    necromancer: { hp: 4, gold: 3, xp: 2, threat: 0.02 },    // keeps its distance and raises ice zombies
+    ice_zombie:  { hp: 2, gold: 0.5, xp: 0.5, threat: 0.03 }, // a necromancer's (not in any room's spawns)
   },
 
   // How much tougher and richer each sub-depth is than the one above:
@@ -104,7 +110,7 @@ export const BALANCE = {
   //   decor   what hangs on its back wall (room.js addDecor), if anything
   //   bones   whether its kills drop bones (the crypt's material, see drops)
   //   rooms   one entry per sub-depth, 1 to 10 (see below)
-  //   boss    its boss (see below)
+  //   boss    its boss (see below); a stand-in can have its own `name` and `tint`
   //
   // A room's `xp` is the size of its bar: fill it and the door opens (in
   // sub-depth 10, the boss appears). `spawns` are the monsters that can rise
@@ -189,6 +195,30 @@ export const BALANCE = {
       ],
       boss: { type: "ogre", hp: 30000, gold: 30000, threat: 0.12, minion: "orc_warrior" },
     },
+    {
+      // The sunken swamp: swampies split in two, muddies (from room 3) leave
+      // mud that slows you, and necromancers (from room 5) raise ice zombies
+      // from a distance. A swamp-green Big Zombie stands in for the depth's
+      // boss, raising swampies.
+      name: "SWAMP",
+      scale: { hp: 1000, gold: 1000 },
+      tint: [140, 180, 140],
+      decor: "goo",
+      bones: false,
+      rooms: [
+        { xp: 6, spawns: { swampy: 100 }, breakables: ["pot", "pot"] },
+        { xp: 5, spawns: { swampy: 100 }, breakables: ["pot", "pot"] },
+        { xp: 9, spawns: { swampy: 75, muddy: 25 }, breakables: ["pot", "pot"] },
+        { xp: 10, spawns: { swampy: 60, muddy: 40 }, breakables: ["pot", "pot"], hazard: 0.005 },
+        { xp: 12, spawns: { swampy: 50, muddy: 40, necromancer: 10 }, breakables: ["pot", "pot"], hazard: 0.005 },
+        { xp: 13, spawns: { swampy: 45, muddy: 38, necromancer: 17 }, breakables: ["pot", "crate", "crate"], hazard: 0.005, chest: { chance: 0.6, mimic: 0 } },
+        { xp: 15, spawns: { swampy: 40, muddy: 37, necromancer: 23 }, breakables: ["pot", "crate", "crate"], hazard: 0.005, chest: { chance: 0.7, mimic: 0.5 } },
+        { xp: 17, spawns: { swampy: 36, muddy: 35, necromancer: 29 }, breakables: ["pot", "crate", "crate"], hazard: 0.01, chest: { chance: 0.7, mimic: 0.5 } },
+        { xp: 20, spawns: { swampy: 33, muddy: 34, necromancer: 33 }, breakables: ["crate", "crate", "urn"], hazard: 0.01, chest: { chance: 0.7, mimic: 0.6 } },
+        { xp: 23, spawns: { swampy: 30, muddy: 35, necromancer: 35 }, breakables: ["crate", "crate"] }, // then the boss
+      ],
+      boss: { type: "big_zombie", name: "BOG ZOMBIE", tint: [150, 220, 170], hp: 300000, gold: 300000, threat: 0.12, minion: "swampy" },
+    },
   ],
 
   // ---- Drops --------------------------------------------------------------
@@ -230,6 +260,7 @@ export const BALANCE = {
     { id: "keen", name: "Keen edge", parent: "arc", levels: 10, cost: 20, growth: 1.45, effect: { stat: "damage", add: 10 }, depth: 2 },
     { id: "crit", name: "Critical hits", parent: "keen", levels: 5, cost: 300, growth: 1.5, effect: { stat: "critChance", add: 0.04 }, depth: 2 },
     { id: "edge3", name: "Brutal edge", parent: "crit", levels: 10, cost: 200, growth: 1.45, effect: { stat: "damage", add: 100 }, depth: 3 },
+    { id: "edge4", name: "Savage edge", parent: "edge3", levels: 10, cost: 2000, growth: 1.45, effect: { stat: "damage", add: 1000 }, depth: 4 },
 
     // Hearts
     { id: "heart", name: "Extra heart", parent: "descend", levels: 4, cost: 3, growth: 1.6, effect: { stat: "hearts", add: 1 } },
@@ -250,6 +281,8 @@ export const BALANCE = {
     { id: "wind2", name: "Second wind II", parent: "time2", levels: 5, cost: 290, growth: 1.52, effect: { stat: "timePerSubDepth", add: 1.5 }, depth: 2, perDepth: true },
     { id: "time3", name: "More time III", parent: "wind2", levels: 10, cost: 200, growth: 1.42, effect: { stat: "startTime", add: 4 }, depth: 3, perDepth: true },
     { id: "wind3", name: "Second wind III", parent: "time3", levels: 5, cost: 2900, growth: 1.52, effect: { stat: "timePerSubDepth", add: 1.5 }, depth: 3, perDepth: true },
+    { id: "time4", name: "More time IV", parent: "wind3", levels: 10, cost: 2000, growth: 1.42, effect: { stat: "startTime", add: 4 }, depth: 4, perDepth: true },
+    { id: "wind4", name: "Second wind IV", parent: "time4", levels: 5, cost: 29000, growth: 1.52, effect: { stat: "timePerSubDepth", add: 1.5 }, depth: 4, perDepth: true },
 
     // Dash
     { id: "dash", name: "Dash", parent: "descend", levels: 1, cost: 6, growth: 1, effect: { unlock: "dash" } },
@@ -263,6 +296,7 @@ export const BALANCE = {
     { id: "smash", name: "Smash", parent: "magnet", levels: 3, cost: 24, growth: 1.5, effect: { stat: "breakableBonus", add: 0.25 } },
     { id: "greed2", name: "Greed II", parent: "smash", levels: 10, cost: 20, growth: 1.4, effect: { stat: "goldBonus", add: 0.1 }, depth: 2 },
     { id: "greed3", name: "Greed III", parent: "greed2", levels: 10, cost: 200, growth: 1.4, effect: { stat: "goldBonus", add: 0.1 }, depth: 3 },
+    { id: "greed4", name: "Greed IV", parent: "greed3", levels: 10, cost: 2000, growth: 1.4, effect: { stat: "goldBonus", add: 0.1 }, depth: 4 },
 
     // Horde: more monsters, sooner, and more XP from each, so rooms fill
     // their bars faster. Depth 1's rooms fill before most hordes arrive, so
@@ -274,6 +308,9 @@ export const BALANCE = {
     { id: "hordes3", name: "Bigger hordes II", parent: "restless", levels: 10, cost: 4000, growth: 1.45, effect: { stat: "horde", add: 1 }, depth: 3, perDepth: true },
     { id: "restless3", name: "Restless dead II", parent: "hordes3", levels: 5, cost: 6000, growth: 1.5, effect: { stat: "hordeEvery", add: -2 }, depth: 3, perDepth: true },
     { id: "crowded3", name: "Crowded rooms III", parent: "hordes3", levels: 10, cost: 200, growth: 1.45, effect: { stat: "onEnter", add: 1 }, depth: 3, perDepth: true },
+    { id: "hordes4", name: "Bigger hordes III", parent: "restless3", levels: 10, cost: 40000, growth: 1.45, effect: { stat: "horde", add: 1 }, depth: 4, perDepth: true },
+    { id: "restless4", name: "Restless dead III", parent: "hordes4", levels: 5, cost: 60000, growth: 1.5, effect: { stat: "hordeEvery", add: -2 }, depth: 4, perDepth: true },
+    { id: "crowded4", name: "Crowded rooms IV", parent: "hordes4", levels: 10, cost: 2000, growth: 1.45, effect: { stat: "onEnter", add: 1 }, depth: 4, perDepth: true },
     { id: "calls", name: "Death calls", parent: "crowded", levels: 5, cost: 29, growth: 1.5, effect: { stat: "deathCall", add: 0.03 } },
     { id: "wisdom", name: "Wisdom", parent: "crowded", levels: 10, cost: 14, growth: 1.42, effect: { stat: "xpBonus", add: 0.1 } },
   ],

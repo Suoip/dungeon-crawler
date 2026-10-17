@@ -60,6 +60,11 @@ const PLACES = {
   time3: { branch: "time", ring: 4, fork: -1 }, wind3: { branch: "time", ring: 5, fork: -1 },
   greed3: { branch: "money", ring: 5 },
   hordes3: { branch: "horde", ring: 4 }, restless3: { branch: "horde", ring: 5 }, crowded3: { branch: "horde", ring: 5, fork: -1.4 },
+  // Depth 4's ring
+  edge4: { branch: "weapon", ring: 8 },
+  time4: { branch: "time", ring: 6, fork: -1 }, wind4: { branch: "time", ring: 7, fork: -1 },
+  greed4: { branch: "money", ring: 6 },
+  hordes4: { branch: "horde", ring: 6 }, restless4: { branch: "horde", ring: 7 }, crowded4: { branch: "horde", ring: 7, fork: -1.4 },
 };
 
 // A node's spot in the web, in px from the middle at 1x.
@@ -107,6 +112,12 @@ const ICONS = {
   greed3: { draw: "gemBlue" },
   hordes3: { sprite: "masked_orc", box: [2, 6, 12, 15] }, restless3: { sprite: "skull", box: [5, 7, 6, 6], scale: 2 },
   crowded3: { sprite: "orc_warrior", box: [2, 6, 12, 15] },
+  // Depth 4's ring
+  edge4: { sprite: "weapon_lavish_sword", box: [0, 16, 10, 14] },
+  time4: { draw: "hourglass4" }, wind4: { sprite: "flask_blue", box: [4, 3, 8, 11] },
+  greed4: { draw: "gemRed" },
+  hordes4: { sprite: "muddy", box: [1, 3, 14, 13] }, restless4: { sprite: "skull", box: [5, 7, 6, 6], scale: 2 },
+  crowded4: { sprite: "swampy", box: [1, 3, 14, 13] },
 };
 
 // The page's colors. Kaplay's rgb() only exists once the game has started,
@@ -166,6 +177,11 @@ const PIXELS = {
     [-1, 0, 2, 1, "light"], [-2, 1, 4, 1, "gem"], [-3, 2, 6, 2, "gem"]],
   gemBlue: [[-3, -5, 6, 1, "pale"], [-5, -4, 10, 3, "blue"], [-4, -1, 8, 2, "blue"], [-2, 1, 4, 2, "blue"], [-1, 3, 2, 1, "blue"],
     [-4, -4, 3, 1, "pale"], [1, 0, 3, 1, "ink"]],
+  // Depth 4's: a red hourglass and a red gem.
+  hourglass4: [[-4, -6, 8, 2, "red"], [-4, 4, 8, 2, "red"], [-3, -4, 6, 2, "light"], [-2, -2, 4, 2, "light"],
+    [-1, 0, 2, 1, "light"], [-2, 1, 4, 1, "red"], [-3, 2, 6, 2, "red"]],
+  gemRed: [[-3, -5, 6, 1, "light"], [-5, -4, 10, 3, "red"], [-4, -1, 8, 2, "red"], [-2, 1, 4, 2, "red"], [-1, 3, 2, 1, "red"],
+    [-4, -4, 3, 1, "light"], [1, 0, 3, 1, "ink"]],
 };
 function drawPixels(kind, at, zoom, opacity) {
   for (const [x, y, w, h, color] of PIXELS[kind]) {

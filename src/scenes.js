@@ -46,12 +46,12 @@ export function registerRoomScene() {
     const room = depth.rooms[run.index];
     const { stats } = run;
     const isBossRoom = sub === ROOMS;
-    const bossName = MOB_TYPES[depth.boss.type].name;
+    const bossName = depth.boss.name ?? MOB_TYPES[depth.boss.type].name;
 
     buildRoom();
     const [door] = addDoors([null]);
     if (depth.tint) tintRoom(depth.tint); // the floor, the walls and the door's frame
-    if (depth.decor) addDecor(depth.decor); // banners, goo or lava on the back wall
+    if (depth.decor) addDecor(depth.decor, depth.tint); // banners, goo or lava on the back wall
     chainDoor(door);
     const player = addPlayer(LAND_X, LAND_Y);
     setupPlayerMovement(player);
@@ -72,6 +72,7 @@ export function registerRoomScene() {
       player, sub, stats,
       depth: run.depth,
       minion: depth.boss.minion, // what its boss raises
+      bossName, bossTint: depth.boss.tint, // a stand-in boss's own name and color
       alive: 0,      // monsters up and about
       rising: 0,     // monsters still coming out of the floor
       over: false,   // the hero left the room, or the run ended
@@ -178,7 +179,7 @@ export function registerRoomScene() {
       mob.active = false;
       fight.alive--;
       puffDust(mob.pos.x, mob.pos.y - 6, 6, 10);
-      animate(1, 0, 0.25, (t) => (mob.scale = vec2(1, t))).then(() => destroy(mob));
+      animate(1, 0, 0.25, (t) => (mob.scale = vec2(mob.baseScale, mob.baseScale * t))).then(() => destroy(mob));
     }
 
     // The boss room's bar is full: the clock stops and the boss makes its
