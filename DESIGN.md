@@ -196,6 +196,29 @@ follow the crypt's spawn rule:
 - **No material yet:** the warrens' teeth come later; for now nothing drops
   but coins, hearts and orbs.
 
+### Depths 3 to 5
+
+Each one follows the warrens' recipe: the same kind of rooms with three
+layouts of their own per room, a tint and something on the back wall, three
+monsters met in rooms 1, 3 and 5 with the same spawn rule, monsters with 10x
+the hp and gold of the depth before, and a ring of its own in the tree. A
+stand-in boss waits in room 10 for now (each depth's real boss and its
+special gimmick come later).
+
+**Depth 3, the orc fort:** cold grey-blue stone, red banners on the back
+wall, 100x the crypt's numbers (an orc warrior has 300 hp). The ogre stands
+in as the boss, raising orc warriors.
+- **Orc warriors** (rooms 1–2) are brutes: chasers whose hits shove the hero
+  far, and that barely budge when he hits them.
+- **Orc shamans** (from room 3) keep their distance like the imps. Every few
+  seconds, if a monster near one is hurt, it glows green and sends out a
+  healing pulse: every monster within reach (not itself, not a boss) gets
+  back 30% of its health, shown in green. They're the ones to reach first.
+- **Masked orcs** (from room 5) carry a shield, drawn on the side they face.
+  They walk at him but turn slowly; a hit from in front only does a quarter
+  of its damage (a grey number and a clank), one from the side or behind
+  does it all. Circling one, or dashing past it, gets round the shield.
+
 ## The run timer
 
 - **Per run, and very short:** about 15–20 seconds at the start.
@@ -443,11 +466,18 @@ gold:
 | Horde | Bigger hordes | 10 | +1 monster per horde (start: 7; depth 2 only) |
 | Horde | Restless dead | 5 | Hordes come 2 s sooner (start: every 20 s; depth 2 only) |
 
-That's 32 nodes: 106 levels for depth 1, and 78 for depth 2, which can be
-bought early at ten times the price (see "Buying early"). Depth 1's rooms
-fill their bars before most hordes arrive, so the horde upgrades are depth
-2's. The tuned numbers (costs, and the exact effects) live in
-`src/balance.js`.
+Each depth after that gets a ring of the same seven, further out again and
+priced ten times higher: an edge (Brutal edge: +100 damage per level in
+depth 3, and ten times more each depth after), its own More time, Second
+wind, Crowded rooms, Bigger hordes and Restless dead, and another Greed.
+On the tree page, the per-depth clock upgrades run along their own track
+beside the time branch, one depth after another, and each depth's horde
+upgrades sit two rings further out than the depth before's.
+
+Depth 1's rooms fill their bars before most hordes arrive, so the horde
+upgrades start in depth 2. A deeper depth's nodes can be bought early at
+ten times the price (see "Buying early"). The tuned numbers (costs, and the
+exact effects) live in `src/balance.js`.
 
 ## 8. Pacing
 

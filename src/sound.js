@@ -50,6 +50,10 @@ const SOUNDS = {
   fuse:     [0.2, 0.05, 1200, 0.02, 0.5, 0.1, 4, 1, 0, 0, 0, 0, 0, 0.2],    // a wogol's fuse: a hiss
   boom:     [0.7, 0.1, 60, 0, 0.1, 0.5, 4, 1, -2, 0, 0, 0, 0, 1.5, 0, 0.1],  // a wogol going off
 
+  // The orc fort
+  block:    [0.3, 0.05, 700, 0, 0.02, 0.1, 3, 1, -20, 0, 0, 0, 0, 0.2],     // a hit on a masked orc's shield: a clank
+  mend:     [0.25, 0, 330, 0.05, 0.15, 0.3, 0, 1, 0, 0, 165, 0.1],         // a shaman's healing pulse
+
   // The boss's moves
   gurgle:   [0.35, 0.1, 110, 0.05, 0.3, 0.15, 2, 1, 0, 0, 0, 0, 0.05, 0.5, 15],
   vomit:    [0.4, 0.1, 200, 0, 0.05, 0.25, 4, 1, -8, 0, 0, 0, 0, 1],
@@ -87,6 +91,7 @@ const EQ = {
   fireball: { lowpass: 1500, shelf: -8, shelfFrom: 1000 },
   fuse:    { lowpass: 2500, shelf: -8, shelfFrom: 1500 },
   boom:    { lowpass: 1200, shelf: -8, shelfFrom: 800 },
+  block:   { lowpass: 2500, shelf: -8, shelfFrom: 1500 },
   smash:   { lowpass: 1800, shelf: -10, shelfFrom: 1200 },
   spikes:  { lowpass: 2000, shelf: -6, shelfFrom: 1500 },
   chomp:   { lowpass: 1600, shelf: -8, shelfFrom: 1000 },

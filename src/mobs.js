@@ -21,10 +21,12 @@ export const MOB_TYPES = {
   mimic:       { speed: 40, feet: [12, 6], size: 16, rusher: true },  // a chest that woke up (crypt.js): lunges like a skeleton
   // The goblin warrens
   goblin:      { speed: 52, feet: [10, 6], size: 16 },
-  imp:         { speed: 40, feet: [10, 6], size: 16, shooter: true }, // keeps its distance and throws fireballs
+  imp:         { speed: 40, feet: [10, 6], size: 16, shooter: true, keeps: true }, // keeps its distance and throws fireballs
   wogol:       { speed: 38, feet: [10, 6], size: 23, bomber: true },  // runs up and explodes
-  // Others, for the old bosses' minions (not in balance.js: a fixed hp).
-  orc_warrior: { speed: 36, feet: [10, 6], size: 23, hp: 5 },
+  // The orc fort
+  orc_warrior: { speed: 32, feet: [10, 6], size: 23, knockback: 2.5, heavy: true }, // a brute: its hits shove you far, yours barely move it
+  orc_shaman:  { speed: 38, feet: [10, 6], size: 23, healer: true, keeps: true },   // keeps its distance and heals the monsters near it
+  masked_orc:  { speed: 28, feet: [10, 6], size: 23, shield: true },               // its shield takes most of a hit from the front
   // Bosses
   big_demon:   { speed: 28, feet: [22, 8], size: 36, boss: true, name: "BIG DEMON", favorite: "dash" },
   ogre:        { speed: 30, feet: [22, 8], size: 36, boss: true, name: "OGRE", favorite: "vomit", knockback: 3, minions: ["goblin"] },
@@ -193,13 +195,16 @@ function addMob(type, spot, room, onDeath) {
 }
 
 // Hits a mob for `damage`: it flashes, gets knocked back, and the number pops
-// up over it (bigger and gold for a critical hit). Returns true if that hit
-// beat it.
+// up over it (bigger and gold for a critical hit). A masked orc's shield
+// takes most of a hit that comes from in front of it (grey number). Returns
+// true if that hit beat it.
 export function hurtMob(mob, from, room, damage = 1, crit = false) {
   if (!mob.active) return false;
+  const blocked = mob.def.shield && shieldFaces(mob, from);
+  if (blocked) damage = Math.max(1, Math.ceil(damage * SHIELD.lets));
   mob.hp -= damage;
-  playSound(crit ? "crit" : "mobHit");
-  popNumber(mob.pos.add(rand(-3, 3), -mob.def.size - 2), damage, crit);
+  playSound(blocked ? "block" : crit ? "crit" : "mobHit");
+  popNumber(mob.pos.add(rand(-3, 3), -mob.def.size - 2), damage, blocked ? "blocked" : crit ? "crit" : "hit");
   // Sparks on the side of the mob that got hit.
   const middle = mob.pos.sub(0, mob.def.size / 2);
   const toward = from.sub(0, 10).sub(middle).unit().scale(Math.min(8, mob.def.size / 3));
@@ -208,10 +213,11 @@ export function hurtMob(mob, from, room, damage = 1, crit = false) {
   wait(0.1, () => mob.exists() && (mob.color = mob.tint));
 
   // Pushed away from whoever hit it. Bosses barely budge, and not at all in
-  // the middle of a move; a charging skeleton isn't stopped either.
+  // the middle of a move; a charging skeleton isn't stopped either. A brute
+  // or a shield only gives a little.
   if (!(mob.def.boss && mob.busy) && !mob.charging) {
     const away = mob.pos.sub(from).unit();
-    mob.knockVel = away.scale(mob.def.boss ? 60 : 220);
+    mob.knockVel = away.scale(mob.def.boss ? 60 : mob.def.heavy || blocked ? 70 : 220);
     mob.knockTime = 0.12;
   }
 
@@ -238,12 +244,15 @@ export function hurtMob(mob, from, room, damage = 1, crit = false) {
 // What a mob does every frame: get knocked back, or chase the player, or
 // (for bosses) their special move, or (for skeletons) charge, or (for
 // slugs) wander about, or (for imps) keep their distance and shoot, or (for
-// wogols) go off when they're close.
+// wogols) go off when they're close, or (for shamans) keep their distance
+// and heal, or (for masked orcs) turn slowly to face him behind a shield.
 function setupBrain(mob, room) {
   const rush = mob.def.rusher ? setupRush(mob, room) : null;
   const wander = BALANCE.mobs[mob.type]?.wanders ? setupWander(mob) : null;
   const shoot = mob.def.shooter ? setupShooter(mob, room) : null;
   const bomb = mob.def.bomber ? setupBomber(mob, room) : null;
+  const heal = mob.def.healer ? setupHealer(mob, room) : null;
+  const shield = mob.def.shield ? setupShield(mob, room) : null;
   mob.onUpdate(() => {
     mob.z = 10 + mob.pos.y / 1000; // lower on screen = drawn in front
     if (!mob.active || room.frozen) {
@@ -261,6 +270,8 @@ function setupBrain(mob, room) {
     if (mob.def.boss && mob.bossTurn()) return; // busy casting a move
     if (wander) return wander();                // it doesn't hunt
     if (shoot) return shoot();                  // it keeps its distance
+    if (heal) return heal();                    // it keeps its distance too
+    if (shield) return shield();                // it turns slowly
     if (bomb && bomb()) return;                 // its fuse is lit
     if (rush && rush()) return;                 // winding up or charging
     const toPlayer = room.player.pos.sub(mob.pos);
@@ -304,16 +315,43 @@ function setupWander(mob) {
   };
 }
 
-// An imp keeps its distance. It heads for a spot SHOOT.keep px from the
-// hero on its own side of him, nudged around him away from the other imps,
-// so they spread out and come at him from different angles. It never runs
-// off to a far corner: the spot is always about that far from him (pressed
-// against a wall if it must). Every few seconds it stops, glows orange (the
-// warning), and throws a fireball at where he is. The fireball can only be
-// dodged (shots.js), and pillars and crates stop it.
+// A monster that keeps its distance (`keeps`: imps, shamans) heads for a
+// spot KEEP.distance px from the hero on its own side of him, nudged around
+// him away from the others that keep their distance, so they spread out and
+// come at him from different angles. It never runs off to a far corner: the
+// spot is always about that far from him (pressed against a wall if it must).
+const KEEP = {
+  distance: 80,        // px it likes to be from the hero
+  spread: 1.6,         // radians (about 90°): closer than this around him, they push apart
+};
+function keepDistance(mob, room, limits) {
+  const hero = room.player.pos;
+  const angleOf = (p) => Math.atan2(p.y - hero.y, p.x - hero.x);
+  const mine = angleOf(mob.pos);
+  let push = 0;
+  for (const other of get("mob")) {
+    if (other === mob || !other.active || !other.def.keeps) continue;
+    let diff = mine - angleOf(other.pos);
+    diff = Math.atan2(Math.sin(diff), Math.cos(diff)); // -π to π
+    if (Math.abs(diff) < KEEP.spread) push += (diff === 0 ? 1 : Math.sign(diff)) * (1 - Math.abs(diff) / KEEP.spread);
+  }
+  const angle = mine + clamp(push, -1, 1) * 0.8;
+  const spot = vec2(
+    clamp(hero.x + Math.cos(angle) * KEEP.distance, limits.left + 8, limits.right - 8),
+    clamp(hero.y + Math.sin(angle) * KEEP.distance, limits.top + 4, limits.bottom - 4),
+  );
+  const toSpot = spot.sub(mob.pos);
+  if (toSpot.len() > 4) {
+    mob.move(toSpot.unit().scale(mob.speed));
+    keepInRoom(mob, mob.def.feet);
+    if (mob.getCurAnim()?.name !== "run") mob.play("run");
+  } else if (mob.getCurAnim()?.name !== "idle") mob.play("idle");
+}
+
+// An imp keeps its distance (keepDistance). Every few seconds it stops,
+// glows orange (the warning), and throws a fireball at where he is. The
+// fireball can only be dodged (shots.js), and pillars and crates stop it.
 const SHOOT = {
-  keep: 80,            // px it likes to be from the hero
-  spread: 1.6,         // radians (about 90°): closer than this around him, imps push apart
   every: [2.2, 3.4],   // seconds between throws, picked at random
   range: 170,          // px: it only throws from closer than this
   windUp: 0.5,         // seconds of glowing before it throws
@@ -346,30 +384,113 @@ function setupShooter(mob, room) {
       return;
     }
 
-    // Where to stand: on its side of him, pushed around him away from the
-    // imps that are close to it (by angle).
-    const angleOf = (p) => Math.atan2(p.y - hero.y, p.x - hero.x);
-    const mine = angleOf(mob.pos);
-    let push = 0;
-    for (const other of get("mob")) {
-      if (other === mob || !other.active || !other.def.shooter) continue;
-      let diff = mine - angleOf(other.pos);
-      diff = Math.atan2(Math.sin(diff), Math.cos(diff)); // -π to π
-      if (Math.abs(diff) < SHOOT.spread) push += (diff === 0 ? 1 : Math.sign(diff)) * (1 - Math.abs(diff) / SHOOT.spread);
-    }
-    const angle = mine + clamp(push, -1, 1) * 0.8;
-    const spot = vec2(
-      clamp(hero.x + Math.cos(angle) * SHOOT.keep, limits.left + 8, limits.right - 8),
-      clamp(hero.y + Math.sin(angle) * SHOOT.keep, limits.top + 4, limits.bottom - 4),
-    );
-    const toSpot = spot.sub(mob.pos);
-    if (toSpot.len() > 4) {
-      mob.move(toSpot.unit().scale(mob.speed));
-      keepInRoom(mob, mob.def.feet);
-      if (mob.getCurAnim()?.name !== "run") mob.play("run");
-    } else if (mob.getCurAnim()?.name !== "idle") mob.play("idle");
+    keepDistance(mob, room, limits);
   };
 }
+
+// A shaman keeps its distance (keepDistance). Every few seconds, if a
+// monster near it is hurt, it stops, glows green (the warning), and sends
+// out a healing pulse: every monster within HEAL.radius (bosses aside, and
+// never itself) gets back HEAL.share of its health. So it's the one to
+// reach first.
+const HEAL = {
+  every: [3.5, 5],   // seconds between pulses, picked at random
+  windUp: 0.6,       // seconds of glowing before the pulse
+  radius: 60,        // px the pulse reaches
+  share: 0.3,        // of a monster's full health that it gets back
+};
+const healable = (shaman, other) => other !== shaman && other.active && !other.def.boss
+  && other.hp < other.maxHp && other.pos.dist(shaman.pos) < HEAL.radius;
+function setupHealer(mob, room) {
+  let nextPulse = time() + rand(2, 3);
+  let pulseAt = null; // while winding up: when it pulses
+  const limits = roomLimits(mob.def.feet);
+  return () => {
+    const now = time();
+    mob.flipX = room.player.pos.x < mob.pos.x; // it always faces him
+    if (pulseAt !== null) {
+      mob.color = Math.floor(now * 16) % 2 ? rgb(120, 230, 120) : mob.tint;
+      if (now < pulseAt) return;
+      mob.color = mob.tint;
+      pulseAt = null;
+      nextPulse = now + rand(...HEAL.every);
+      healPulse(mob);
+      return;
+    }
+    if (now >= nextPulse && get("mob").some((other) => healable(mob, other))) {
+      pulseAt = now + HEAL.windUp;
+      mob.play("idle");
+      return;
+    }
+    keepDistance(mob, room, limits);
+  };
+}
+
+// The pulse: a green ring spreading over the floor, and the health back,
+// popping up in green over each monster it reached.
+function healPulse(shaman) {
+  playSound("mend");
+  const born = time();
+  const ring = add([pos(shaman.pos), z(6)]);
+  ring.onDraw(() => {
+    const t = Math.min(1, (time() - born) / 0.35);
+    drawEllipse({
+      pos: vec2(0), radiusX: Math.max(1, HEAL.radius * t), radiusY: Math.max(1, HEAL.radius * 0.7 * t),
+      fill: false, outline: { width: 1, color: rgb(120, 230, 120) }, opacity: 1 - t * 0.6,
+    });
+  });
+  wait(0.35, () => destroy(ring));
+  for (const other of get("mob")) {
+    if (!healable(shaman, other)) continue;
+    const amount = Math.min(other.maxHp - other.hp, Math.ceil(other.maxHp * HEAL.share));
+    other.hp += amount;
+    popNumber(other.pos.add(rand(-3, 3), -other.def.size - 2), amount, "heal");
+  }
+}
+
+// A masked orc walks at the hero behind its shield, but it turns slowly
+// (SHIELD.turn), and always walks the way it faces. Hits from in front of it
+// (within SHIELD.arc of the way it faces) only do SHIELD.lets of their
+// damage; from the side or behind, they do it all. Circling it, or dashing
+// past it, gets him round its shield. The shield is drawn on its front.
+const SHIELD = {
+  turn: 2.2,     // radians a second it can turn (circling it at reach is faster)
+  arc: 1.2,      // radians (about 70°) to either side of its front that the shield covers
+  lets: 0.25,    // the share of a hit that gets through the shield
+};
+// Whether its shield is toward `from` (where a hit comes from).
+function shieldFaces(mob, from) {
+  const toward = Math.atan2(from.y - mob.pos.y, from.x - mob.pos.x);
+  const diff = Math.atan2(Math.sin(toward - mob.faceAngle), Math.cos(toward - mob.faceAngle));
+  return Math.abs(diff) < SHIELD.arc;
+}
+function setupShield(mob, room) {
+  const start = room.player.pos.sub(mob.pos);
+  mob.faceAngle = Math.atan2(start.y, start.x);
+  // The shield: a steel plate held on the side it faces.
+  mob.onDraw(() => {
+    if (mob.dead) return;
+    const x = Math.round(Math.cos(mob.faceAngle) * 6);
+    const y = -9 + Math.round(Math.sin(mob.faceAngle) * 2);
+    drawRect({ pos: vec2(x - 3, y - 6), width: 6, height: 11, color: rgb(24, 20, 37) });
+    drawRect({ pos: vec2(x - 2, y - 5), width: 4, height: 9, color: rgb(150, 160, 180) });
+    drawRect({ pos: vec2(x - 2, y - 5), width: 4, height: 1, color: rgb(210, 216, 230) });
+  });
+  return () => {
+    const toHero = room.player.pos.sub(mob.pos);
+    const want = Math.atan2(toHero.y, toHero.x);
+    const diff = Math.atan2(Math.sin(want - mob.faceAngle), Math.cos(want - mob.faceAngle));
+    mob.faceAngle += clamp(diff, -SHIELD.turn * dt(), SHIELD.turn * dt());
+    const way = vec2(Math.cos(mob.faceAngle), Math.sin(mob.faceAngle));
+    mob.flipX = way.x < 0;
+    if (toHero.len() > 2) {
+      mob.move(way.scale(mob.speed));
+      keepInRoom(mob, mob.def.feet);
+      if (mob.getCurAnim()?.name !== "run") mob.play("run");
+    }
+  };
+}
+
 
 // A wogol runs at the hero, and once it's close it stops, flashes, swells,
 // and goes off, with the blast's reach marked on the floor while the fuse

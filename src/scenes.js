@@ -2,7 +2,7 @@ import { ROOMS } from "./config.js";
 import { BALANCE } from "./balance.js";
 import { coins } from "./stats.js";
 import { endRun } from "./save.js";
-import { buildRoom, tintRoom } from "./room.js";
+import { buildRoom, tintRoom, addDecor } from "./room.js";
 import { addPlayer, setupPlayerMovement, setupDash } from "./player.js";
 import { addDoors, doorInteraction, chainDoor, unchainDoor } from "./doors.js";
 import { setupInteractions } from "./interact.js";
@@ -51,6 +51,7 @@ export function registerRoomScene() {
     buildRoom();
     const [door] = addDoors([null]);
     if (depth.tint) tintRoom(depth.tint); // the floor, the walls and the door's frame
+    if (depth.decor) addDecor(depth.decor); // banners, goo or lava on the back wall
     chainDoor(door);
     const player = addPlayer(LAND_X, LAND_Y);
     setupPlayerMovement(player);
@@ -70,6 +71,7 @@ export function registerRoomScene() {
     const fight = {
       player, sub, stats,
       depth: run.depth,
+      minion: depth.boss.minion, // what its boss raises
       alive: 0,      // monsters up and about
       rising: 0,     // monsters still coming out of the floor
       over: false,   // the hero left the room, or the run ended

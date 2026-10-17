@@ -59,6 +59,10 @@ export const BALANCE = {
     goblin:      { hp: 3, gold: 1.4, xp: 1, threat: 0.03 },  // fast chaser
     imp:         { hp: 3, gold: 2, xp: 1, threat: 0.05 },    // keeps its distance and throws fireballs (the threat is mostly them)
     wogol:       { hp: 4, gold: 3, xp: 2, threat: 0.07 },    // runs up and explodes, even when it's beaten
+    // The orc fort
+    orc_warrior: { hp: 3, gold: 1.4, xp: 1, threat: 0.05 },  // a brute: chases, and its hits shove you far
+    orc_shaman:  { hp: 3, gold: 2, xp: 1, threat: 0.01 },    // keeps its distance and heals the monsters near it
+    masked_orc:  { hp: 4, gold: 3, xp: 2, threat: 0.06 },    // shielded in front: hit it from the side or back
   },
 
   // How much tougher and richer each sub-depth is than the one above:
@@ -97,6 +101,7 @@ export const BALANCE = {
   //           end takes 3 hits on a 30 hp goblin, like 1 damage on a 3 hp
   //           slug at the start of the crypt
   //   tint    the color its floor and walls are tinted (none: as drawn)
+  //   decor   what hangs on its back wall (room.js addDecor), if anything
   //   bones   whether its kills drop bones (the crypt's material, see drops)
   //   rooms   one entry per sub-depth, 1 to 10 (see below)
   //   boss    its boss (see below)
@@ -161,6 +166,29 @@ export const BALANCE = {
       ],
       boss: { type: "ogre", hp: 3000, gold: 3000, threat: 0.1, minion: "goblin" },
     },
+    {
+      // The orc fort: orc warriors shove, shamans (from room 3) heal the
+      // others from a distance, and masked orcs (from room 5) hide behind
+      // shields. The ogre stands in for the depth's boss, raising orcs.
+      name: "FORT",
+      scale: { hp: 100, gold: 100 },
+      tint: [148, 164, 204],
+      decor: "banners",
+      bones: false,
+      rooms: [
+        { xp: 6, spawns: { orc_warrior: 100 }, breakables: ["pot", "pot"] },
+        { xp: 5, spawns: { orc_warrior: 100 }, breakables: ["pot", "pot"] },
+        { xp: 9, spawns: { orc_warrior: 75, orc_shaman: 25 }, breakables: ["pot", "pot"] },
+        { xp: 10, spawns: { orc_warrior: 60, orc_shaman: 40 }, breakables: ["pot", "pot"], hazard: 0.005 },
+        { xp: 12, spawns: { orc_warrior: 50, orc_shaman: 40, masked_orc: 10 }, breakables: ["pot", "pot"], hazard: 0.005 },
+        { xp: 13, spawns: { orc_warrior: 45, orc_shaman: 38, masked_orc: 17 }, breakables: ["pot", "crate", "crate"], hazard: 0.005, chest: { chance: 0.6, mimic: 0 } },
+        { xp: 15, spawns: { orc_warrior: 40, orc_shaman: 37, masked_orc: 23 }, breakables: ["pot", "crate", "crate"], hazard: 0.005, chest: { chance: 0.7, mimic: 0.5 } },
+        { xp: 17, spawns: { orc_warrior: 36, orc_shaman: 35, masked_orc: 29 }, breakables: ["pot", "crate", "crate"], hazard: 0.01, chest: { chance: 0.7, mimic: 0.5 } },
+        { xp: 20, spawns: { orc_warrior: 33, orc_shaman: 34, masked_orc: 33 }, breakables: ["crate", "crate", "urn"], hazard: 0.01, chest: { chance: 0.7, mimic: 0.6 } },
+        { xp: 23, spawns: { orc_warrior: 30, orc_shaman: 35, masked_orc: 35 }, breakables: ["crate", "crate"] }, // then the boss
+      ],
+      boss: { type: "ogre", hp: 30000, gold: 30000, threat: 0.12, minion: "orc_warrior" },
+    },
   ],
 
   // ---- Drops --------------------------------------------------------------
@@ -201,6 +229,7 @@ export const BALANCE = {
     { id: "arc", name: "Wider arc", parent: "reach", levels: 3, cost: 48, growth: 1.55, effect: { stat: "arc", add: 20 } },
     { id: "keen", name: "Keen edge", parent: "arc", levels: 10, cost: 20, growth: 1.45, effect: { stat: "damage", add: 10 }, depth: 2 },
     { id: "crit", name: "Critical hits", parent: "keen", levels: 5, cost: 300, growth: 1.5, effect: { stat: "critChance", add: 0.04 }, depth: 2 },
+    { id: "edge3", name: "Brutal edge", parent: "crit", levels: 10, cost: 200, growth: 1.45, effect: { stat: "damage", add: 100 }, depth: 3 },
 
     // Hearts
     { id: "heart", name: "Extra heart", parent: "descend", levels: 4, cost: 3, growth: 1.6, effect: { stat: "hearts", add: 1 } },
@@ -216,9 +245,11 @@ export const BALANCE = {
     // Orbs come from kills, and depth 1 has too few kills for these to pay
     // off, so they're an investment for depth 2.
     { id: "orbFinder", name: "Orb finder", parent: "orbs", levels: 5, cost: 1200, growth: 1.5, effect: { stat: "timeOrbChance", add: 0.004 }, depth: 2 },
-    { id: "biggerOrbs", name: "Bigger orbs", parent: "orbs", levels: 3, cost: 2000, growth: 1.55, effect: { stat: "timeOrbSeconds", add: 0.5 }, depth: 2 },
+    { id: "biggerOrbs", name: "Bigger orbs", parent: "orbFinder", levels: 3, cost: 2000, growth: 1.55, effect: { stat: "timeOrbSeconds", add: 0.5 }, depth: 2 },
     { id: "time2", name: "More time II", parent: "time", levels: 10, cost: 20, growth: 1.42, effect: { stat: "startTime", add: 4 }, depth: 2, perDepth: true },
     { id: "wind2", name: "Second wind II", parent: "time2", levels: 5, cost: 290, growth: 1.52, effect: { stat: "timePerSubDepth", add: 1.5 }, depth: 2, perDepth: true },
+    { id: "time3", name: "More time III", parent: "wind2", levels: 10, cost: 200, growth: 1.42, effect: { stat: "startTime", add: 4 }, depth: 3, perDepth: true },
+    { id: "wind3", name: "Second wind III", parent: "time3", levels: 5, cost: 2900, growth: 1.52, effect: { stat: "timePerSubDepth", add: 1.5 }, depth: 3, perDepth: true },
 
     // Dash
     { id: "dash", name: "Dash", parent: "descend", levels: 1, cost: 6, growth: 1, effect: { unlock: "dash" } },
@@ -231,6 +262,7 @@ export const BALANCE = {
     { id: "magnet", name: "Magnet", parent: "greed", levels: 5, cost: 14, growth: 1.44, effect: { stat: "magnetRange", mul: 1.25 } },
     { id: "smash", name: "Smash", parent: "magnet", levels: 3, cost: 24, growth: 1.5, effect: { stat: "breakableBonus", add: 0.25 } },
     { id: "greed2", name: "Greed II", parent: "smash", levels: 10, cost: 20, growth: 1.4, effect: { stat: "goldBonus", add: 0.1 }, depth: 2 },
+    { id: "greed3", name: "Greed III", parent: "greed2", levels: 10, cost: 200, growth: 1.4, effect: { stat: "goldBonus", add: 0.1 }, depth: 3 },
 
     // Horde: more monsters, sooner, and more XP from each, so rooms fill
     // their bars faster. Depth 1's rooms fill before most hordes arrive, so
@@ -239,6 +271,9 @@ export const BALANCE = {
     { id: "hordes", name: "Bigger hordes", parent: "crowded", levels: 10, cost: 400, growth: 1.45, effect: { stat: "horde", add: 1 }, depth: 2, perDepth: true },
     { id: "restless", name: "Restless dead", parent: "hordes", levels: 5, cost: 600, growth: 1.5, effect: { stat: "hordeEvery", add: -2 }, depth: 2, perDepth: true },
     { id: "crowded2", name: "Crowded rooms II", parent: "hordes", levels: 10, cost: 20, growth: 1.45, effect: { stat: "onEnter", add: 1 }, depth: 2, perDepth: true },
+    { id: "hordes3", name: "Bigger hordes II", parent: "restless", levels: 10, cost: 4000, growth: 1.45, effect: { stat: "horde", add: 1 }, depth: 3, perDepth: true },
+    { id: "restless3", name: "Restless dead II", parent: "hordes3", levels: 5, cost: 6000, growth: 1.5, effect: { stat: "hordeEvery", add: -2 }, depth: 3, perDepth: true },
+    { id: "crowded3", name: "Crowded rooms III", parent: "hordes3", levels: 10, cost: 200, growth: 1.45, effect: { stat: "onEnter", add: 1 }, depth: 3, perDepth: true },
     { id: "calls", name: "Death calls", parent: "crowded", levels: 5, cost: 29, growth: 1.5, effect: { stat: "deathCall", add: 0.03 } },
     { id: "wisdom", name: "Wisdom", parent: "crowded", levels: 10, cost: 14, growth: 1.42, effect: { stat: "xpBonus", add: 0.1 } },
   ],
