@@ -69,6 +69,10 @@ export const BALANCE = {
     muddy:       { hp: 3, gold: 2, xp: 1, threat: 0.03 },    // chases, leaving mud that slows you
     necromancer: { hp: 4, gold: 3, xp: 2, threat: 0.02 },    // keeps its distance and raises ice zombies
     ice_zombie:  { hp: 2, gold: 0.5, xp: 0.5, threat: 0.03 }, // a necromancer's (not in any room's spawns)
+    // The demon pit
+    chort:       { hp: 3, gold: 1.4, xp: 1, threat: 0.05 },  // teleports next to you
+    pumpkin_dude: { hp: 3, gold: 2, xp: 1, threat: 0.05 },   // leaps at you, landing with a shockwave
+    doc:         { hp: 4, gold: 3, xp: 2, threat: 0.05 },    // a plague doctor: keeps its distance and lobs flasks of fire
   },
 
   // How much tougher and richer each sub-depth is than the one above:
@@ -219,6 +223,29 @@ export const BALANCE = {
       ],
       boss: { type: "big_zombie", name: "BOG ZOMBIE", tint: [150, 220, 170], hp: 300000, gold: 300000, threat: 0.12, minion: "swampy" },
     },
+    {
+      // The demon pit: chorts teleport next to you, pumpkin dudes (from room
+      // 3) leap at you, and plague doctors (from room 5) lob flasks that
+      // burst into fire. The Big Demon waits at the bottom, raising chorts.
+      name: "PIT",
+      scale: { hp: 10000, gold: 10000 },
+      tint: [196, 112, 148],
+      decor: "lava",
+      bones: false,
+      rooms: [
+        { xp: 6, spawns: { chort: 100 }, breakables: ["pot", "pot"] },
+        { xp: 5, spawns: { chort: 100 }, breakables: ["pot", "pot"] },
+        { xp: 9, spawns: { chort: 75, pumpkin_dude: 25 }, breakables: ["pot", "pot"] },
+        { xp: 10, spawns: { chort: 60, pumpkin_dude: 40 }, breakables: ["pot", "pot"], hazard: 0.005 },
+        { xp: 12, spawns: { chort: 50, pumpkin_dude: 40, doc: 10 }, breakables: ["pot", "pot"], hazard: 0.005 },
+        { xp: 13, spawns: { chort: 45, pumpkin_dude: 38, doc: 17 }, breakables: ["pot", "crate", "crate"], hazard: 0.005, chest: { chance: 0.6, mimic: 0 } },
+        { xp: 15, spawns: { chort: 40, pumpkin_dude: 37, doc: 23 }, breakables: ["pot", "crate", "crate"], hazard: 0.005, chest: { chance: 0.7, mimic: 0.5 } },
+        { xp: 17, spawns: { chort: 36, pumpkin_dude: 35, doc: 29 }, breakables: ["pot", "crate", "crate"], hazard: 0.01, chest: { chance: 0.7, mimic: 0.5 } },
+        { xp: 20, spawns: { chort: 33, pumpkin_dude: 34, doc: 33 }, breakables: ["crate", "crate", "urn"], hazard: 0.01, chest: { chance: 0.7, mimic: 0.6 } },
+        { xp: 23, spawns: { chort: 30, pumpkin_dude: 35, doc: 35 }, breakables: ["crate", "crate"] }, // then the boss
+      ],
+      boss: { type: "big_demon", hp: 3000000, gold: 3000000, threat: 0.15, minion: "chort" },
+    },
   ],
 
   // ---- Drops --------------------------------------------------------------
@@ -261,6 +288,7 @@ export const BALANCE = {
     { id: "crit", name: "Critical hits", parent: "keen", levels: 5, cost: 300, growth: 1.5, effect: { stat: "critChance", add: 0.04 }, depth: 2 },
     { id: "edge3", name: "Brutal edge", parent: "crit", levels: 10, cost: 200, growth: 1.45, effect: { stat: "damage", add: 100 }, depth: 3 },
     { id: "edge4", name: "Savage edge", parent: "edge3", levels: 10, cost: 2000, growth: 1.45, effect: { stat: "damage", add: 1000 }, depth: 4 },
+    { id: "edge5", name: "Demon edge", parent: "edge4", levels: 10, cost: 20000, growth: 1.45, effect: { stat: "damage", add: 10000 }, depth: 5 },
 
     // Hearts
     { id: "heart", name: "Extra heart", parent: "descend", levels: 4, cost: 3, growth: 1.6, effect: { stat: "hearts", add: 1 } },
@@ -283,6 +311,8 @@ export const BALANCE = {
     { id: "wind3", name: "Second wind III", parent: "time3", levels: 5, cost: 2900, growth: 1.52, effect: { stat: "timePerSubDepth", add: 1.5 }, depth: 3, perDepth: true },
     { id: "time4", name: "More time IV", parent: "wind3", levels: 10, cost: 2000, growth: 1.42, effect: { stat: "startTime", add: 4 }, depth: 4, perDepth: true },
     { id: "wind4", name: "Second wind IV", parent: "time4", levels: 5, cost: 29000, growth: 1.52, effect: { stat: "timePerSubDepth", add: 1.5 }, depth: 4, perDepth: true },
+    { id: "time5", name: "More time V", parent: "wind4", levels: 10, cost: 20000, growth: 1.42, effect: { stat: "startTime", add: 4 }, depth: 5, perDepth: true },
+    { id: "wind5", name: "Second wind V", parent: "time5", levels: 5, cost: 290000, growth: 1.52, effect: { stat: "timePerSubDepth", add: 1.5 }, depth: 5, perDepth: true },
 
     // Dash
     { id: "dash", name: "Dash", parent: "descend", levels: 1, cost: 6, growth: 1, effect: { unlock: "dash" } },
@@ -297,6 +327,7 @@ export const BALANCE = {
     { id: "greed2", name: "Greed II", parent: "smash", levels: 10, cost: 20, growth: 1.4, effect: { stat: "goldBonus", add: 0.1 }, depth: 2 },
     { id: "greed3", name: "Greed III", parent: "greed2", levels: 10, cost: 200, growth: 1.4, effect: { stat: "goldBonus", add: 0.1 }, depth: 3 },
     { id: "greed4", name: "Greed IV", parent: "greed3", levels: 10, cost: 2000, growth: 1.4, effect: { stat: "goldBonus", add: 0.1 }, depth: 4 },
+    { id: "greed5", name: "Greed V", parent: "greed4", levels: 10, cost: 20000, growth: 1.4, effect: { stat: "goldBonus", add: 0.1 }, depth: 5 },
 
     // Horde: more monsters, sooner, and more XP from each, so rooms fill
     // their bars faster. Depth 1's rooms fill before most hordes arrive, so
@@ -311,6 +342,9 @@ export const BALANCE = {
     { id: "hordes4", name: "Bigger hordes III", parent: "restless3", levels: 10, cost: 40000, growth: 1.45, effect: { stat: "horde", add: 1 }, depth: 4, perDepth: true },
     { id: "restless4", name: "Restless dead III", parent: "hordes4", levels: 5, cost: 60000, growth: 1.5, effect: { stat: "hordeEvery", add: -2 }, depth: 4, perDepth: true },
     { id: "crowded4", name: "Crowded rooms IV", parent: "hordes4", levels: 10, cost: 2000, growth: 1.45, effect: { stat: "onEnter", add: 1 }, depth: 4, perDepth: true },
+    { id: "hordes5", name: "Bigger hordes IV", parent: "restless4", levels: 10, cost: 400000, growth: 1.45, effect: { stat: "horde", add: 1 }, depth: 5, perDepth: true },
+    { id: "restless5", name: "Restless dead IV", parent: "hordes5", levels: 5, cost: 600000, growth: 1.5, effect: { stat: "hordeEvery", add: -2 }, depth: 5, perDepth: true },
+    { id: "crowded5", name: "Crowded rooms V", parent: "hordes5", levels: 10, cost: 20000, growth: 1.45, effect: { stat: "onEnter", add: 1 }, depth: 5, perDepth: true },
     { id: "calls", name: "Death calls", parent: "crowded", levels: 5, cost: 29, growth: 1.5, effect: { stat: "deathCall", add: 0.03 } },
     { id: "wisdom", name: "Wisdom", parent: "crowded", levels: 10, cost: 14, growth: 1.42, effect: { stat: "xpBonus", add: 0.1 } },
   ],

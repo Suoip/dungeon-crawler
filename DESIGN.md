@@ -232,6 +232,22 @@ stands in as the boss, raising swampies.
   raises two around itself (chasers, worth half a normal kill's XP). They
   stop once the bar is full, like the room's own spawns.
 
+**Depth 5, the demon pit:** deep red, lava pouring from two fountains in the
+back wall, 10000x the crypt's numbers. The Big Demon waits in room 10,
+raising chorts.
+- **Chorts** (rooms 1–2) chase him, and every few seconds, when he's close,
+  one marks a spot right next to him with a swirl of dark smoke, then
+  vanishes in a puff and appears there. If he's moved away, it lands on the
+  mark anyway.
+- **Pumpkin dudes** (from room 3) crouch, with where they'll land marked on
+  the floor, then leap in an arc to the spot he was on. The landing's
+  shockwave costs a heart if he's inside the mark. In the air they can't
+  hurt him by touch, and they sail over pillars and crates.
+- **Plague doctors** (from room 5) keep their distance and lob flasks. A
+  flask sails over pillars in an arc, with where it'll land marked on the
+  floor, and bursts into three patches of fire that burn for 3 s.
+- **Big gold** shows short in the HUD: "123K", "12.3M".
+
 ## The run timer
 
 - **Per run, and very short:** about 15–20 seconds at the start.

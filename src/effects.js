@@ -106,7 +106,7 @@ export function addShadow(owner, width, visible = () => true) {
   const shadow = add([pos(owner.pos), z(5)]);
   shadow.onUpdate(() => {
     if (!owner.exists()) return destroy(shadow);
-    shadow.pos = owner.pos;
+    shadow.pos = owner.ground ?? owner.pos; // a leaping monster's shadow stays on the floor
   });
   shadow.onDraw(() => {
     if (!visible(owner)) return;

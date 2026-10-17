@@ -4,7 +4,7 @@ import { subDepthScale } from "./stats.js";
 import { sleep, during, animate, puffDust, addShadow, addSpawnHole, sparks, shakeScreen } from "./effects.js";
 import { playSound } from "./sound.js";
 import { setupBoss } from "./boss.js";
-import { addShot } from "./shots.js";
+import { addShot, lobFlask } from "./shots.js";
 import { keepInRoom, roomLimits } from "./room.js";
 export { MUD_SLOW };
 import { popNumber } from "./hud.js";
@@ -34,6 +34,10 @@ export const MOB_TYPES = {
   muddy:       { speed: 24, feet: [12, 6], size: 16, trail: true },                     // leaves mud that slows you
   necromancer: { speed: 34, feet: [10, 6], size: 23, summoner: true, keeps: true },     // keeps its distance and raises ice zombies
   ice_zombie:  { speed: 30, feet: [10, 6], size: 16 },
+  // The demon pit
+  chort:       { speed: 34, feet: [10, 6], size: 23, blinker: true },                   // teleports next to you
+  pumpkin_dude: { speed: 30, feet: [10, 6], size: 23, leaper: true },                   // leaps at you
+  doc:         { speed: 36, feet: [10, 6], size: 23, lobber: true, keeps: true },       // keeps its distance and lobs flasks
   // Bosses
   big_demon:   { speed: 28, feet: [22, 8], size: 36, boss: true, name: "BIG DEMON", favorite: "dash" },
   ogre:        { speed: 30, feet: [22, 8], size: 36, boss: true, name: "OGRE", favorite: "vomit", knockback: 3, minions: ["goblin"] },
@@ -223,9 +227,9 @@ export function hurtMob(mob, from, room, damage = 1, crit = false) {
   wait(0.1, () => mob.exists() && (mob.color = mob.tint));
 
   // Pushed away from whoever hit it. Bosses barely budge, and not at all in
-  // the middle of a move; a charging skeleton isn't stopped either. A brute
-  // or a shield only gives a little.
-  if (!(mob.def.boss && mob.busy) && !mob.charging) {
+  // the middle of a move; a charging skeleton isn't stopped either, nor a
+  // leaping pumpkin. A brute or a shield only gives a little.
+  if (!(mob.def.boss && mob.busy) && !mob.charging && !mob.airborne) {
     const away = mob.pos.sub(from).unit();
     mob.knockVel = away.scale(mob.def.boss ? 60 : mob.def.heavy || blocked ? 70 : 220);
     mob.knockTime = 0.12;
@@ -256,8 +260,10 @@ export function hurtMob(mob, from, room, damage = 1, crit = false) {
 // slugs) wander about, or (for imps) keep their distance and shoot, or (for
 // wogols) go off when they're close, or (for shamans) keep their distance
 // and heal, or (for masked orcs) turn slowly to face him behind a shield, or
-// (for necromancers) keep their distance and raise ice zombies. A muddy
-// chases and leaves mud behind it.
+// (for necromancers) keep their distance and raise ice zombies, or (for
+// chorts) blink next to him, or (for pumpkin dudes) leap at him, or (for
+// plague doctors) keep their distance and lob flasks. A muddy chases and
+// leaves mud behind it.
 function setupBrain(mob, room) {
   const rush = mob.def.rusher ? setupRush(mob, room) : null;
   const wander = BALANCE.mobs[mob.type]?.wanders ? setupWander(mob) : null;
@@ -267,6 +273,9 @@ function setupBrain(mob, room) {
   const shield = mob.def.shield ? setupShield(mob, room) : null;
   const summon = mob.def.summoner ? setupSummoner(mob, room) : null;
   const trail = mob.def.trail ? setupTrail(mob) : null;
+  const blink = mob.def.blinker ? setupBlinker(mob, room) : null;
+  const leap = mob.def.leaper ? setupLeaper(mob, room) : null;
+  const lob = mob.def.lobber ? setupLobber(mob, room) : null;
   mob.onUpdate(() => {
     mob.z = 10 + mob.pos.y / 1000; // lower on screen = drawn in front
     if (!mob.active || room.frozen) {
@@ -286,6 +295,9 @@ function setupBrain(mob, room) {
     if (shoot) return shoot();                  // it keeps its distance
     if (heal) return heal();                    // it keeps its distance too
     if (summon) return summon();                // and so does it
+    if (lob) return lob();                      // and it
+    if (blink && blink()) return;               // its mark is smoking
+    if (leap && leap()) return;                 // crouching, in the air, or landed
     trail?.();                                  // mud where it's been
     if (shield) return shield();                // it turns slowly
     if (bomb && bomb()) return;                 // its fuse is lit
@@ -671,6 +683,219 @@ function setupSummoner(mob, room) {
       raiseAt = now + RAISE.windUp;
       mob.play("idle");
       playSound("summon");
+      return;
+    }
+    keepDistance(mob, room, limits);
+  };
+}
+
+// A chort chases the hero, and every few seconds, when he's within
+// BLINK.range, it marks a spot right next to him with a swirl of dark smoke
+// (the warning), then vanishes in a puff and appears on that spot. If he's
+// moved away by then, it lands on the mark anyway. Returns the function the
+// brain calls every frame: true while it's busy blinking.
+const BLINK = {
+  every: [3, 4.5],   // seconds between blinks, picked at random
+  range: 150,        // px: it only blinks from closer than this
+  warn: 0.6,         // seconds the mark smokes before it appears there
+  side: 22,          // px from the hero to the mark
+  rest: 0.4,         // seconds it stands still after landing
+};
+function setupBlinker(mob, room) {
+  let nextBlink = time() + rand(1.5, 3);
+  let blinkAt = null;  // while the mark smokes: when it blinks
+  let restUntil = 0;
+  let mark = null;
+  const limits = roomLimits(mob.def.feet);
+  mob.onDestroy(() => mark?.destroy());
+  return () => {
+    const now = time();
+    if (blinkAt !== null) {
+      mob.color = Math.floor(now * 16) % 2 ? rgb(150, 90, 200) : mob.tint;
+      if (now < blinkAt) return true;
+      mob.color = mob.tint;
+      blinkAt = null;
+      puffDust(mob.pos.x, mob.pos.y - 8, 8, 10, 11);
+      mob.pos = mark.pos.clone();
+      puffDust(mob.pos.x, mob.pos.y - 8, 8, 10, 11);
+      destroy(mark);
+      mark = null;
+      playSound("poof");
+      restUntil = now + BLINK.rest;
+      nextBlink = now + rand(...BLINK.every);
+      return true;
+    }
+    if (now < restUntil) {
+      if (mob.getCurAnim()?.name !== "idle") mob.play("idle");
+      return true;
+    }
+    const hero = room.player.pos;
+    if (now < nextBlink || hero.dist(mob.pos) > BLINK.range) return false; // it chases him
+    // A spot next to him that's on the floor and not in anything solid.
+    let spot = null;
+    for (let tries = 0; tries < 8 && !spot; tries++) {
+      const angle = rand(0, Math.PI * 2);
+      const at = vec2(
+        clamp(hero.x + Math.cos(angle) * BLINK.side, limits.left, limits.right),
+        clamp(hero.y + Math.sin(angle) * BLINK.side * 0.7, limits.top, limits.bottom),
+      );
+      if (!get("solid").some(({ box }) => at.x > box.left - 4 && at.x < box.right + 4 && at.y > box.top && at.y < box.bottom + 4)) spot = at;
+    }
+    if (!spot) {
+      nextBlink = now + 0.5;
+      return false;
+    }
+    blinkAt = now + BLINK.warn;
+    mob.play("idle");
+    playSound("charge");
+    mark = add([pos(spot), z(6)]);
+    const born = now;
+    mark.onDraw(() => {
+      const t = (time() - born) / BLINK.warn;
+      for (let i = 0; i < 3; i++) {
+        const a = time() * 6 + (i * Math.PI * 2) / 3;
+        drawCircle({ pos: vec2(Math.cos(a) * 5, -2 + Math.sin(a) * 2), radius: 2 + t * 2, color: rgb(70, 40, 90), opacity: 0.4 + 0.4 * t });
+      }
+      drawEllipse({ pos: vec2(0), radiusX: 6 + t * 2, radiusY: 2.5, color: rgb(40, 20, 50), opacity: 0.5 });
+    });
+    return true;
+  };
+}
+
+// A pumpkin dude walks at the hero, and every few seconds, when he's within
+// LEAP.range, it crouches (squashing down, with where it'll land marked on
+// the floor), then leaps in an arc to the spot he was on when it crouched.
+// It lands with a shockwave that costs him a heart if he's inside the mark.
+// In the air it can't hurt him by touch, and it sails over pillars and
+// crates. Returns the function the brain calls every frame: true while it's
+// busy leaping.
+const LEAP = {
+  every: [2.5, 3.5],  // seconds between leaps, picked at random
+  range: 110,         // px: it only leaps from closer than this
+  crouch: 0.5,        // seconds of crouching (the warning)
+  air: 0.55,          // seconds in the air
+  height: 26,         // px at the top of the arc
+  radius: 24,         // px the shockwave reaches sideways (70% of that up and down)
+  rest: 0.7,          // seconds it stands still after landing
+};
+const inShockwave = (at, middle) => ((at.x - middle.x) / LEAP.radius) ** 2 + ((at.y - middle.y) / (LEAP.radius * 0.7)) ** 2 < 1;
+function setupLeaper(mob, room) {
+  let state = "walk";
+  let until = 0;
+  let nextLeap = time() + rand(1.5, 2.5);
+  let from = null;
+  let target = null;
+  let mark = null;
+  const limits = roomLimits(mob.def.feet);
+  mob.onDestroy(() => mark?.destroy());
+  return () => {
+    const now = time();
+    if (state === "walk") {
+      const hero = room.player.pos;
+      if (now < nextLeap || hero.dist(mob.pos) > LEAP.range) return false; // it walks at him
+      state = "crouch";
+      until = now + LEAP.crouch;
+      target = vec2(clamp(hero.x, limits.left, limits.right), clamp(hero.y, limits.top, limits.bottom));
+      mob.play("idle");
+      mob.flipX = target.x < mob.pos.x;
+      mark = add([pos(target), z(6)]);
+      mark.onDraw(() => drawEllipse({
+        pos: vec2(0), radiusX: LEAP.radius, radiusY: LEAP.radius * 0.7,
+        fill: false, outline: { width: 1, color: Math.floor(time() * 12) % 2 ? rgb(247, 150, 23) : rgb(255, 205, 70) },
+      }));
+    }
+    if (state === "crouch") {
+      mob.scale = vec2(1.15, 0.8); // squashed down, ready to spring
+      if (now < until) return true;
+      mob.scale = vec2(1);
+      state = "air";
+      until = now + LEAP.air;
+      from = mob.pos.clone();
+      mob.airborne = true;
+      if (mob.has("body")) mob.unuse("body"); // it sails over things
+      playSound("dash");
+    }
+    if (state === "air") {
+      const t = Math.min(1, 1 - (until - now) / LEAP.air);
+      mob.ground = from.lerp(target, t);
+      mob.pos = mob.ground.sub(0, Math.sin(t * Math.PI) * LEAP.height);
+      if (t < 1) return true;
+      // It lands.
+      mob.pos = target.clone();
+      mob.ground = null;
+      mob.airborne = false;
+      mob.use(body());
+      destroy(mark);
+      mark = null;
+      state = "rest";
+      until = now + LEAP.rest;
+      nextLeap = now + LEAP.rest + rand(...LEAP.every);
+      shockwave(target, room);
+    }
+    if (state === "rest") {
+      if (mob.getCurAnim()?.name !== "idle") mob.play("idle");
+      if (now < until) return true;
+      state = "walk";
+    }
+    return false;
+  };
+}
+
+// The landing: dust, a thud, a ring spreading over the floor, and for a
+// moment a hazard that hurts the hero if he's inside it.
+function shockwave(at, room) {
+  if (room.over || room.frozen) return;
+  playSound("land");
+  shakeScreen(2);
+  puffDust(at.x, at.y, 10, LEAP.radius, 11);
+  const born = time();
+  const wave = add([
+    pos(at),
+    z(6),
+    "hazard",
+    { touches: (player) => time() - born < 0.12 && inShockwave(player.pos, at) },
+  ]);
+  wave.onDraw(() => {
+    const t = Math.min(1, (time() - born) / 0.3);
+    drawEllipse({
+      pos: vec2(0), radiusX: Math.max(1, LEAP.radius * t), radiusY: Math.max(1, LEAP.radius * 0.7 * t),
+      fill: false, outline: { width: 2, color: rgb(255, 205, 70) }, opacity: 1 - t,
+    });
+  });
+  wait(0.3, () => destroy(wave));
+}
+
+// A plague doctor keeps its distance (keepDistance). Every few seconds it
+// stops, glows green (the warning), and lobs a flask at where the hero is.
+// The flask sails over pillars in an arc, with where it'll land marked on
+// the floor, and bursts into a patch of fire there (shots.js).
+const LOB = {
+  every: [3, 4],     // seconds between lobs, picked at random
+  range: 170,        // px: it only lobs from closer than this
+  windUp: 0.5,       // seconds of glowing before it lobs
+};
+function setupLobber(mob, room) {
+  let nextLob = time() + rand(1.5, 2.5);
+  let lobAt = null; // while winding up: when it lobs
+  const limits = roomLimits(mob.def.feet);
+  return () => {
+    const now = time();
+    const hero = room.player.pos;
+    mob.flipX = hero.x < mob.pos.x; // it always faces him
+    if (lobAt !== null) {
+      mob.color = Math.floor(now * 16) % 2 ? rgb(140, 220, 90) : mob.tint;
+      if (now < lobAt) return;
+      mob.color = mob.tint;
+      lobAt = null;
+      nextLob = now + rand(...LOB.every);
+      const to = vec2(clamp(hero.x, limits.left, limits.right), clamp(hero.y, limits.top, limits.bottom));
+      lobFlask(mob.pos.clone(), to, room);
+      playSound("fireball");
+      return;
+    }
+    if (now >= nextLob && hero.dist(mob.pos) < LOB.range) {
+      lobAt = now + LOB.windUp;
+      mob.play("idle");
       return;
     }
     keepDistance(mob, room, limits);

@@ -1,6 +1,6 @@
 import { TILE, TOP, GAME_WIDTH, GAME_HEIGHT } from "./config.js";
 import { raiseMob } from "./mobs.js";
-import { addShot } from "./shots.js";
+import { addShot, addFire } from "./shots.js";
 import { sleep, during, puffDust, shakeScreen, flashScreen, showBanner } from "./effects.js";
 import { playSound } from "./sound.js";
 import { roomLimits } from "./room.js";
@@ -22,7 +22,6 @@ const FIRST_CAST = 1;              // seconds after its roar
 const DASH_SPEED = 210;            // px per second
 const RAGE_DASH_SPEED = 330;       // the second dash when enraged
 const DASH_TIME = 0.6;
-const FIRE_LIFE = 4;               // seconds the fire trail burns
 
 const SHOTS = 12;                  // projectiles per ring, 30° apart
 const SHOT_SPEED = 70;
@@ -238,37 +237,6 @@ function enrage(boss) {
   flashScreen([200, 30, 30], 0.25, 0.4);
   puffDust(boss.pos.x, boss.pos.y, 12, 24);
   showBanner("ENRAGED!", [230, 72, 46]);
-}
-
-// One patch of the fire trail. It's on the floor (z 6, under everyone), and
-// hurts the hero if he steps in it (setupHurt in combat.js checks everything
-// tagged "hazard").
-function addFire(at) {
-  const born = time();
-  const seed = rand(0, 10);
-  const fire = add([
-    pos(at),
-    z(6),
-    "hazard",
-    {
-      touches: (player) => time() - born < FIRE_LIFE - 0.3
-        && Math.abs(player.pos.x - at.x) < 8 && Math.abs(player.pos.y - at.y) < 5,
-    },
-  ]);
-
-  fire.onUpdate(() => {
-    if (time() - born > FIRE_LIFE) destroy(fire);
-  });
-  fire.onDraw(() => {
-    const fade = Math.min(1, (FIRE_LIFE - (time() - born)) / 0.6); // fades out over its last 0.6 s
-    drawRect({ pos: vec2(-5, -2), width: 10, height: 4, color: rgb(120, 30, 20), opacity: 0.7 * fade });
-    // Three little flames that flicker up and down.
-    [-3, 0, 3].forEach((x, i) => {
-      const height = 3 + 2.5 * Math.abs(Math.sin(time() * 14 + seed + i * 2));
-      drawRect({ pos: vec2(x - 1.5, -height), width: 3, height, color: rgb(247, 150, 23), opacity: 0.9 * fade });
-      drawRect({ pos: vec2(x - 0.5, -height * 0.6), width: 1, height: height * 0.6, color: rgb(255, 220, 80), opacity: fade });
-    });
-  });
 }
 
 function ring(boss, room, turn) {
