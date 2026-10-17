@@ -3,7 +3,9 @@ import { GAME_WIDTH, TILE } from "./config.js";
 // What a run shows in the room itself, in the empty strip above the back
 // wall (DESIGN.md section 5):
 //   the clock      top left, in big pixel numbers; red and pulsing for the
-//                  last 5 seconds, grey once it has stopped (the boss room)
+//                  last 5 seconds, grey once it has stopped (the boss room),
+//                  and a green flash with "+1S" rising under it when a time
+//                  orb adds seconds (hud.addTime)
 //   the XP bar     two halves either side of the door, filling in toward it;
 //                  when they meet the door, it unchains
 //   the gold       top right: this run's coins
@@ -13,6 +15,7 @@ const LIGHT = [240, 230, 210];
 const SHADOW = [12, 10, 20];
 const RED = [230, 72, 46];
 const GOLD = [255, 205, 70];
+const GREEN = [99, 199, 77];
 const BAR_Y = 6;     // the XP bar's top, in the strip above the wall
 const BAR_HEIGHT = 4;
 const DOOR = { left: GAME_WIDTH / 2 - TILE - 2, right: GAME_WIDTH / 2 + TILE + 2 }; // the door's arch, and a little room
@@ -37,14 +40,22 @@ export const clockText = (seconds) => {
 // gold }, read every frame.
 export function addHud(state) {
   let flashUntil = 0; // the bar shines for a moment once it's full
+  let added = null;   // { text, at }: seconds a time orb just added
   const hud = add([pos(0, 0), z(80)]);
+  hud.addTime = (seconds) => (added = { text: `+${seconds}S`, at: time() });
   hud.onDraw(() => {
     const { clock, stopped, xp, xpNeeded, gold } = state();
 
-    // The clock.
+    // The clock (green for a moment when time is added).
     const hurry = !stopped && clock <= 5;
     const pulse = hurry ? 1 + 0.15 * Math.max(0, Math.sin(time() * 2 * Math.PI)) : 1;
-    drawShadowText(clockText(clock), vec2(6, 9), 16 * pulse, stopped ? [140, 130, 150] : hurry ? RED : LIGHT, "left");
+    const sinceAdded = added ? time() - added.at : Infinity;
+    const color = stopped ? [140, 130, 150] : sinceAdded < 0.4 ? GREEN : hurry ? RED : LIGHT;
+    drawShadowText(clockText(clock), vec2(6, 9), 16 * pulse, color, "left");
+    if (sinceAdded < 1) {
+      // "+1S" rises from under the clock and fades.
+      drawShadowText(added.text, vec2(8, 24 - sinceAdded * 6), 8, GREEN, "left", 1 - sinceAdded);
+    }
 
     // The XP bar: two halves, each filling from its outer end toward the door.
     const share = Math.min(1, xpNeeded ? xp / xpNeeded : 0);

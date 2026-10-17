@@ -164,7 +164,12 @@ to:
   what you have: DASH appears once it's unlocked.
   - **Movement only.** A dash doesn't protect you and doesn't hurt mobs.
   - **Its length never changes.** The tree upgrades only its cooldown, and
-    adds a second charge.
+    adds a second charge. A charge takes 2.5 s to fill at first; Quick feet
+    takes 10% off per level (about 1.5 s at the top).
+  - **The charges show under his feet:** a small bar per charge, full when
+    it's ready and growing while it fills, only while one is missing.
+    Every room starts with them full, and a charge bought at the altar
+    comes ready.
   - **How charges refill:** if a charge takes *n* seconds, a second charge
     takes *2n* while the first one is ready, but its progress is kept as a
     percentage. Example with n = 4 s: one charge is ready and the second is
@@ -230,7 +235,12 @@ to:
 - **Heart drops** are on from the start but rarer than today (currently 2%,
   plus 1% for every kill without a drop). The tree raises the chance.
 - **Time orbs** don't drop at all until they're unlocked in the tree, and
-  even then they're much rarer than hearts. Orbs come from kills, and depth
+  even then they're much rarer than hearts. An orb is a pickup, like a
+  heart: a small glowing blue orb that hops out of the monster, bobs, is
+  pulled in by the magnet, and blinks out after 8 s if it's left. Grabbing
+  it adds its seconds to the clock, which flashes green with "+1S" rising
+  under it. None drop while the clock isn't running (the boss fight), and
+  the boss's entrance clears any left on the floor. Orbs come from kills, and depth
   1 has too few kills for orb upgrades to pay off, so **Orb finder and
   Bigger orbs are an investment for depth 2** (see "Buying early" in
   section 7).
@@ -283,9 +293,9 @@ to:
   pick up a few levels of Bigger hordes, Restless dead and sometimes Orb
   finder about 80% of the way through, which costs them about two minutes
   over the whole depth.
-- **Coming soon:** until a node's effect is in the game (Quick feet,
-  Second charge and the time orbs in step 5, Smash in step 6), it's shown
-  but not on sale.
+- **Coming soon:** until a node's effect is in the game, it's shown but
+  not on sale. Since step 5, that's only Smash, which waits for the
+  breakables of step 6.
 - While the page is open, the hero waits at the altar and nothing else can
   be used.
 

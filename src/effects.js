@@ -145,22 +145,6 @@ export function sparks(x, y, count = 5) {
   }
 }
 
-// Hit-stop: the whole game freezes for a few frames when a hit lands. It's
-// too short to notice as a pause, but it makes hits feel heavy. Pausing the
-// root object (the parent of everything in the scene) stops every update,
-// timer and tween, while the screen still draws; a browser timer, which
-// keeps running, unpauses it. (Setting debug.timeScale to 0 would be the
-// obvious way, but it trips up Kaplay's physics bodies.)
-let resumeAt = 0;
-export function hitStop(seconds) {
-  const now = performance.now();
-  resumeAt = Math.max(resumeAt, now + seconds * 1000);
-  getTreeRoot().paused = true;
-  setTimeout(() => {
-    if (performance.now() >= resumeAt - 1) getTreeRoot().paused = false;
-  }, resumeAt - now);
-}
-
 // Runs `each(elapsed)` every frame for `seconds` of game time, for moves
 // that need to do something every frame (like dashing). Resolves true when
 // it's done, or false straight away once `keepGoing()` says to stop.

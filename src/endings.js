@@ -33,7 +33,7 @@ const PLAY_LADDER = { label: "PLAY", prompt: "Start a run" };
 const ALTAR_Y = 158;  // the altar's foot, below the results
 const LAND_Y = 176;   // he lands in front of it, already at it
 
-const hasTheDash = () => heroStats(getSave().levels).unlocked.has("dash");
+const savedStats = () => heroStats(getSave().levels); // the hero as the tree has made him
 
 function underworld(run, ending) {
   buildRoom();
@@ -52,7 +52,7 @@ function underworld(run, ending) {
   const player = addPlayer(LAND_X, LAND_Y);
   if (ending === "died") player.use(color(255, 110, 110)); // still red, down here
   setupPlayerMovement(player);
-  setupDash(player, hasTheDash); // works as soon as it's bought at the altar
+  setupDash(player, savedStats); // works (and gets faster) as soon as it's bought at the altar
   const fader = addFader();
   let total = null; // the TOTAL line of the results, kept up to date as gold is spent
 
