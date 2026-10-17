@@ -12,7 +12,8 @@ import {
 import { sleep, animate, addFader, fadeIn, fadeOut, shakeScreen, flashScreen, puffDust } from "./effects.js";
 import { startSpawning, raiseMob, bossSpot, MOB_TYPES } from "./mobs.js";
 import { setupAutoSwing, setupHurt, addHearts, setupHeartDrops, setupOrbDrops } from "./combat.js";
-import { dropCoins, collectFloor, sweepFloor, floorValue } from "./coins.js";
+import { dropCoins, dropBone, collectFloor, sweepFloor, floorValue, floorBones } from "./coins.js";
+import { buildLayout } from "./crypt.js";
 import { addHud } from "./hud.js";
 import { addLadder, addWell } from "./props.js";
 import { playSound } from "./sound.js";
@@ -77,6 +78,7 @@ export function registerRoomScene() {
         run.kills++;
         maybeDropHeart(mob);
         maybeDropOrb(mob);
+        maybeDropBone(mob);
         dropCoins(mob.pos.clone(), coins(mob.gold * (1 + stats.goldBonus)), run, player, () => stats.magnetRange,
           { spread: mob.def.boss ? 44 : 10 });
         if (mob.def.boss) return bossBeaten(mob);
@@ -87,8 +89,17 @@ export function registerRoomScene() {
         if (stats.deathCall > 0 && Math.random() < stats.deathCall) spawner?.raise(1);
       },
     };
+    // The room's layout (crypt.js): pillars, spikes, breakables, maybe a chest.
+    fight.solid = buildLayout(fight, run);
     setupAutoSwing(player, fight, stats);
     setupHurt(player, run, hearts, fight, defeated, stats);
+    // Bones (the crypt's material): from sub-depth 6 on, a kill may drop one,
+    // more often the deeper it is.
+    const bones = BALANCE.drops.bones;
+    const boneChance = sub < bones.fromSubDepth ? 0 : bones.chance + bones.stepPerSubDepth * (sub - bones.fromSubDepth);
+    const maybeDropBone = (mob) => {
+      if (Math.random() < boneChance) dropBone(mob.pos.clone(), run, player, () => stats.magnetRange);
+    };
     const hud = addHud(() => ({ clock: run.clock, stopped: clockStopped, xp, xpNeeded: room.xp, gold: run.gold }));
     // Time orbs: while the clock runs, a kill may drop one, worth seconds.
     const maybeDropOrb = setupOrbDrops(player, stats, () => clockRunning && !clockStopped, (seconds) => {
@@ -245,26 +256,26 @@ export function registerRoomScene() {
       collectTheRest();
     }
 
-    // The run is over: its gold goes into the save right away, counting the
-    // coins still on the floor (so closing the page during the cutscene loses
-    // nothing), and then those coins fly to him, just to show it.
+    // The run is over: its gold and bones go into the save right away,
+    // counting what's still on the floor (so closing the page during the
+    // cutscene loses nothing), and then those fly to him, just to show it.
     function bankWithTheFloor() {
-      bank(floorValue());
+      bank(floorValue(), floorBones());
       sweepFloor();
     }
 
-    // The coins the sweep didn't bring in before the screen went dark: they
-    // were banked already, so they only join the run's total on the results.
+    // What the sweep didn't bring in before the screen went dark: it was
+    // banked already, so it only joins the run's totals on the results.
     function collectTheRest() {
-      run.gold += collectFloor();
+      collectFloor(run);
     }
 
-    // The run's gold (plus `extra`) goes into the save: once per run, however
-    // it ends.
-    function bank(extra = 0) {
+    // The run's gold and bones (plus `gold` and `boneCount` more) go into the
+    // save: once per run, however it ends.
+    function bank(gold = 0, boneCount = 0) {
       if (run.banked) return;
       run.banked = true;
-      endRun(run.gold + extra, run.deepest, bossDown);
+      endRun(run.gold + gold, run.deepest, bossDown, run.bones + boneCount);
     }
 
     // Through the door: on to the next room. Coins left on the floor stay

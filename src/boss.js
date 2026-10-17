@@ -162,6 +162,14 @@ const MOVES = {
 // the moment it would go past a wall, it stops at it. (Leaving the walls to
 // the physics engine made it slide along them, since a body is only pushed
 // straight out of a wall.)
+// Whether its feet, at `at`, would run into something solid in the room (a
+// pillar, a breakable or a chest: crypt.js tags them "solid", with a box).
+function blockedAt(boss, at) {
+  const [width, height] = boss.def.feet;
+  return get("solid").some(({ box }) =>
+    at.x + width / 2 > box.left && at.x - width / 2 < box.right && at.y > box.top && at.y - height < box.bottom);
+}
+
 async function dashOnce(boss, room, speed, { toWall = false } = {}) {
   const aim = room.player.pos.sub(boss.pos).unit();
   boss.play("run");
@@ -182,9 +190,16 @@ async function dashOnce(boss, room, speed, { toWall = false } = {}) {
 
   let lastFire = null;
   let hitWall = false;
+  let stopped = false; // ran into a pillar, a breakable or a chest
   await during(toWall ? 3 : DASH_TIME, () => {
     const next = boss.pos.add(dir.scale(speed * dt()));
     const kept = vec2(clamp(next.x, limits.left, limits.right), clamp(next.y, limits.top, limits.bottom));
+    if (blockedAt(boss, kept)) {
+      // Something solid stops it like a wall (a long dash slams into it).
+      stopped = true;
+      hitWall = toWall;
+      return;
+    }
     if (!kept.eq(next)) hitWall = toWall; // ran into a wall (a short dash just stops moving there)
     boss.pos = kept;
     // A patch of fire every 8 px along the way.
@@ -192,7 +207,7 @@ async function dashOnce(boss, room, speed, { toWall = false } = {}) {
       lastFire = boss.pos.clone();
       addFire(lastFire);
     }
-  }, () => alive(boss, room) && !hitWall);
+  }, () => alive(boss, room) && !hitWall && !stopped);
 
   if (boss.exists()) boss.use(body());
   if (hitWall) {

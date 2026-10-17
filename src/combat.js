@@ -46,9 +46,9 @@ const turnBetween = (from, to) => ((to - from + 540) % 360) - 180;
 // The hero swings on his own, every stats.swingEvery seconds, in the
 // direction he's facing (the way he last walked), so the player only moves.
 // Only in the dungeon: the menu rooms are calm. The timer doesn't run while
-// he's frozen in a cutscene. When there's nothing to hit (no monster up, and nothing to
-// smash), he lets the swing go by; the timer keeps its rhythm, so the next
-// swing comes exactly when it would have.
+// he's frozen in a cutscene. When there's nothing to hit (no monster up, and
+// nothing to smash within reach), he lets the swing go by; the timer keeps
+// its rhythm, so the next swing comes exactly when it would have.
 export function setupAutoSwing(player, room, stats) {
   let side = 1; // swings alternate: one way, then back the other way
   let next = stats.swingEvery;
@@ -57,7 +57,14 @@ export function setupAutoSwing(player, room, stats) {
     next -= dt();
     if (next > 0) return;
     next += stats.swingEvery;
-    if (!get("mob").some((mob) => mob.active) && !get("strikeable").length) return; // nothing to swing at
+    // Something to smash counts only if this swing could reach it: close
+    // enough to his chest and in front of him, as the swing itself tests a hit.
+    const inReach = (thing) => {
+      const offset = thing.pos.sub(0, thing.hitHeight).sub(chestOf(player));
+      return offset.len() <= stats.reach + thing.hitSize
+        && Math.abs(turnBetween(angleOf(player.facing), angleOf(offset))) <= stats.arc / 2 + 15;
+    };
+    if (!get("mob").some((mob) => mob.active) && !get("strikeable").some(inReach)) return; // nothing to swing at
     swing(player, room, side, stats);
     side = -side;
   });
@@ -114,7 +121,7 @@ function hitSwept(player, fromAngle, toAngle, alreadyHit, room, stats) {
   };
 
   // Things that react to being hit (tagged "strikeable", with a struck()
-  // function), like the crypt's breakables will (DESIGN.md step 6). Once per
+  // function), like the crypt's breakables and chests (crypt.js). Once per
   // swing.
   for (const thing of get("strikeable")) {
     if (alreadyHit.has(thing)) continue;
@@ -269,7 +276,8 @@ export function addHearts(run) {
 }
 
 // Mobs hurt the hero by touching him, and so does anything tagged "hazard"
-// (the boss's fire and shots), when its touches(player) says so. Each hit
+// (the boss's fire and shots, the crypt's floor spikes), when its
+// touches(player) says so. Each hit
 // costs a whole heart, knocks him back, and makes him blink for a moment,
 // during which he can't be hit again. `onDeath` runs when the last heart is
 // gone. How long the blinking lasts is stats.invincibleFor.

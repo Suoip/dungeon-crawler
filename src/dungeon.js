@@ -16,6 +16,7 @@ export function newRun() {
     hearts: stats.hearts, maxHearts: stats.hearts,
     clock: stats.startTime,   // seconds left
     gold: 0,                  // coins picked up this run
+    bones: 0,                 // bones picked up this run (from sub-depth 6)
     kills: 0,
     deepest: 0,               // how far it got: 3.4 = 3 rooms cleared, 40% of the 4th's bar
     dropStreak: 0,            // kills in a row that didn't drop a heart (see combat.js)

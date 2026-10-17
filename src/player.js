@@ -134,7 +134,9 @@ export function setupDash(player, statsNow) {
     let lastGhost = -1;
     await during(DASH_TIME, (elapsed) => {
       // move() (not setting pos) so walls still stop him.
-      player.move(way.scale(BALANCE.hero.dash.distance / DASH_TIME));
+      // At most 8 px a frame, so on a slow frame he can't skip through a
+      // pot's or a chest's 12 px box.
+      player.moveBy(way.scale(Math.min((BALANCE.hero.dash.distance / DASH_TIME) * dt(), 8)));
       keepInRoom(player, PLAYER_FEET);
       if (elapsed - lastGhost > 0.035) {
         lastGhost = elapsed;

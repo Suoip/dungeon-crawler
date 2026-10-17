@@ -12,6 +12,7 @@ const FRESH = {
   runs: 0,                   // runs played
   best: 0,                   // the deepest a run has got, as sub-depths: 3.4 = into room 4
   cleared: 0,                // the deepest depth whose boss has been beaten
+  bones: 0,                  // the crypt's material: kept for later, nothing buys with it yet
   seenUnderworld: false,     // the first visit puts the well in the title room
 };
 
@@ -36,10 +37,11 @@ function write() {
   }
 }
 
-// A run is over: bank its gold and remember how deep it got (`cleared` is
-// true when it beat the boss).
-export function endRun(gold, deepest, cleared = false) {
+// A run is over: bank its gold and bones, and remember how deep it got
+// (`cleared` is true when it beat the boss).
+export function endRun(gold, deepest, cleared = false, bones = 0) {
   save.gold += gold;
+  save.bones += bones;
   save.runs++;
   save.best = Math.max(save.best, deepest);
   if (cleared) save.cleared = Math.max(save.cleared, 1);

@@ -38,6 +38,12 @@ const SOUNDS = {
   coin:     [0.2, 0.05, 1600, 0, 0.02, 0.12, 1, 1, 0, 0, 600, 0.03],         // a little jingle
   orb:      [0.3, 0, 784, 0.01, 0.06, 0.25, 0, 1, 0, 0, 392, 0.06],          // a time orb: a bright two-note chime
 
+  // The crypt
+  smash:    [0.45, 0.1, 260, 0, 0.03, 0.18, 4, 1.5, -4, 0, 0, 0, 0, 0.7],    // a pot or crate breaking
+  chomp:    [0.5, 0.05, 140, 0.01, 0.04, 0.12, 2, 1, -12, 0, 0, 0, 0.05, 0.4], // a mimic snapping open
+  spikes:   [0.1, 0.05, 1100, 0, 0.01, 0.05, 3, 1, 0, 0, 0, 0, 0.02],       // the floor spikes coming up
+  bone:     [0.22, 0.05, 260, 0, 0.02, 0.07, 1, 1, 0, 0, 140, 0.03],        // a bone picked up: a hollow clack
+
   // The boss's moves
   gurgle:   [0.35, 0.1, 110, 0.05, 0.3, 0.15, 2, 1, 0, 0, 0, 0, 0.05, 0.5, 15],
   vomit:    [0.4, 0.1, 200, 0, 0.05, 0.25, 4, 1, -8, 0, 0, 0, 0, 1],
@@ -72,6 +78,9 @@ const EQ = {
   vomit:   { lowpass: 1600, shelf: -10, shelfFrom: 1200 },
   roar:    { lowpass: 1400, shelf: -8, shelfFrom: 900 },
   gong:    { lowpass: 1200, shelf: -6, shelfFrom: 800 },
+  smash:   { lowpass: 1800, shelf: -10, shelfFrom: 1200 },
+  spikes:  { lowpass: 2000, shelf: -6, shelfFrom: 1500 },
+  chomp:   { lowpass: 1600, shelf: -8, shelfFrom: 1000 },
 };
 
 // Each sound's filters are built once, the first time it plays, and reused.
