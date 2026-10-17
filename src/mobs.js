@@ -1,7 +1,7 @@
 import { TILE, TOP, GAME_WIDTH, GAME_HEIGHT } from "./config.js";
 import { BALANCE } from "./balance.js";
 import { subDepthScale } from "./stats.js";
-import { sleep, during, animate, puffDust, hitStop, addShadow, addSpawnHole, sparks } from "./effects.js";
+import { sleep, during, animate, puffDust, addShadow, addSpawnHole, sparks } from "./effects.js";
 import { playSound } from "./sound.js";
 import { setupBoss } from "./boss.js";
 import { keepInRoom } from "./room.js";
@@ -162,7 +162,6 @@ export function hurtMob(mob, from, room, damage = 1) {
   if (!mob.active) return false;
   mob.hp -= damage;
   playSound("mobHit");
-  hitStop(mob.hp > 0 ? 0.04 : 0.08); // a tiny freeze, so the hit feels heavy
   popNumber(mob.pos.add(rand(-3, 3), -mob.def.size - 2), damage);
   // Sparks on the side of the mob that got hit.
   const middle = mob.pos.sub(0, mob.def.size / 2);

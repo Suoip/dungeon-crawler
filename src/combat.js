@@ -6,7 +6,7 @@ import { hurtMob } from "./mobs.js";
 import { SHOT_HEIGHT } from "./boss.js";
 import { keepInRoom } from "./room.js";
 import { PLAYER_FEET } from "./player.js";
-import { flashScreen, shakeScreen, hitStop } from "./effects.js";
+import { flashScreen, shakeScreen } from "./effects.js";
 import { playSound } from "./sound.js";
 
 const SWING_TIME = 0.15;     // seconds the weapon takes to sweep across
@@ -45,9 +45,8 @@ const turnBetween = (from, to) => ((to - from + 540) % 360) - 180;
 
 // The hero swings on his own, every stats.swingEvery seconds, in the
 // direction he's facing (the way he last walked), so the player only moves.
-// Only in the dungeon: the menu rooms are calm. The timer counts game time,
-// so it waits during a hit-stop, and it doesn't run while he's frozen in a
-// cutscene. When there's nothing to hit (no monster up, and nothing to
+// Only in the dungeon: the menu rooms are calm. The timer doesn't run while
+// he's frozen in a cutscene. When there's nothing to hit (no monster up, and nothing to
 // smash), he lets the swing go by; the timer keeps its rhythm, so the next
 // swing comes exactly when it would have.
 export function setupAutoSwing(player, room, stats) {
@@ -136,7 +135,6 @@ function hitSwept(player, fromAngle, toAngle, alreadyHit, room, stats) {
   for (const shot of get("shot")) {
     if (shot.batable && !shot.batted && sweptThrough(shot.pos.add(0, -SHOT_HEIGHT), 4)) {
       shot.batBack();
-      hitStop(0.03);
     }
   }
 }
