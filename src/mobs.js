@@ -15,8 +15,7 @@ import { popNumber } from "./hud.js";
 export const MOB_TYPES = {
   tiny_zombie: { speed: 26, feet: [10, 6], size: 16 },
   skeleton:    { speed: 30, feet: [10, 6], size: 16, rusher: true }, // winds up, then charges in a line
-  slug:        { speed: 16, feet: [12, 6], size: 23 },               // splits into tiny slugs (balance.js)
-  tiny_slug:   { speed: 34, feet: [8, 5], size: 16 },
+  slug:        { speed: 14, feet: [12, 6], size: 23 },               // wanders about, never hunts (balance.js `wanders`)
   mimic:       { speed: 40, feet: [12, 6], size: 16, rusher: true },  // a chest that woke up (crypt.js): lunges like a skeleton
   // Other depths' monsters (not in balance.js yet), for the other bosses' minions.
   goblin:      { speed: 52, feet: [10, 6], size: 16, hp: 3 },
@@ -92,8 +91,8 @@ export function spawnSpot(room) {
 // onSpawn(mob), onDeath(mob) }. `room.rising` counts mobs still on their way
 // up (or waiting to start, after `delay` seconds), so the room doesn't think
 // it's empty while one is still appearing. `onDeath` is called when this mob
-// is beaten. With `quick`, it skips the dust and just pops out (a slug's
-// tiny slugs).
+// is beaten. With `quick`, it skips the dust and just pops out (what a
+// splitter splits into).
 // `untilFull`: it's one of the room's own spawns, which stop when the XP bar
 // fills, even the ones already on their way up.
 export async function raiseMob(type, room, { at = null, delay = 0, onDeath = null, quick = false, untilFull = false } = {}) {
@@ -212,7 +211,7 @@ export function hurtMob(mob, from, room, damage = 1) {
   mob.dead = true; // beaten: already counted out, already on its way down
   playSound("mobDie");
   puffDust(mob.pos.x, mob.pos.y - mob.def.size / 2, 10, 14, 11);
-  // A slug splits: its tiny slugs pop out where it fell.
+  // A splitter (balance.js `splitsInto`) splits: its children pop out where it fell.
   for (const [i, child] of (BALANCE.mobs[mob.type]?.splitsInto ?? []).entries()) {
     const side = i % 2 ? 1 : -1;
     raiseMob(child, room, { at: mob.pos.add(side * 7, rand(-2, 2)), quick: true });
@@ -226,9 +225,11 @@ export function hurtMob(mob, from, room, damage = 1) {
 }
 
 // What a mob does every frame: get knocked back, or chase the player, or
-// (for bosses) their special move, or (for skeletons) charge.
+// (for bosses) their special move, or (for skeletons) charge, or (for
+// slugs) wander about.
 function setupBrain(mob, room) {
   const rush = mob.def.rusher ? setupRush(mob, room) : null;
+  const wander = BALANCE.mobs[mob.type]?.wanders ? setupWander(mob) : null;
   mob.onUpdate(() => {
     mob.z = 10 + mob.pos.y / 1000; // lower on screen = drawn in front
     if (!mob.active || room.frozen) {
@@ -244,6 +245,7 @@ function setupBrain(mob, room) {
     }
 
     if (mob.def.boss && mob.bossTurn()) return; // busy casting a move
+    if (wander) return wander();                // it doesn't hunt
     if (rush && rush()) return;                 // winding up or charging
     const toPlayer = room.player.pos.sub(mob.pos);
     if (toPlayer.len() > 2) {
@@ -253,6 +255,37 @@ function setupBrain(mob, room) {
       if (mob.getCurAnim()?.name !== "run") mob.play("run");
     }
   });
+}
+
+// A wanderer (a slug) never comes after the hero. It crawls off one way for
+// a while, sometimes rests, then picks another way; when it runs into a wall
+// or something solid, it turns. It still hurts if he walks into it, and
+// being hit doesn't change its mind.
+function setupWander(mob) {
+  let way = vec2(0);
+  let until = 0;   // when it picks a new way
+  let last = null; // where it was last frame, to tell when it's stuck
+  let stuck = 0;   // seconds it has barely moved while crawling
+  return () => {
+    const now = time();
+    if (last && way.len() > 0) stuck = mob.pos.dist(last) < mob.speed * dt() * 0.3 ? stuck + dt() : 0;
+    if (now >= until || stuck > 0.15) {
+      const rest = way.len() > 0 && stuck === 0 && chance(0.35);
+      const angle = rand(0, Math.PI * 2);
+      way = rest ? vec2(0) : vec2(Math.cos(angle), Math.sin(angle));
+      until = now + (rest ? rand(0.6, 1.4) : rand(1.2, 2.6));
+      stuck = 0;
+    }
+    last = mob.pos.clone();
+    if (way.len() === 0) {
+      if (mob.getCurAnim()?.name !== "idle") mob.play("idle");
+      return;
+    }
+    mob.move(way.scale(mob.speed));
+    keepInRoom(mob, mob.def.feet);
+    mob.flipX = way.x < 0;
+    if (mob.getCurAnim()?.name !== "run") mob.play("run");
+  };
 }
 
 // A skeleton walks at you slowly, and once it's close enough it stops,

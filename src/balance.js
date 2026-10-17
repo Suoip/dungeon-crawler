@@ -43,11 +43,13 @@ export const BALANCE = {
   // it's up close: roughly the chance per second that it lands a hit on a
   // careful player (the simulator uses it to guess how often you get hit; in
   // the game, it comes from how the monster moves and attacks).
+  // `wanders`: it never comes after the hero, it just crawls about (mobs.js),
+  // so the first rooms are calm practice. `splitsInto` (none in the crypt
+  // now): what pops out of it when it falls.
   mobs: {
-    tiny_zombie: { hp: 3, gold: 1, xp: 1, threat: 0.02 },   // slow chaser
-    skeleton:    { hp: 4, gold: 2, xp: 2, threat: 0.06 },   // winds up, then charges in a line
-    slug:        { hp: 3, gold: 2, xp: 1, threat: 0.03, splitsInto: ["tiny_slug", "tiny_slug"] },
-    tiny_slug:   { hp: 1, gold: 1, xp: 1, threat: 0.02 },
+    slug:        { hp: 3, gold: 1, xp: 1, threat: 0.008, wanders: true }, // wanders slowly; hurts on contact, but never comes after you
+    tiny_zombie: { hp: 3, gold: 1.4, xp: 1, threat: 0.02 }, // slow chaser (1.4: 2 coins from room 3 on, or with a little Greed)
+    skeleton:    { hp: 4, gold: 3, xp: 2, threat: 0.06 },   // winds up, then charges in a line
     mimic:       { hp: 12, gold: 10, xp: 5, threat: 0.12 }, // a chest that bites (see `chest` in rooms)
   },
 
@@ -81,23 +83,26 @@ export const BALANCE = {
   // ---- Depth 1: the crypt -------------------------------------------------
   // One entry per sub-depth, 1 to 10. `xp` is the size of the room's bar:
   // fill it and the door opens (in sub-depth 10, the boss appears).
-  // `spawns` are the monsters that can rise there, with how likely each is
-  // (weights: 3 and 1 means three times as likely). `breakables` and `hazard`
+  // `spawns` are the monsters that can rise there, with how likely each is,
+  // in percent. Each monster gets more common for a few rooms after it's
+  // introduced, until a newer one eats into its share: slugs go from all of
+  // them in rooms 1-2 to about a third in room 10, zombies (from room 3) and
+  // skeletons (from room 5) grow to about a third each. `breakables` and `hazard`
   // (extra danger per second from floor spikes, 0 = none) are what else is
   // in the room; where they stand comes from the room's layout (layouts.js).
   // `chest`: the room may have a chest (`chance`), and it's a mimic that
   // bites (`mimic` of the time) instead of loot. Both look the same, closed.
   rooms: [
-    { xp: 8, spawns: { tiny_zombie: 1 }, breakables: ["pot", "pot"] },
-    { xp: 9, spawns: { tiny_zombie: 1 }, breakables: ["pot", "pot"] },
-    { xp: 11, spawns: { tiny_zombie: 3, skeleton: 1 }, breakables: ["pot", "pot"] },
-    { xp: 13, spawns: { tiny_zombie: 2, skeleton: 1 }, breakables: ["pot", "pot"], hazard: 0.005 },
-    { xp: 15, spawns: { tiny_zombie: 2, skeleton: 1, slug: 1 }, breakables: ["pot", "pot"], hazard: 0.005 },
-    { xp: 18, spawns: { tiny_zombie: 1, skeleton: 1, slug: 1 }, breakables: ["pot", "crate", "crate"], hazard: 0.005, chest: { chance: 0.6, mimic: 0 } },
-    { xp: 21, spawns: { tiny_zombie: 1, skeleton: 1, slug: 1 }, breakables: ["pot", "crate", "crate"], hazard: 0.005, chest: { chance: 0.7, mimic: 0.5 } },
-    { xp: 24, spawns: { tiny_zombie: 1, skeleton: 2, slug: 1 }, breakables: ["pot", "crate", "crate"], hazard: 0.01, chest: { chance: 0.7, mimic: 0.5 } },
-    { xp: 28, spawns: { tiny_zombie: 1, skeleton: 2, slug: 2 }, breakables: ["crate", "crate", "urn"], hazard: 0.01, chest: { chance: 0.7, mimic: 0.6 } },
-    { xp: 33, spawns: { tiny_zombie: 1, skeleton: 1, slug: 1 }, breakables: ["crate", "crate"] }, // then the boss
+    { xp: 6, spawns: { slug: 100 }, breakables: ["pot", "pot"] },
+    { xp: 5, spawns: { slug: 100 }, breakables: ["pot", "pot"] },
+    { xp: 9, spawns: { slug: 75, tiny_zombie: 25 }, breakables: ["pot", "pot"] },
+    { xp: 10, spawns: { slug: 60, tiny_zombie: 40 }, breakables: ["pot", "pot"], hazard: 0.005 },
+    { xp: 12, spawns: { slug: 50, tiny_zombie: 40, skeleton: 10 }, breakables: ["pot", "pot"], hazard: 0.005 },
+    { xp: 13, spawns: { slug: 45, tiny_zombie: 38, skeleton: 17 }, breakables: ["pot", "crate", "crate"], hazard: 0.005, chest: { chance: 0.6, mimic: 0 } },
+    { xp: 15, spawns: { slug: 40, tiny_zombie: 37, skeleton: 23 }, breakables: ["pot", "crate", "crate"], hazard: 0.005, chest: { chance: 0.7, mimic: 0.5 } },
+    { xp: 17, spawns: { slug: 36, tiny_zombie: 35, skeleton: 29 }, breakables: ["pot", "crate", "crate"], hazard: 0.01, chest: { chance: 0.7, mimic: 0.5 } },
+    { xp: 20, spawns: { slug: 33, tiny_zombie: 34, skeleton: 33 }, breakables: ["crate", "crate", "urn"], hazard: 0.01, chest: { chance: 0.7, mimic: 0.6 } },
+    { xp: 23, spawns: { slug: 30, tiny_zombie: 35, skeleton: 35 }, breakables: ["crate", "crate"] }, // then the boss
   ],
 
   // The boss: it appears in sub-depth 10 when that room's bar is full, and
@@ -140,19 +145,19 @@ export const BALANCE = {
 
     // Weapon
     { id: "sharper", name: "Sharper blade", parent: "descend", levels: 10, cost: 2, growth: 1.45, effect: { stat: "damage", add: 1 } },
-    { id: "quicker", name: "Quicker swing", parent: "sharper", levels: 10, cost: 30, growth: 1.47, effect: { stat: "swingEvery", mul: 0.91 } },
-    { id: "reach", name: "Longer reach", parent: "quicker", levels: 5, cost: 40, growth: 1.48, effect: { stat: "reach", mul: 1.1 } },
-    { id: "arc", name: "Wider arc", parent: "reach", levels: 3, cost: 80, growth: 1.55, effect: { stat: "arc", add: 20 } },
+    { id: "quicker", name: "Quicker swing", parent: "sharper", levels: 10, cost: 18, growth: 1.47, effect: { stat: "swingEvery", mul: 0.91 } },
+    { id: "reach", name: "Longer reach", parent: "quicker", levels: 5, cost: 24, growth: 1.48, effect: { stat: "reach", mul: 1.1 } },
+    { id: "arc", name: "Wider arc", parent: "reach", levels: 3, cost: 48, growth: 1.55, effect: { stat: "arc", add: 20 } },
 
     // Hearts
     { id: "heart", name: "Extra heart", parent: "descend", levels: 4, cost: 3, growth: 1.6, effect: { stat: "hearts", add: 1 } },
-    { id: "nerves", name: "Steady nerves", parent: "heart", levels: 3, cost: 98, growth: 1.55, effect: { stat: "invincibleFor", add: 0.25 } },
+    { id: "nerves", name: "Steady nerves", parent: "heart", levels: 3, cost: 59, growth: 1.55, effect: { stat: "invincibleFor", add: 0.25 } },
     // After Extra heart, because a heart only drops while you're missing one.
-    { id: "lucky", name: "Lucky hearts", parent: "heart", levels: 5, cost: 120, growth: 1.5, effect: { stat: "heartChance", add: 0.004 } },
+    { id: "lucky", name: "Lucky hearts", parent: "heart", levels: 5, cost: 72, growth: 1.5, effect: { stat: "heartChance", add: 0.004 } },
 
     // Time
     { id: "time", name: "More time", parent: "descend", levels: 10, cost: 2, growth: 1.42, effect: { stat: "startTime", add: 4 } },
-    { id: "wind", name: "Second wind", parent: "time", levels: 5, cost: 49, growth: 1.52, effect: { stat: "timePerSubDepth", add: 1.5 } },
+    { id: "wind", name: "Second wind", parent: "time", levels: 5, cost: 29, growth: 1.52, effect: { stat: "timePerSubDepth", add: 1.5 } },
     { id: "orbs", name: "Time orbs", parent: "wind", levels: 1, cost: 160, growth: 1, effect: { unlock: "timeOrbs" } },
     // Orbs come from kills, and depth 1 has too few kills for these to pay
     // off, so they're an investment for depth 2.
@@ -160,14 +165,14 @@ export const BALANCE = {
     { id: "biggerOrbs", name: "Bigger orbs", parent: "orbs", levels: 3, cost: 200, growth: 1.55, effect: { stat: "timeOrbSeconds", add: 0.5 }, depth: 2 },
 
     // Dash
-    { id: "dash", name: "Dash", parent: "descend", levels: 1, cost: 7, growth: 1, effect: { unlock: "dash" } },
-    { id: "feet", name: "Quick feet", parent: "dash", levels: 5, cost: 98, growth: 1.46, effect: { stat: "dashCooldown", mul: 0.9 } },
+    { id: "dash", name: "Dash", parent: "descend", levels: 1, cost: 6, growth: 1, effect: { unlock: "dash" } },
+    { id: "feet", name: "Quick feet", parent: "dash", levels: 5, cost: 59, growth: 1.46, effect: { stat: "dashCooldown", mul: 0.9 } },
     { id: "charge", name: "Second charge", parent: "feet", levels: 1, cost: 300, growth: 1, effect: { stat: "dashCharges", add: 1 } },
 
     // Money
     { id: "greed", name: "Greed", parent: "descend", levels: 10, cost: 2, growth: 1.4, effect: { stat: "goldBonus", add: 0.1 } }, // on kills; Smash is for breakables
-    { id: "magnet", name: "Magnet", parent: "greed", levels: 5, cost: 24, growth: 1.44, effect: { stat: "magnetRange", mul: 1.25 } },
-    { id: "smash", name: "Smash", parent: "magnet", levels: 3, cost: 40, growth: 1.5, effect: { stat: "breakableBonus", add: 0.25 } },
+    { id: "magnet", name: "Magnet", parent: "greed", levels: 5, cost: 14, growth: 1.44, effect: { stat: "magnetRange", mul: 1.25 } },
+    { id: "smash", name: "Smash", parent: "magnet", levels: 3, cost: 24, growth: 1.5, effect: { stat: "breakableBonus", add: 0.25 } },
 
     // Horde: more monsters, sooner, and more XP from each, so rooms fill
     // their bars faster. Depth 1's rooms fill before most hordes arrive, so
@@ -175,7 +180,7 @@ export const BALANCE = {
     { id: "crowded", name: "Crowded rooms", parent: "descend", levels: 10, cost: 2, growth: 1.45, effect: { stat: "onEnter", add: 1 } },
     { id: "hordes", name: "Bigger hordes", parent: "crowded", levels: 10, cost: 40, growth: 1.45, effect: { stat: "horde", add: 1 }, depth: 2 },
     { id: "restless", name: "Restless dead", parent: "hordes", levels: 5, cost: 60, growth: 1.5, effect: { stat: "hordeEvery", add: -2 }, depth: 2 },
-    { id: "calls", name: "Death calls", parent: "crowded", levels: 5, cost: 49, growth: 1.5, effect: { stat: "deathCall", add: 0.05 } },
-    { id: "wisdom", name: "Wisdom", parent: "crowded", levels: 10, cost: 24, growth: 1.42, effect: { stat: "xpBonus", add: 0.1 } },
+    { id: "calls", name: "Death calls", parent: "crowded", levels: 5, cost: 29, growth: 1.5, effect: { stat: "deathCall", add: 0.05 } },
+    { id: "wisdom", name: "Wisdom", parent: "crowded", levels: 10, cost: 14, growth: 1.42, effect: { stat: "xpBonus", add: 0.1 } },
   ],
 };
