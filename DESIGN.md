@@ -219,6 +219,19 @@ in as the boss, raising orc warriors.
   of its damage (a grey number and a clank), one from the side or behind
   does it all. Circling one, or dashing past it, gets round the shield.
 
+**Depth 4, the sunken swamp:** murky green, goo dripping down the back wall,
+1000x the crypt's numbers. A swamp-green Big Zombie, the "Bog Zombie",
+stands in as the boss, raising swampies.
+- **Swampies** (rooms 1–2) are slime blobs that split into two small
+  swamplets when they fall (1 hp in balance.js, before the depth's scale).
+- **Muddies** (from room 3) chase him and leave a trail of mud puddles.
+  Each lasts 4 s, and while he stands in one he walks at 55% of his speed
+  (the dash isn't slowed).
+- **Necromancers** (from room 5) keep their distance. Every few seconds,
+  while fewer than four of their ice zombies are up, one glows purple and
+  raises two around itself (chasers, worth half a normal kill's XP). They
+  stop once the bar is full, like the room's own spawns.
+
 ## The run timer
 
 - **Per run, and very short:** about 15–20 seconds at the start.

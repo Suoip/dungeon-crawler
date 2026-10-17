@@ -1,4 +1,5 @@
 import { PLAYER_SPEED } from "./config.js";
+import { MUD_SLOW } from "./mobs.js";
 import { BALANCE } from "./balance.js";
 import { puffDust, during, addShadow } from "./effects.js";
 import { getSetting } from "./settings.js";
@@ -62,7 +63,9 @@ export function setupPlayerMovement(player) {
     const dir = heldDirection();
 
     if (dir.len() > 0) {
-      player.move(dir.scale(PLAYER_SPEED));
+      // Mud (a muddy's trail) slows him down.
+      const inMud = get("mud").some((mud) => mud.covers(player.pos));
+      player.move(dir.scale(PLAYER_SPEED * (inMud ? MUD_SLOW : 1)));
       keepInRoom(player, PLAYER_FEET);
       player.facing = dir.unit();
       if (dir.x !== 0) player.flipX = dir.x < 0; // face the way he's walking

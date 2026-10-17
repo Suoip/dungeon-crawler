@@ -6,6 +6,7 @@ import { playSound } from "./sound.js";
 import { setupBoss } from "./boss.js";
 import { addShot } from "./shots.js";
 import { keepInRoom, roomLimits } from "./room.js";
+export { MUD_SLOW };
 import { popNumber } from "./hud.js";
 
 // How the monsters look and move. `feet` is the size of the box at their
@@ -27,6 +28,12 @@ export const MOB_TYPES = {
   orc_warrior: { speed: 32, feet: [10, 6], size: 23, knockback: 2.5, heavy: true }, // a brute: its hits shove you far, yours barely move it
   orc_shaman:  { speed: 38, feet: [10, 6], size: 23, healer: true, keeps: true },   // keeps its distance and heals the monsters near it
   masked_orc:  { speed: 28, feet: [10, 6], size: 23, shield: true },               // its shield takes most of a hit from the front
+  // The sunken swamp (a swamplet is a swampy, drawn at `scale`)
+  swampy:      { speed: 30, feet: [12, 6], size: 16 },                                  // splits into two swamplets (balance.js `splitsInto`)
+  swamplet:    { speed: 44, feet: [8, 4], size: 10, sprite: "swampy", scale: 0.65 },
+  muddy:       { speed: 24, feet: [12, 6], size: 16, trail: true },                     // leaves mud that slows you
+  necromancer: { speed: 34, feet: [10, 6], size: 23, summoner: true, keeps: true },     // keeps its distance and raises ice zombies
+  ice_zombie:  { speed: 30, feet: [10, 6], size: 16 },
   // Bosses
   big_demon:   { speed: 28, feet: [22, 8], size: 36, boss: true, name: "BIG DEMON", favorite: "dash" },
   ogre:        { speed: 30, feet: [22, 8], size: 36, boss: true, name: "OGRE", favorite: "vomit", knockback: 3, minions: ["goblin"] },
@@ -131,7 +138,7 @@ export async function raiseMob(type, room, { at = null, delay = 0, onDeath = nul
 
   if (!quick) playSound("spawn");
   const mob = addMob(type, spot, room, onDeath);
-  await animate(0, 1, quick ? 0.12 : 0.25, (t) => (mob.scale = vec2(1, t)), easings.easeOutBack);
+  await animate(0, 1, quick ? 0.12 : 0.25, (t) => (mob.scale = vec2(mob.baseScale, mob.baseScale * t)), easings.easeOutBack);
   closeHole();
   // If the room froze while it was coming up (the boss arriving or falling),
   // it's already crumbling: it never gets to move.
@@ -165,7 +172,7 @@ function addMob(type, spot, room, onDeath) {
   const def = MOB_TYPES[type];
   const numbers = numbersFor(type, room);
   const mob = add([
-    sprite(type, { anim: "idle" }),
+    sprite(def.sprite ?? type, { anim: "idle" }),
     pos(spot),
     anchor("bot"),
     area({ shape: new Rect(vec2(0), def.feet[0], def.feet[1]) }),
@@ -177,6 +184,7 @@ function addMob(type, spot, room, onDeath) {
     "mob",
     {
       type, def, onBeaten: onDeath,
+      baseScale: def.scale ?? 1, // drawn smaller (a swamplet)
       hp: numbers.hp, maxHp: numbers.hp, gold: numbers.gold, xp: numbers.xp,
       speed: def.speed,
       tint: rgb(255, 255, 255), // its normal color, to go back to after a flash
@@ -186,6 +194,8 @@ function addMob(type, spot, room, onDeath) {
   ]);
   room.onSpawn(mob);
   addShadow(mob, def.feet[0] + 4);
+  // A stand-in boss can wear its depth's color (balance.js `boss.tint`).
+  if (def.boss && room.bossTint) mob.tint = mob.color = rgb(...room.bossTint);
   if (def.boss) {
     setupBoss(mob, room);
     setupHealthBar(mob);
@@ -234,7 +244,7 @@ export function hurtMob(mob, from, room, damage = 1, crit = false) {
     raiseMob(child, room, { at: mob.pos.add(side * 7, rand(-2, 2)), quick: true });
   }
   room.onDeath(mob);
-  animate(1, 0, 0.2, (t) => (mob.scale = vec2(1 + (1 - t) * 0.5, t))).then(() => {
+  animate(1, 0, 0.2, (t) => (mob.scale = vec2(mob.baseScale * (1 + (1 - t) * 0.5), mob.baseScale * t))).then(() => {
     destroy(mob);
     mob.onBeaten?.();
   });
@@ -245,7 +255,9 @@ export function hurtMob(mob, from, room, damage = 1, crit = false) {
 // (for bosses) their special move, or (for skeletons) charge, or (for
 // slugs) wander about, or (for imps) keep their distance and shoot, or (for
 // wogols) go off when they're close, or (for shamans) keep their distance
-// and heal, or (for masked orcs) turn slowly to face him behind a shield.
+// and heal, or (for masked orcs) turn slowly to face him behind a shield, or
+// (for necromancers) keep their distance and raise ice zombies. A muddy
+// chases and leaves mud behind it.
 function setupBrain(mob, room) {
   const rush = mob.def.rusher ? setupRush(mob, room) : null;
   const wander = BALANCE.mobs[mob.type]?.wanders ? setupWander(mob) : null;
@@ -253,6 +265,8 @@ function setupBrain(mob, room) {
   const bomb = mob.def.bomber ? setupBomber(mob, room) : null;
   const heal = mob.def.healer ? setupHealer(mob, room) : null;
   const shield = mob.def.shield ? setupShield(mob, room) : null;
+  const summon = mob.def.summoner ? setupSummoner(mob, room) : null;
+  const trail = mob.def.trail ? setupTrail(mob) : null;
   mob.onUpdate(() => {
     mob.z = 10 + mob.pos.y / 1000; // lower on screen = drawn in front
     if (!mob.active || room.frozen) {
@@ -271,6 +285,8 @@ function setupBrain(mob, room) {
     if (wander) return wander();                // it doesn't hunt
     if (shoot) return shoot();                  // it keeps its distance
     if (heal) return heal();                    // it keeps its distance too
+    if (summon) return summon();                // and so does it
+    trail?.();                                  // mud where it's been
     if (shield) return shield();                // it turns slowly
     if (bomb && bomb()) return;                 // its fuse is lit
     if (rush && rush()) return;                 // winding up or charging
@@ -576,6 +592,89 @@ function explode(at, room) {
     drawEllipse({ pos: vec2(0, -4), radiusX: Math.max(1, BOMB.radius * t), radiusY: Math.max(1, BOMB.radius * 0.7 * t), color: rgb(255, 205, 70), opacity: 0.6 * (1 - t) });
   });
   wait(0.25, () => destroy(blast));
+}
+
+// A muddy chases the hero like a zombie, leaving a trail of mud: a puddle
+// every MUD.every px it crawls. Puddles last MUD.life seconds, and while the
+// hero stands in one he walks at MUD.slow of his speed (player.js). The dash
+// isn't slowed.
+const MUD = {
+  every: 10,     // px crawled between puddles
+  life: 4,       // seconds a puddle lasts
+  radius: 9,     // px across (a flat ellipse, 60% as tall)
+};
+const MUD_SLOW = 0.55;
+function setupTrail(mob) {
+  let last = mob.pos.clone();
+  return () => {
+    if (mob.pos.dist(last) < MUD.every) return;
+    last = mob.pos.clone();
+    addMud(mob.pos.clone());
+  };
+}
+function addMud(at) {
+  const born = time();
+  const seed = rand(0, 10);
+  const mud = add([
+    pos(at),
+    z(5),
+    "mud",
+    { covers: (p) => ((p.x - at.x) / MUD.radius) ** 2 + ((p.y - at.y) / (MUD.radius * 0.6)) ** 2 < 1 },
+  ]);
+  mud.onUpdate(() => {
+    if (time() - born > MUD.life) destroy(mud);
+  });
+  mud.onDraw(() => {
+    const fade = Math.min(1, (MUD.life - (time() - born)) / 0.8); // fades out over its last 0.8 s
+    drawEllipse({ pos: vec2(0), radiusX: MUD.radius, radiusY: MUD.radius * 0.6, color: rgb(74, 52, 38), opacity: 0.85 * fade });
+    drawEllipse({ pos: vec2(-2 + Math.sin(seed) * 2, -1), radiusX: 3, radiusY: 1.5, color: rgb(110, 82, 60), opacity: 0.8 * fade });
+  });
+}
+
+// A necromancer keeps its distance (keepDistance). Every few seconds, while
+// fewer than RAISE.most of its ice zombies are up, it stops, glows purple
+// (the warning), and raises RAISE.count of them around itself. They're the
+// room's own monsters, so they stop coming once the bar is full.
+const RAISE = {
+  every: [5, 7],     // seconds between raises, picked at random
+  windUp: 0.7,       // seconds of glowing before they rise
+  count: 2,          // ice zombies per raise
+  most: 4,           // it won't raise more while this many of its own are up
+};
+function setupSummoner(mob, room) {
+  let nextRaise = time() + rand(2, 3.5);
+  let raiseAt = null; // while winding up: when they rise
+  mob.raised = 0;     // its ice zombies still up
+  const limits = roomLimits(mob.def.feet);
+  return () => {
+    const now = time();
+    mob.flipX = room.player.pos.x < mob.pos.x; // it always faces him
+    if (raiseAt !== null) {
+      mob.color = Math.floor(now * 16) % 2 ? rgb(180, 120, 240) : mob.tint;
+      if (now < raiseAt) return;
+      mob.color = mob.tint;
+      raiseAt = null;
+      nextRaise = now + rand(...RAISE.every);
+      for (let i = 0; i < RAISE.count; i++) {
+        const angle = rand(0, Math.PI * 2);
+        const spot = vec2(
+          clamp(mob.pos.x + Math.cos(angle) * 20, limits.left, limits.right),
+          clamp(mob.pos.y + Math.sin(angle) * 14, limits.top, limits.bottom),
+        );
+        mob.raised++;
+        raiseMob("ice_zombie", room, { at: spot, delay: i * 0.15, untilFull: true, onDeath: () => mob.raised-- })
+          .then((zombie) => zombie || mob.raised--); // it never came up
+      }
+      return;
+    }
+    if (now >= nextRaise && mob.raised < RAISE.most) {
+      raiseAt = now + RAISE.windUp;
+      mob.play("idle");
+      playSound("summon");
+      return;
+    }
+    keepDistance(mob, room, limits);
+  };
 }
 
 // A skeleton walks at you slowly, and once it's close enough it stops,
