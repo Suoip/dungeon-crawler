@@ -205,6 +205,12 @@ export function simulateRun(stats, dice, player = PLAYERS.efficient) {
       if (!full && stats.deathCall > 0 && dice() < stats.deathCall) spawn(1);
     };
 
+    // A chest, sometimes (rooms 6-9): loot to smash like a breakable, or a
+    // mimic that wakes as he gets to it and joins the fight.
+    if (room.chest && dice() < room.chest.chance) {
+      if (dice() < room.chest.mimic) rising.push({ at: arriveIn, born: -Infinity, type: "mimic" });
+      else breakables.push({ name: "chest", left: null });
+    }
     spawn(stats.onEnter);
     while (true) {
       t += swing;

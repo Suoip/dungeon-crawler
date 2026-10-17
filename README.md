@@ -27,6 +27,7 @@ The game needs a keyboard. On phones and tablets, a notice says so.
 - **Rooms that fill an XP bar:** monsters rise as you land, a horde arrives every 20 seconds whether or not the room is clear, and when the last monster falls, another rises at once. Every kill fills the room's bar, split in two halves on either side of the door, and a full bar unchains it. The monsters still up stay, for their gold, if you want it.
 - **A clock that ends the run:** 15 seconds at the start, counting down only while you're in control, red and ticking for the last five. Each hit costs a whole heart, and you start with one.
 - **The crypt's monsters:** tiny zombies chase you, skeletons rattle as a warning and then charge in a straight line, and slugs split into two tiny slugs when they fall. Deeper rooms bring more of them, with more health. Every hit's damage pops up as a number.
+- **Rooms with something in them:** every room is one of three designed layouts, picked at random: pillars to hide behind, floor spikes that pop up on a beat (with a warning), and pots, crates and a big urn to smash for gold. From room 6, a chest might be waiting: hit it and it opens into coins, unless it's a mimic, which snaps open and comes after you. Bones start dropping there too.
 - **Gold on the floor:** kills drop coins, and a small magnet pulls in the ones you get close to. Coins left behind when you go through the door are lost; when a run ends, the ones still on the floor fly to you from all over the room as you're dragged down.
 - **The underworld:** every run ends there, dragged down by the hands, with the results on the floor (how it ended, the gold earned and banked, how deep it got, the kills), an altar in the middle and ladders to try again or return to the menu. The altar's sigil glows when there's something you can afford.
 - **A skill tree at the altar:** a web of 24 nodes drawn over the room, growing out of Descend in the middle into six branches: weapon, hearts, time, dash, money and the horde. Each node is a round frame with an icon (from the tileset, or a few hand-drawn pixels) and, for nodes with more than one level, a pip per level. You see the nodes next to the ones you own; the ones further out are dark outlines. Depth-2 nodes can be bought early, at three times the price. The panel at the bottom shows what the next level does ("DAMAGE 1 > 2", or "MAGNET RANGE +25%") and what it costs.
@@ -66,8 +67,10 @@ src/
   cutscenes.js        falling in, walking through doors, ladders, the well, being dragged down
   interact.js         using doors, levers, heroes, ladders and plaques
   combat.js           the automatic swing, hearts, heart and time-orb drops, getting hurt
-  mobs.js             monster types, spawning, rising from the floor, chasing, the skeleton's charge
-  coins.js            coins on the floor and the magnet
+  mobs.js             monster types, spawning, rising from the floor, chasing, the skeleton's charge, the mimic
+  crypt.js            the crypt's rooms: pillars, floor spikes, breakables, chests
+  layouts.js          each room's designed layouts, as small text grids
+  coins.js            coins and bones on the floor, and the magnet
   hud.js              the clock (and the seconds time orbs add), the XP bar, the gold, and damage numbers
   boss.js             the boss's moves: dash and fire trail, projectile rings, raising minions, rage
   player.js           the hero: walking and dashing
@@ -83,7 +86,8 @@ src/
   effects.js          fades, flashes, dust, screen shake
 assets/               the tileset, fonts, icons and preview images
 lib/zzfx.js           ZzFX sound generator
-tools/                the pacing simulator (Node), which plays the numbers in src/balance.js
+tools/                the pacing simulator (Node), which plays the numbers in src/balance.js,
+                      and layouts-check.mjs, which checks the room layouts are fair
 DESIGN.md             the design plan
 ```
 

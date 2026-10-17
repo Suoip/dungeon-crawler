@@ -8,7 +8,7 @@ import { roomLimits } from "./room.js";
 // ends, they're banked at once (floorValue), and sweepFloor() pulls every
 // coin still on the floor to him, from anywhere in the room, while he's
 // taken away; collectFloor() then adds any that didn't make it in time to
-// the run's total.
+// the run's total. Bones (dropBone) work the same way.
 //
 // A big amount is split over a handful of coins, each worth a share, so the
 // boss's pile doesn't become hundreds of sprites.
@@ -30,20 +30,40 @@ export function dropCoins(at, amount, run, player, magnet, { spread = 10 } = {})
     const angle = rand(0, Math.PI * 2);
     const land = at.add(Math.cos(angle) * rand(2, spread), Math.sin(angle) * rand(1, spread * 0.6));
     const target = vec2(clamp(land.x, limits.left, limits.right), clamp(land.y, limits.top, limits.bottom));
-    addCoin(at, target, value, run, player, magnet);
+    addPickup(at, target, "coin", value, run, player, magnet);
   }
 }
 
-function addCoin(from, to, value, run, player, magnet) {
+// A bone (the crypt's material, DESIGN.md section 6): it drops from kills
+// from sub-depth 6 on, and is picked up like a coin, into `run.bones`. Bones
+// don't buy anything yet; they're kept in the save for later.
+export function dropBone(at, run, player, magnet) {
+  const limits = roomLimits([6, 4]);
+  const land = at.add(rand(-8, 8), rand(-3, 3));
+  addPickup(at, vec2(clamp(land.x, limits.left, limits.right), clamp(land.y, limits.top, limits.bottom)), "bone", 1, run, player, magnet);
+}
+
+// The bone isn't in the tileset, so it's drawn: a small white bone with a
+// knob at each end, lying on the floor.
+const BONE = [[-5, -5, 3, 3], [-5, -3, 3, 3], [3, -5, 3, 3], [3, -3, 3, 3], [-3, -4, 7, 2]];
+function drawBone() {
+  for (const [x, y, w, h] of BONE) drawRect({ pos: vec2(x - 1, y - 1), width: w + 2, height: h + 2, color: rgb(24, 20, 37) });
+  for (const [x, y, w, h] of BONE) drawRect({ pos: vec2(x, y), width: w, height: h, color: rgb(232, 224, 208) });
+}
+
+// A coin or a bone, hopping out to `to` and lying there until the magnet
+// (or the end-of-run sweep) brings it to him.
+function addPickup(from, to, kind, value, run, player, magnet) {
   const born = time();
   const coin = add([
-    sprite("coin", { frame: choose([0, 0, 3]) }), // frame 1 is the white shine, 2 edge-on
+    ...(kind === "coin" ? [sprite("coin", { frame: choose([0, 0, 3]) }), anchor("bot")] : []), // frame 1 is the white shine, 2 edge-on
     pos(from),
-    anchor("bot"),
     z(8),
-    "coin",
+    kind,
+    "pickup",
     { value },
   ]);
+  if (kind === "bone") coin.onDraw(drawBone);
   let flying = false;
   let flewFor = 0; // seconds since it started flying
   coin.onUpdate(() => {
@@ -61,10 +81,15 @@ function addCoin(from, to, value, run, player, magnet) {
     flying = true;
     flewFor += dt();
     if (distance < PICKUP) {
-      run.gold += coin.value;
-      if (time() - lastJingle > 0.06) {
-        playSound("coin");
-        lastJingle = time();
+      if (kind === "bone") {
+        run.bones += coin.value;
+        playSound("bone");
+      } else {
+        run.gold += coin.value;
+        if (time() - lastJingle > 0.06) {
+          playSound("coin");
+          lastJingle = time();
+        }
       }
       destroy(coin);
       return;
@@ -76,23 +101,21 @@ function addCoin(from, to, value, run, player, magnet) {
   });
 }
 
-// The run is over: every coin on the floor flies to him, as if his magnet
-// covered the whole room (coins still hopping out join in when they land).
+// The run is over: every coin and bone on the floor flies to him, as if his
+// magnet covered the whole room (ones still hopping out join in when they
+// land).
 export function sweepFloor() {
-  for (const coin of get("coin")) coin.swept = true;
+  for (const pickup of get("pickup")) pickup.swept = true;
 }
 
-// What the coins still on the floor (or still flying) are worth.
+// What's still on the floor (or still flying): the coins' gold, and the bones.
 export const floorValue = () => get("coin").reduce((sum, coin) => sum + coin.value, 0);
+export const floorBones = () => get("bone").reduce((sum, bone) => sum + bone.value, 0);
 
-// Every coin still on the floor (or still flying), collected at once: the
-// ones the sweep didn't bring in before the screen went dark. Returns how
-// much they were worth.
-export function collectFloor() {
-  let total = 0;
-  for (const coin of get("coin")) {
-    total += coin.value;
-    destroy(coin);
-  }
-  return total;
+// Every coin and bone still on the floor (or still flying), added to the run
+// at once: the ones the sweep didn't bring in before the screen went dark.
+export function collectFloor(run) {
+  run.gold += floorValue();
+  run.bones += floorBones();
+  for (const pickup of get("pickup")) destroy(pickup);
 }

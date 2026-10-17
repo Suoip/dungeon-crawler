@@ -17,6 +17,7 @@ export const MOB_TYPES = {
   skeleton:    { speed: 30, feet: [10, 6], size: 16, rusher: true }, // winds up, then charges in a line
   slug:        { speed: 16, feet: [12, 6], size: 23 },               // splits into tiny slugs (balance.js)
   tiny_slug:   { speed: 34, feet: [8, 5], size: 16 },
+  mimic:       { speed: 40, feet: [12, 6], size: 16, rusher: true },  // a chest that woke up (crypt.js): lunges like a skeleton
   // Other depths' monsters (not in balance.js yet), for the other bosses' minions.
   goblin:      { speed: 52, feet: [10, 6], size: 16, hp: 3 },
   orc_warrior: { speed: 36, feet: [10, 6], size: 23, hp: 5 },
@@ -44,9 +45,7 @@ function numbersFor(type, sub) {
 // all stops once `room.full` is set (the room's XP bar is full). Returns
 // { raise(count) }, for anything else that calls up monsters (Death calls).
 export function startSpawning(room, { spawns, onEnter, horde, hordeEvery }) {
-  // Mimics wait for the crypt's chests (step 6 of DESIGN.md), so only the
-  // monsters the game has yet are picked.
-  const pool = Object.entries(spawns).filter(([type]) => MOB_TYPES[type]);
+  const pool = Object.entries(spawns);
   const total = pool.reduce((sum, [, weight]) => sum + weight, 0);
   const pick = () => {
     let roll = rand(0, total);
@@ -76,11 +75,13 @@ export function startSpawning(room, { spawns, onEnter, horde, hordeEvery }) {
 export const bossSpot = () => vec2(GAME_WIDTH / 2, TOP + 6 * TILE);
 
 // A random spot on the floor, not too close to the player (so a mob never
-// appears right on top of them).
-export function spawnSpot(player) {
+// appears right on top of them), and not on a solid tile of the room's
+// layout (`room.solid`: the middles of its pillars, breakables and chest).
+export function spawnSpot(room) {
+  const clear = (spot) => (room.solid ?? []).every((tile) => Math.abs(spot.x - tile.x) > 14 || Math.abs(spot.y - 4 - tile.y) > 12);
   for (let tries = 0; tries < 50; tries++) {
     const spot = vec2(rand(32, GAME_WIDTH - 32), rand(TOP + 3 * TILE + 8, GAME_HEIGHT - 20));
-    if (spot.dist(player.pos) > 70) return spot;
+    if (spot.dist(room.player.pos) > 70 && clear(spot)) return spot;
   }
   return vec2(40, TOP + 5 * TILE);
 }
@@ -104,7 +105,7 @@ export async function raiseMob(type, room, { at = null, delay = 0, onDeath = nul
     room.rising--;
     return null;
   }
-  const spot = at ?? (def.boss ? bossSpot() : spawnSpot(room.player));
+  const spot = at ?? (def.boss ? bossSpot() : spawnSpot(room));
 
   const closeHole = quick ? () => {} : addSpawnHole(spot, def.feet[0]);
   if (!quick) {
@@ -120,6 +121,39 @@ export async function raiseMob(type, room, { at = null, delay = 0, onDeath = nul
   }
 
   if (!quick) playSound("spawn");
+  const mob = addMob(type, spot, room, onDeath);
+  await animate(0, 1, quick ? 0.12 : 0.25, (t) => (mob.scale = vec2(1, t)), easings.easeOutBack);
+  closeHole();
+  // If the room froze while it was coming up (the boss arriving or falling),
+  // it's already crumbling: it never gets to move.
+  if (!room.frozen && !room.over) mob.active = true;
+  return mob;
+}
+
+// A chest that was a mimic has snapped open (crypt.js): the monster is
+// there, mouth open. It shakes in gold for a moment first (like a skeleton
+// winding up), so he has time to back off before it can bite, and then it
+// comes after him.
+const MIMIC_WAKE_UP = 0.4; // seconds
+export function wakeMimic(at, room) {
+  const mob = addMob("mimic", at, room, null);
+  mob.scale = vec2(1);
+  during(MIMIC_WAKE_UP, () => {
+    mob.color = Math.floor(time() * 16) % 2 ? rgb(255, 205, 70) : mob.tint;
+    mob.angle = Math.sin(time() * 60) * 6;
+  }, () => mob.exists()).then(() => {
+    if (!mob.exists()) return;
+    mob.color = mob.tint;
+    mob.angle = 0;
+    if (!room.frozen && !room.over) mob.active = true;
+  });
+  return mob;
+}
+
+// A monster in the room, not moving yet (`active` false) and squashed flat
+// (scale 0 tall), for raiseMob or wakeMimic to bring to life.
+function addMob(type, spot, room, onDeath) {
+  const def = MOB_TYPES[type];
   const numbers = numbersFor(type, room.sub);
   const mob = add([
     sprite(type, { anim: "idle" }),
@@ -128,6 +162,7 @@ export async function raiseMob(type, room, { at = null, delay = 0, onDeath = nul
     area({ shape: new Rect(vec2(0), def.feet[0], def.feet[1]) }),
     body(),
     scale(vec2(1, 0)),
+    rotate(0), // for a skeleton's (or a mimic's) shake before it lunges
     color(255, 255, 255),
     z(10),
     "mob",
@@ -147,12 +182,6 @@ export async function raiseMob(type, room, { at = null, delay = 0, onDeath = nul
     setupHealthBar(mob);
   }
   setupBrain(mob, room);
-
-  await animate(0, 1, quick ? 0.12 : 0.25, (t) => (mob.scale = vec2(1, t)), easings.easeOutBack);
-  closeHole();
-  // If the room froze while it was coming up (the boss arriving or falling),
-  // it's already crumbling: it never gets to move.
-  if (!room.frozen && !room.over) mob.active = true;
   return mob;
 }
 

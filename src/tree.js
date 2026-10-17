@@ -193,17 +193,12 @@ const shown = (node) => owned(node.id) || !node.parent || owned(node.parent);
 // For a depth not reached yet (stats.js): on sale already, at the early
 // price (balance.js earlyPrice), for anyone who'd rather save up for it.
 const early = (node) => isEarly(node, getSave().cleared);
-// Nodes whose effect isn't in the game yet (Smash needs the breakables of
-// step 6). They're shown, so the tree looks the way it will, but they
-// aren't on sale.
-const COMING_SOON = new Set(["smash"]);
-const notYet = (node) => COMING_SOON.has(node.id);
 // What its next level costs, or null when it's maxed.
 function nextPrice(node) {
   const level = getSave().levels[node.id] ?? 0;
   return level < node.levels ? costOf(node, level, early(node)) : null;
 }
-const canBuy = (node) => shown(node) && !notYet(node) && nextPrice(node) !== null && getSave().gold >= nextPrice(node);
+const canBuy = (node) => shown(node) && nextPrice(node) !== null && getSave().gold >= nextPrice(node);
 
 // Whether there's anything you could buy right now (the altar's sigil glows).
 export const canBuyAnything = () => nodes.some(canBuy);
@@ -242,7 +237,6 @@ export function openTree(onClose) {
     const say = (text, color = C.red) => (message = { id, text, color, until: time() + 1.6 });
     if (!shown(node)) return say("BUY THE ONE BEFORE IT FIRST"), playSound("locked");
     if (level >= node.levels) return say("ALREADY MAXED", C.muted), playSound("locked");
-    if (COMING_SOON.has(id)) return say("COMING SOON", C.muted), playSound("locked");
     const price = nextPrice(node);
     if (save.gold < price) return say(`NEEDS ${price} GOLD`), playSound("locked");
     buyLevel(id, price);
@@ -402,7 +396,6 @@ export function openTree(onClose) {
     if (at.x < -reach || at.x > GAME_WIDTH + reach || at.y < -reach || at.y > GAME_HEIGHT + reach) return;
     const level = levels[node.id] ?? 0;
     const isShown = shown(node);
-    const later = notYet(node);
     const r = FRAME * zoom;
     const spot = spotOf(node.id);
 
@@ -413,7 +406,7 @@ export function openTree(onClose) {
     drawCircle({ pos: spot, radius: r + zoom, color: C.ink, opacity: appear });
     drawCircle({ pos: spot, radius: r, color: rim, opacity: appear });
     drawCircle({ pos: spot, radius: r - 2 * zoom, color: isShown ? C.stone : C.ink, opacity: appear });
-    if (isShown) drawIcon(node.id, spot, zoom, (later ? 0.35 : 1) * appear);
+    if (isShown) drawIcon(node.id, spot, zoom, appear);
 
     // Pips around the frame: one per level, lit for the levels bought. They
     // go clockwise from the bottom left, over the top, to the bottom right.
@@ -487,7 +480,6 @@ export function openTree(onClose) {
     if (message?.id === id && time() < message.until) status = [message.text, message.color];
     else if (!node.parent) status = ["OWNED", C.muted];
     else if (level >= node.levels) status = ["MAXED", C.gold];
-    else if (COMING_SOON.has(id)) status = ["COMING SOON", C.muted];
     else {
       // The selected node is one click (or E) from bought; any other node the
       // mouse is on is a click from being selected. An early node says it

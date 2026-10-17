@@ -48,7 +48,7 @@ export const BALANCE = {
     skeleton:    { hp: 4, gold: 2, xp: 2, threat: 0.06 },   // winds up, then charges in a line
     slug:        { hp: 3, gold: 2, xp: 1, threat: 0.03, splitsInto: ["tiny_slug", "tiny_slug"] },
     tiny_slug:   { hp: 1, gold: 1, xp: 1, threat: 0.02 },
-    mimic:       { hp: 12, gold: 10, xp: 5, threat: 0.12 }, // a chest that bites
+    mimic:       { hp: 12, gold: 10, xp: 5, threat: 0.12 }, // a chest that bites (see `chest` in rooms)
   },
 
   // How much tougher and richer each sub-depth is than the one above:
@@ -75,6 +75,7 @@ export const BALANCE = {
     pot:   { hp: 1, gold: 1 },    // one hit
     crate: { hp: 4, gold: 4 },    // a few hits
     urn:   { hp: 20, gold: 25 },  // big and sturdy: many hits, lots of gold
+    chest: { hp: 6, gold: 12 },   // a real chest (not a mimic): it opens into a pile of coins
   },
 
   // ---- Depth 1: the crypt -------------------------------------------------
@@ -83,17 +84,19 @@ export const BALANCE = {
   // `spawns` are the monsters that can rise there, with how likely each is
   // (weights: 3 and 1 means three times as likely). `breakables` and `hazard`
   // (extra danger per second from floor spikes, 0 = none) are what else is
-  // in the room.
+  // in the room; where they stand comes from the room's layout (layouts.js).
+  // `chest`: the room may have a chest (`chance`), and it's a mimic that
+  // bites (`mimic` of the time) instead of loot. Both look the same, closed.
   rooms: [
     { xp: 8, spawns: { tiny_zombie: 1 }, breakables: ["pot", "pot"] },
     { xp: 9, spawns: { tiny_zombie: 1 }, breakables: ["pot", "pot"] },
     { xp: 11, spawns: { tiny_zombie: 3, skeleton: 1 }, breakables: ["pot", "pot"] },
     { xp: 13, spawns: { tiny_zombie: 2, skeleton: 1 }, breakables: ["pot", "pot"], hazard: 0.005 },
     { xp: 15, spawns: { tiny_zombie: 2, skeleton: 1, slug: 1 }, breakables: ["pot", "pot"], hazard: 0.005 },
-    { xp: 18, spawns: { tiny_zombie: 1, skeleton: 1, slug: 1 }, breakables: ["pot", "crate", "crate"], hazard: 0.005 },
-    { xp: 21, spawns: { tiny_zombie: 1, skeleton: 1, slug: 1, mimic: 0.1 }, breakables: ["pot", "crate", "crate"], hazard: 0.005 },
-    { xp: 24, spawns: { tiny_zombie: 1, skeleton: 2, slug: 1, mimic: 0.1 }, breakables: ["pot", "crate", "crate"], hazard: 0.01 },
-    { xp: 28, spawns: { tiny_zombie: 1, skeleton: 2, slug: 2, mimic: 0.15 }, breakables: ["crate", "crate", "urn"], hazard: 0.01 },
+    { xp: 18, spawns: { tiny_zombie: 1, skeleton: 1, slug: 1 }, breakables: ["pot", "crate", "crate"], hazard: 0.005, chest: { chance: 0.6, mimic: 0 } },
+    { xp: 21, spawns: { tiny_zombie: 1, skeleton: 1, slug: 1 }, breakables: ["pot", "crate", "crate"], hazard: 0.005, chest: { chance: 0.7, mimic: 0.5 } },
+    { xp: 24, spawns: { tiny_zombie: 1, skeleton: 2, slug: 1 }, breakables: ["pot", "crate", "crate"], hazard: 0.01, chest: { chance: 0.7, mimic: 0.5 } },
+    { xp: 28, spawns: { tiny_zombie: 1, skeleton: 2, slug: 2 }, breakables: ["crate", "crate", "urn"], hazard: 0.01, chest: { chance: 0.7, mimic: 0.6 } },
     { xp: 33, spawns: { tiny_zombie: 1, skeleton: 1, slug: 1 }, breakables: ["crate", "crate"] }, // then the boss
   ],
 

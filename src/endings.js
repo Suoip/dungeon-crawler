@@ -116,7 +116,7 @@ async function writeResults(run, ending) {
     { text: `GOLD EARNED ${run.gold}`, color: [255, 205, 70] },
     { text: `TOTAL ${getSave().gold}` },
     { text: `DEEPEST ${depthLabel(reached)}` },
-    { text: `KILLS ${run.kills}` },
+    { text: `KILLS ${run.kills}${run.bones ? `  BONES ${run.bones}` : ""}` },
   ];
   // Between the lava basins on the back wall and the altar.
   let y = TOP + 3 * TILE + 6;

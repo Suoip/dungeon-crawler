@@ -111,10 +111,47 @@ mimics are the surprise late in the depth.
 | 4 | Floor spikes | More skeletons |
 | 5 | Slugs | Zombies, skeletons and slugs |
 | 6 | Crates (a few hits), bones start dropping | All three mixed evenly |
-| 7 | A chest mimic | A mimic now and then |
+| 7 | Chests that may be mimics | Zombies, skeletons and slugs, evenly |
 | 8 | More spikes, tighter layouts | Mostly skeletons |
 | 9 | A big sturdy breakable (many hits, lots of gold) | The hardest mix in the depth |
 | 10 | **Big Zombie** | Its bar fills first; then it appears and raises tiny zombies |
+
+What's in the rooms (built in step 6):
+
+- **Layouts:** each sub-depth has three designed layouts, and every time a
+  room is entered one is picked at random. They're written as small text
+  grids in `src/layouts.js` (one character per floor tile), and
+  `node tools/layouts-check.mjs` checks the rules that keep them fair:
+  - the door, the landing spot, the strip under the hearts (the bottom row's
+    middle) and, in room 10, the boss's arena and the ladder and well it
+    leaves stay clear, with no pillar just below them rising into them
+  - a chest is at least 3 tiles from the landing spot (it might be a mimic)
+  - every floor tile can be reached, and every breakable can be hit
+  - there's always a way from the landing spot to the door without
+    crossing spikes
+  - each room holds exactly the breakables, chest and spikes that
+    `balance.js` says (the pacing simulator counts on it)
+- **Pillars** (from room 3): solid at the base, tall, so they hide what's
+  behind them. Cover from a skeleton's charge.
+- **Floor spikes** (from room 4): all of a room's spikes move together:
+  down for 1.6 s, then the tips peek out for 0.45 s (the warning), then up
+  for 0.6 s. Standing on them while they're up costs a heart, like a
+  monster's hit. Only the hero gets hurt.
+- **Breakables:** pots (one hit), crates (a few) and, in room 9, the big
+  urn (many hits, lots of gold). They're solid until smashed; their hp and
+  gold grow with the sub-depth, and Smash adds to their gold. The tileset
+  has crates; the pots and the urn are drawn in code in its colors. The
+  hero only swings at one when it's within reach.
+- **Chests** (rooms 6 to 9, not every time): closed, a real chest and a
+  mimic look exactly the same. A real one takes a few hits and opens into a
+  pile of coins, and stays there, open and empty. From room 7, a chest may
+  be a mimic: it snaps open when the hero comes close (or hits it), shakes
+  in gold for 0.4 s (time to back off), and then lunges at him like a
+  skeleton.
+- **The boss's dash** stops at pillars, breakables and chests, as at a wall.
+- **Bones** (from room 6): a kill may drop one (2%, plus 2% a room deeper),
+  picked up like a coin. They're saved and shown on the run's results, and
+  don't buy anything yet.
 
 ## The run timer
 
@@ -293,9 +330,8 @@ to:
   pick up a few levels of Bigger hordes, Restless dead and sometimes Orb
   finder about 80% of the way through, which costs them about two minutes
   over the whole depth.
-- **Coming soon:** until a node's effect is in the game, it's shown but
-  not on sale. Since step 5, that's only Smash, which waits for the
-  breakables of step 6.
+- **Every node works:** since step 6 (the breakables, for Smash), every
+  node does what it says.
 - While the page is open, the hero waits at the altar and nothing else can
   be used.
 

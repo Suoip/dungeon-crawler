@@ -74,6 +74,16 @@ export function loadAssets() {
     lever_left: tile(80, 208),
     lever_right: tile(96, 208),
     chest: tile(304, 416),
+    // The crypt (crypt.js): a pillar, floor spikes (down, tips, half, up),
+    // and chests that open: a real one and a mimic. Closed, the two look
+    // the same.
+    column: tile(80, 80, 16, 48),
+    floor_spikes: { x: 16, y: 192, width: 64, height: 16, sliceX: 4 },
+    chest_loot: { x: 304, y: 400, width: 48, height: 16, sliceX: 3, anims: { open: { from: 0, to: 2, speed: 14 } } }, // opens empty: its gold spills out as coins
+    mimic: {
+      x: 304, y: 432, width: 48, height: 16, sliceX: 3,
+      anims: { open: { from: 0, to: 2, speed: 14 }, idle: { from: 2, to: 2 }, run: { from: 1, to: 2, speed: 8, loop: true } },
+    },
     skull: tile(288, 432),
     crate: tile(288, 408, 16, 24),
     flask_red: tile(288, 352),
