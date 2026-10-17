@@ -10,8 +10,9 @@ import { setPrompt } from "./panel.js";
 // The skill tree page (DESIGN.md section 7), opened at the underworld's altar.
 // It's drawn in the game itself, over the dimmed room, like a stone tablet:
 // a web out from Descend in the middle, six branches around it, each node a
-// round frame with an icon and pips for its levels. You see the nodes next to
-// the ones you own; the ones further out are dark outlines.
+// round frame with an icon and pips for its levels. Depth 2's nodes (the
+// second ring) sit further out on each branch. You see the nodes next to the
+// ones you own; the ones further out are dark outlines.
 //
 // Mouse: point at a node to read it, click it to pick it, click it again to
 // buy a level. Hold the button and drag to move around, and the wheel zooms
@@ -31,7 +32,8 @@ const RING = 26;       // px between the rings after that
 const SPREAD = 26;     // px a fork sits to either side of its branch
 
 // Where each node sits: its branch, its ring (1 = next to Descend), and a
-// `fork` to one side (-1) or the other (+1) where a branch splits.
+// `fork` to one side (-1) or the other (+1) where a branch splits (further
+// for a node squeezed in beside a neighbour on the same ring).
 const PLACES = {
   descend: { ring: 0 },
   sharper: { branch: "weapon", ring: 1 }, quicker: { branch: "weapon", ring: 2 },
@@ -43,6 +45,13 @@ const PLACES = {
   greed: { branch: "money", ring: 1 }, magnet: { branch: "money", ring: 2 }, smash: { branch: "money", ring: 3 },
   crowded: { branch: "horde", ring: 1 }, hordes: { branch: "horde", ring: 2 }, restless: { branch: "horde", ring: 3 },
   calls: { branch: "horde", ring: 2, fork: -1 }, wisdom: { branch: "horde", ring: 2, fork: 1 },
+  // Depth 2's ring
+  keen: { branch: "weapon", ring: 5 }, crit: { branch: "weapon", ring: 6 },
+  heart2: { branch: "hearts", ring: 3 },
+  time2: { branch: "time", ring: 2, fork: -1 }, wind2: { branch: "time", ring: 3, fork: -1 },
+  feet2: { branch: "dash", ring: 4 },
+  greed2: { branch: "money", ring: 4 },
+  crowded2: { branch: "horde", ring: 3, fork: -1.4 },
 };
 
 // A node's spot in the web, in px from the middle at 1x.
@@ -77,6 +86,13 @@ const ICONS = {
   crowded: { sprite: "tiny_zombie", box: [4, 6, 9, 10] }, hordes: { sprite: "skeleton", box: [3, 2, 10, 14] },
   restless: { sprite: "skull", box: [5, 7, 6, 6], scale: 2 }, calls: { sprite: "necromancer", box: [1, 8, 13, 15] },
   wisdom: { sprite: "weapon_green_magic_staff", box: [0, 0, 8, 14] },
+  // Depth 2's ring
+  keen: { sprite: "weapon_golden_sword", box: [0, 8, 10, 14] }, crit: { draw: "crit" },
+  heart2: { sprite: "heart_full" },
+  time2: { draw: "hourglass2" }, wind2: { sprite: "flask_yellow", box: [4, 3, 8, 11] },
+  feet2: { draw: "dash3" },
+  greed2: { draw: "gem" },
+  crowded2: { sprite: "goblin", box: [3, 4, 10, 12] },
 };
 
 // The page's colors. Kaplay's rgb() only exists once the game has started,
@@ -86,6 +102,7 @@ const PALETTE = {
   light: [240, 230, 210], muted: [169, 155, 185], dark: [44, 36, 56],
   gold: [255, 205, 70], green: [99, 199, 77], red: [230, 72, 46],
   blue: [120, 190, 255], pale: [220, 240, 255], // a time orb
+  gem: [56, 183, 100], gemLight: [160, 236, 150], gemDark: [30, 120, 64], // a gem
 };
 let C = null;
 
@@ -121,6 +138,15 @@ const PIXELS = {
   dash2: [[-6, -4, 2, 2, "light"], [-4, -2, 2, 2, "light"], [-2, 0, 2, 2, "light"], [-4, 2, 2, 2, "light"], [-6, 4, 2, 2, "light"],
     [0, -4, 2, 2, "light"], [2, -2, 2, 2, "light"], [4, 0, 2, 2, "light"], [2, 2, 2, 2, "light"], [0, 4, 2, 2, "light"]],
   magnet: [[-5, -5, 3, 8, "red"], [2, -5, 3, 8, "red"], [-5, 3, 10, 3, "red"], [-5, -5, 3, 2, "light"], [2, -5, 3, 2, "light"]],
+  // Depth 2's: a burst for critical hits, a blue hourglass, gold dash marks,
+  // and the green gem that gold drops as (coins.js).
+  crit: [[-1, -6, 2, 12, "gold"], [-6, -1, 12, 2, "gold"], [-3, -3, 6, 6, "gold"], [-1, -1, 2, 2, "light"]],
+  hourglass2: [[-4, -6, 8, 2, "blue"], [-4, 4, 8, 2, "blue"], [-3, -4, 6, 2, "light"], [-2, -2, 4, 2, "light"],
+    [-1, 0, 2, 1, "light"], [-2, 1, 4, 1, "blue"], [-3, 2, 6, 2, "blue"]],
+  dash3: [[-6, -4, 2, 2, "gold"], [-4, -2, 2, 2, "gold"], [-2, 0, 2, 2, "gold"], [-4, 2, 2, 2, "gold"], [-6, 4, 2, 2, "gold"],
+    [0, -4, 2, 2, "gold"], [2, -2, 2, 2, "gold"], [4, 0, 2, 2, "gold"], [2, 2, 2, 2, "gold"], [0, 4, 2, 2, "gold"]],
+  gem: [[-3, -5, 6, 1, "gemLight"], [-5, -4, 10, 3, "gem"], [-4, -1, 8, 2, "gem"], [-2, 1, 4, 2, "gem"], [-1, 3, 2, 1, "gem"],
+    [-4, -4, 3, 1, "gemLight"], [1, 0, 3, 1, "gemDark"]],
 };
 function drawPixels(kind, at, zoom, opacity) {
   for (const [x, y, w, h, color] of PIXELS[kind]) {
@@ -158,20 +184,23 @@ const STAT_TEXT = {
   hordeEvery: ["HORDE EVERY", (x) => `${x}S`],
   deathCall: ["DEATH CALLS", pct],
   xpBonus: ["XP PER KILL", (x) => `+${Math.round(x * 100)}%`],
+  critChance: ["3X HITS", pct],
 };
 const UNLOCK_TEXT = { descend: "WHERE EVERYTHING GROWS FROM", dash: "UNLOCKS THE DASH (SHIFT)", timeOrbs: "UNLOCKS TIME ORBS" };
 
 // "DAMAGE 3 > 4": what the next level changes, now and after. Or, for a
 // stat shown as a percentage, "MAGNET RANGE +25%": how much bigger the next
-// level makes it (and once it's maxed, how much bigger it is in all).
+// level makes it (and once it's maxed, how much bigger it is in all). A node
+// that only works in its own depth shows that depth's numbers.
 function effectText(node, levels) {
   if (node.effect.unlock) return UNLOCK_TEXT[node.effect.unlock] ?? "UNLOCKS SOMETHING NEW";
   const { stat } = node.effect;
   const [label, show] = STAT_TEXT[stat];
-  const now = heroStats(levels)[stat];
+  const depth = node.depth ?? 1;
+  const now = heroStats(levels, depth)[stat];
   const level = levels[node.id] ?? 0;
   const maxed = level >= node.levels;
-  const next = maxed ? now : heroStats({ ...levels, [node.id]: level + 1 })[stat];
+  const next = maxed ? now : heroStats({ ...levels, [node.id]: level + 1 }, depth)[stat];
   const percent = (ratio) => `+${Math.round((ratio - 1) * 100)}%`;
   if (!show) return maxed ? `${label} ${percent(now / heroStats({})[stat])} IN ALL` : `${label} ${percent(next / now)}`;
   return maxed ? `${label} ${show(now)}` : `${label} ${show(now)} > ${show(next)}`;
@@ -471,8 +500,10 @@ export function openTree(onClose) {
     }
     drawIcon(id, vec2(15, PANEL_Y + 19), 1);
     text(node.name.toUpperCase(), 30, PANEL_Y + 4, C.gold);
-    // Top right: its levels, and for an early node, the depth it's for.
-    const corner = [early(node) ? `DEPTH ${node.depth}` : "", node.levels > 1 ? `${level}/${node.levels}` : ""];
+    // Top right: its levels, and the depth it's for: "DEPTH 2 ONLY" for one
+    // that only works there, "DEPTH 2" for an early one.
+    const depthTag = node.perDepth ? `DEPTH ${node.depth ?? 1} ONLY` : early(node) ? `DEPTH ${node.depth}` : "";
+    const corner = [depthTag, node.levels > 1 ? `${level}/${node.levels}` : ""];
     text(corner.filter(Boolean).join("  "), GAME_WIDTH - 6, PANEL_Y + 4, C.muted, "topright");
     text(effectText(node, levels), 30, PANEL_Y + 15);
 

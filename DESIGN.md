@@ -163,9 +163,12 @@ What's in the rooms (built in step 6):
 The same kind of rooms as the crypt, tinted a warm, earthy brown, with
 their own three layouts per room (the same breakables, spikes and chests as
 the crypt's room at that sub-depth, arranged as burrows). Its monsters have
-6x the hp and 3x the gold of their numbers in `balance.js` (the depth's
-`scale`), so the power curve starts over with bigger numbers. They follow
-the crypt's spawn rule:
+10x the hp and 10x the gold of their numbers in `balance.js` (the depth's
+`scale`), so the power curve starts over: the 11 damage that one-shots the
+crypt's monsters by its end takes 3 hits on a 30 hp goblin, the way 1
+damage did on a 3 hp slug at the crypt's start. The clock and the spawns
+start over too (see "Each depth starts over" in section 7). Its monsters
+follow the crypt's spawn rule:
 
 | Sub-depth | What's new | Spawns: goblins / imps / wogols |
 |---|---|---|
@@ -371,12 +374,20 @@ to:
   reach) are shown as how much bigger the next level makes them: "MAGNET
   RANGE +25%", and once maxed, "+205% IN ALL".
 - **Buying early:** a depth-2 node can be bought before depth 1's boss is
-  beaten, at three times the price (`earlyPrice` in `src/balance.js`); the
-  panel says "EARLY 3X" and which depth it's for. It's for players who want
-  to save up and overpower depth 1. In the pacing simulator, the shoppers
-  pick up a few levels of Bigger hordes, Restless dead and sometimes Orb
-  finder about 90% of the way through, which costs them about two minutes
-  over the whole depth.
+  beaten, at ten times the price (`earlyPrice` in `src/balance.js`); the
+  panel says "EARLY 10X" and which depth it's for. It's for players who want
+  to save up and overpower depth 1. Depth 2's nodes are priced in depth 2's
+  gold, ten times richer, so ten times is what keeps it a real choice: Keen
+  edge's first level (+10 damage) costs 200 gold early, a bit more than all
+  ten levels of Sharper blade. In the pacing simulator, a shopper who goes
+  for it finishes depth 1 in about 35 minutes instead of about 43.
+- **Each depth starts over.** Some nodes only work in their own depth (the
+  panel says "DEPTH 1 ONLY" or "DEPTH 2 ONLY"): the run's pacing, which is
+  More time, Second wind, Crowded rooms, Bigger hordes and Restless dead.
+  So depth 2 starts on a 15 s clock with the base spawns, and its ring has
+  its own copies of them. Everything else carries over into every depth:
+  damage, the swing, hearts, the dash, money, time orbs, Death calls and
+  Wisdom.
 - **Every node works:** since step 6 (the breakables, for Smash), every
   node does what it says.
 - While the page is open, the hero waits at the altar and nothing else can
@@ -410,15 +421,33 @@ Every node costs gold. Costs are set in section 8.
 | Horde | Crowded rooms | 10 | +1 monster when you enter a room (start: 5) |
 | Horde | Bigger hordes | 10 | +1 monster per horde (start: 7; for depth 2) |
 | Horde | Restless dead | 5 | Hordes come 2 s sooner (start: every 20 s; for depth 2) |
-| Horde | Death calls | 5 | +5% chance that a kill spawns another monster |
+| Horde | Death calls | 5 | +3% chance that a kill spawns another monster |
 | Horde | Wisdom | 10 | +10% XP per kill |
 
-That's 24 nodes: 106 levels for depth 1, and 23 more meant for depth 2
-(Orb finder, Bigger orbs, Bigger hordes and Restless dead), which can be
-bought early at three times the price (see "Buying early"). Depth 1's rooms
-fill their bars before most hordes arrive, so the horde upgrades pay off
-from depth 2. The tuned numbers (costs, and the exact effects)
-live in `src/balance.js`.
+More time, Second wind and Crowded rooms only work in depth 1. Depth 2's
+ring (the second ring, further out on each branch), priced in depth 2's
+gold:
+
+| Branch | Node | Levels | Effect |
+|---|---|---|---|
+| Weapon | Keen edge | 10 | +10 damage per level |
+| Weapon | Critical hits | 5 | +4% chance per level that a hit does 3x damage (its number pops up bigger, in gold) |
+| Hearts | Extra heart II | 2 | +1 heart |
+| Time | More time II | 10 | +4 s at the start of a run (depth 2 only) |
+| Time | Second wind II | 5 | +1.5 s every time you reach the next sub-depth (depth 2 only) |
+| Time | Orb finder | 5 | Time orbs drop more often |
+| Time | Bigger orbs | 3 | Time orbs are worth more |
+| Dash | Quick feet II | 3 | Dash cooldown 10% shorter per level |
+| Money | Greed II | 10 | +10% gold per kill |
+| Horde | Crowded rooms II | 10 | +1 monster when you enter a room (depth 2 only) |
+| Horde | Bigger hordes | 10 | +1 monster per horde (start: 7; depth 2 only) |
+| Horde | Restless dead | 5 | Hordes come 2 s sooner (start: every 20 s; depth 2 only) |
+
+That's 32 nodes: 106 levels for depth 1, and 78 for depth 2, which can be
+bought early at ten times the price (see "Buying early"). Depth 1's rooms
+fill their bars before most hordes arrive, so the horde upgrades are depth
+2's. The tuned numbers (costs, and the exact effects) live in
+`src/balance.js`.
 
 ## 8. Pacing
 

@@ -193,12 +193,13 @@ function addMob(type, spot, room, onDeath) {
 }
 
 // Hits a mob for `damage`: it flashes, gets knocked back, and the number pops
-// up over it. Returns true if that hit beat it.
-export function hurtMob(mob, from, room, damage = 1) {
+// up over it (bigger and gold for a critical hit). Returns true if that hit
+// beat it.
+export function hurtMob(mob, from, room, damage = 1, crit = false) {
   if (!mob.active) return false;
   mob.hp -= damage;
-  playSound("mobHit");
-  popNumber(mob.pos.add(rand(-3, 3), -mob.def.size - 2), damage);
+  playSound(crit ? "crit" : "mobHit");
+  popNumber(mob.pos.add(rand(-3, 3), -mob.def.size - 2), damage, crit);
   // Sparks on the side of the mob that got hit.
   const middle = mob.pos.sub(0, mob.def.size / 2);
   const toward = from.sub(0, 10).sub(middle).unit().scale(Math.min(8, mob.def.size / 3));
