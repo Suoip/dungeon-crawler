@@ -85,6 +85,7 @@ const PALETTE = {
   ink: [24, 20, 37], stone: [58, 47, 74], stoneLight: [90, 77, 110],
   light: [240, 230, 210], muted: [169, 155, 185], dark: [44, 36, 56],
   gold: [255, 205, 70], green: [99, 199, 77], red: [230, 72, 46],
+  blue: [120, 190, 255], pale: [220, 240, 255], // a time orb
 };
 let C = null;
 
@@ -114,7 +115,7 @@ function drawIcon(id, at, zoom, opacity = 1) {
 const PIXELS = {
   hourglass: [[-4, -6, 8, 2, "gold"], [-4, 4, 8, 2, "gold"], [-3, -4, 6, 2, "light"], [-2, -2, 4, 2, "light"],
     [-1, 0, 2, 1, "light"], [-2, 1, 4, 1, "gold"], [-3, 2, 6, 2, "gold"]],
-  orb: [[-3, -5, 6, 10, "gold"], [-5, -3, 10, 6, "gold"], [-4, -4, 8, 8, "gold"], [-2, -3, 2, 2, "light"]],
+  orb: [[-3, -5, 6, 10, "blue"], [-5, -3, 10, 6, "blue"], [-4, -4, 8, 8, "blue"], [-2, -3, 2, 2, "pale"]],
   dash: [[-5, -4, 2, 2, "light"], [-3, -2, 2, 2, "light"], [-1, 0, 2, 2, "light"], [-3, 2, 2, 2, "light"], [-5, 4, 2, 2, "light"],
     [1, -4, 2, 2, "muted"], [3, -2, 2, 2, "muted"], [5, 0, 2, 2, "muted"], [3, 2, 2, 2, "muted"], [1, 4, 2, 2, "muted"]],
   dash2: [[-6, -4, 2, 2, "light"], [-4, -2, 2, 2, "light"], [-2, 0, 2, 2, "light"], [-4, 2, 2, 2, "light"], [-6, 4, 2, 2, "light"],
@@ -192,10 +193,10 @@ const shown = (node) => owned(node.id) || !node.parent || owned(node.parent);
 // For a depth not reached yet (stats.js): on sale already, at the early
 // price (balance.js earlyPrice), for anyone who'd rather save up for it.
 const early = (node) => isEarly(node, getSave().cleared);
-// Nodes whose effect isn't in the game yet (the dash's cooldown and second
-// charge, and the time orbs, come in step 5; breakables in step 6). They're
-// shown, so the tree looks the way it will, but they aren't on sale.
-const COMING_SOON = new Set(["feet", "charge", "orbs", "orbFinder", "biggerOrbs", "smash"]);
+// Nodes whose effect isn't in the game yet (Smash needs the breakables of
+// step 6). They're shown, so the tree looks the way it will, but they
+// aren't on sale.
+const COMING_SOON = new Set(["smash"]);
 const notYet = (node) => COMING_SOON.has(node.id);
 // What its next level costs, or null when it's maxed.
 function nextPrice(node) {

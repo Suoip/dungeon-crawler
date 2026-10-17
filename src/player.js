@@ -1,4 +1,5 @@
 import { PLAYER_SPEED } from "./config.js";
+import { BALANCE } from "./balance.js";
 import { puffDust, during, addShadow } from "./effects.js";
 import { getSetting } from "./settings.js";
 import { playSound } from "./sound.js";
@@ -82,25 +83,50 @@ export function setupPlayerMovement(player) {
   });
 }
 
-// Shift (or the Dash button): a quick dash in the direction he's moving (or facing, if he's
+// Shift: a quick dash in the direction he's moving (or facing, if he's
 // standing still), for getting into position. It doesn't make him safe
-// from hits; it's only for moving. Afterimages trail behind him, and a small
-// bar under his feet fills up until he can dash again.
-const DASH_DISTANCE = 48; // px
-const DASH_TIME = 0.15;   // seconds
-const DASH_COOLDOWN = 1;  // seconds
+// from hits; it's only for moving. Afterimages trail behind him.
+//
+// Each dash uses a charge. A charge takes stats.dashCooldown seconds to fill
+// (Quick feet shortens it), and Second charge gives him two. While one is
+// ready, the other fills at half speed, but keeps its progress: dash with
+// one ready and the other halfway, and the halfway one finishes at full
+// speed (DESIGN.md section 5). A small bar per charge under his feet shows
+// them filling.
+//
+// `statsNow()` gives the hero's stats (stats.js). It's asked on every press
+// and every frame, so in the rooms where the dash can be bought or reset
+// (the underworld, Options) it changes at once. Without the dash bought,
+// Shift does nothing.
+const DASH_TIME = 0.15; // seconds
 
-// `owned()` is asked on every press, so in the rooms where the dash can be
-// bought or reset (the underworld, Options) it starts or stops working at
-// once.
-export function setupDash(player, owned = () => true) {
-  let readyAt = 0;
+export function setupDash(player, statsNow) {
+  let ready = statsNow().dashCharges; // charges ready to use
+  let filling = 0;                    // how full the next one is, 0 to 1
+  let charges = ready;                // how many he had last frame
+
+  player.onUpdate(() => {
+    const { dashCharges, dashCooldown } = statsNow();
+    // A charge just bought at the altar comes ready, like every room's.
+    if (dashCharges > charges) ready += dashCharges - charges;
+    charges = dashCharges;
+    if (ready >= dashCharges) {
+      ready = dashCharges;
+      filling = 0;
+      return;
+    }
+    filling += dt() / (ready === 0 ? dashCooldown : 2 * dashCooldown);
+    if (filling >= 1) {
+      ready++;
+      filling = ready < dashCharges ? filling - 1 : 0; // the next one starts filling
+    }
+  });
 
   onButtonPress("dash", async () => {
-    if (!owned() || player.frozen || player.dashing || time() < readyAt) return;
+    if (!statsNow().unlocked.has("dash") || player.frozen || player.dashing || ready < 1) return;
     const keys = heldDirection();
     const way = keys.len() > 0 ? keys.unit() : player.facing;
-    readyAt = time() + DASH_COOLDOWN;
+    ready--;
     player.dashing = true;
     playSound("dash");
     puffDust(player.pos.x, player.pos.y, 4, 8, 9);
@@ -108,7 +134,7 @@ export function setupDash(player, owned = () => true) {
     let lastGhost = -1;
     await during(DASH_TIME, (elapsed) => {
       // move() (not setting pos) so walls still stop him.
-      player.move(way.scale(DASH_DISTANCE / DASH_TIME));
+      player.move(way.scale(BALANCE.hero.dash.distance / DASH_TIME));
       keepInRoom(player, PLAYER_FEET);
       if (elapsed - lastGhost > 0.035) {
         lastGhost = elapsed;
@@ -118,11 +144,19 @@ export function setupDash(player, owned = () => true) {
     player.dashing = false;
   });
 
+  // The bars under his feet, while a charge is missing: one per charge
+  // (14 px in all), full when it's ready, growing while it fills.
   player.onDraw(() => {
-    const left = readyAt - time();
-    if (left <= 0 || player.frozen) return;
-    drawRect({ pos: vec2(-7, 2), width: 14, height: 3, color: rgb(24, 20, 37), opacity: 0.8 });
-    drawRect({ pos: vec2(-6, 3), width: 12 * (1 - left / DASH_COOLDOWN), height: 1, color: rgb(140, 200, 255) });
+    const { dashCharges, unlocked } = statsNow();
+    if (!unlocked.has("dash") || ready >= dashCharges || player.frozen) return;
+    const gap = 2;
+    const width = (14 - gap * (dashCharges - 1)) / dashCharges;
+    for (let i = 0; i < dashCharges; i++) {
+      const x = -7 + i * (width + gap);
+      const share = i < ready ? 1 : i === ready ? filling : 0;
+      drawRect({ pos: vec2(x, 2), width, height: 3, color: rgb(24, 20, 37), opacity: 0.8 });
+      drawRect({ pos: vec2(x + 1, 3), width: (width - 2) * share, height: 1, color: rgb(140, 200, 255) });
+    }
   });
 }
 

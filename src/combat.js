@@ -320,7 +320,7 @@ export function setupHurt(player, run, heartsHud, room, onDeath, stats) {
 // up a little for every kill that didn't drop one, back to the start after
 // a drop, so there are no long unlucky streaks. Returns the function to call
 // when a mob is beaten.
-const PICKUP_LIFE = 8;  // seconds before a dropped heart vanishes
+const PICKUP_LIFE = 8;  // seconds before a dropped heart (or time orb) vanishes
 const PICKUP_BLINK = 6; // it blinks from here on, as a warning
 
 export function setupHeartDrops(run, heartsHud, player, stats) {
@@ -333,6 +333,50 @@ export function setupHeartDrops(run, heartsHud, player, stats) {
       run.dropStreak++;
     }
   };
+}
+
+// Time orbs, once Time orbs is bought: a rare drop (stats.timeOrbChance a
+// kill, raised by Orb finder), worth stats.timeOrbSeconds on the clock
+// (raised by Bigger orbs). Like a heart, it hops out of the monster, bobs,
+// drifts to him from inside his magnet's range, and blinks out if it's left
+// too long. None drop while the clock isn't running (`clockRunning()`), as
+// in the boss fight. `onTake(seconds)` adds the time. Returns the function
+// to call when a mob is beaten.
+export function setupOrbDrops(player, stats, clockRunning, onTake) {
+  return (mob) => {
+    if (!stats.unlocked.has("timeOrbs") || !clockRunning()) return;
+    if (Math.random() < stats.timeOrbChance) dropOrb(mob.pos.clone(), player, stats, onTake);
+  };
+}
+
+function dropOrb(at, player, stats, onTake) {
+  const born = time();
+  const orb = add([pos(at), opacity(1), z(9), "orb"]);
+  // A small glowing blue orb (the Time orbs icon in the tree), floating just
+  // above the floor, its glow breathing.
+  orb.onDraw(() => {
+    const glow = 0.2 + 0.12 * Math.sin(time() * 5);
+    drawCircle({ pos: vec2(0, -5), radius: 6, color: rgb(120, 190, 255), opacity: glow * orb.opacity });
+    drawCircle({ pos: vec2(0, -5), radius: 4, color: rgb(24, 20, 37), opacity: orb.opacity });
+    drawCircle({ pos: vec2(0, -5), radius: 3, color: rgb(120, 190, 255), opacity: orb.opacity });
+    drawRect({ pos: vec2(-1, -7), width: 2, height: 2, color: rgb(220, 240, 255), opacity: orb.opacity });
+  });
+  orb.onUpdate(() => {
+    const age = time() - born;
+    const hop = age < 0.35 ? Math.sin((age / 0.35) * Math.PI) * 10 : Math.abs(Math.sin(age * 3)) * 1.5;
+    orb.pos = at.sub(0, hop);
+    orb.opacity = age > PICKUP_BLINK && Math.floor(age * 8) % 2 ? 0.3 : 1;
+    if (age > PICKUP_LIFE) return destroy(orb);
+    if (age < 0.35 || player.frozen) return;
+
+    const distance = player.pos.dist(at);
+    if (distance < stats.magnetRange) at = at.add(player.pos.sub(at).unit().scale(Math.min(distance, 90 * dt())));
+    if (distance < 8) {
+      onTake(stats.timeOrbSeconds);
+      playSound("orb");
+      destroy(orb);
+    }
+  });
 }
 
 // Closer than `magnet` px (the hero's magnet range), it drifts toward him.

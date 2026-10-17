@@ -31,6 +31,7 @@ The game needs a keyboard. On phones and tablets, a notice says so.
 - **The underworld:** every run ends there, dragged down by the hands, with the results on the floor (how it ended, the gold earned and banked, how deep it got, the kills), an altar in the middle and ladders to try again or return to the menu. The altar's sigil glows when there's something you can afford.
 - **A skill tree at the altar:** a web of 24 nodes drawn over the room, growing out of Descend in the middle into six branches: weapon, hearts, time, dash, money and the horde. Each node is a round frame with an icon (from the tileset, or a few hand-drawn pixels) and, for nodes with more than one level, a pip per level. You see the nodes next to the ones you own; the ones further out are dark outlines. Depth-2 nodes can be bought early, at three times the price. The panel at the bottom shows what the next level does ("DAMAGE 1 > 2", or "MAGNET RANGE +25%") and what it costs.
 - **Saved progress:** banked gold and bought upgrades are saved in the browser after every run and every purchase. The Options room has a red reset button that asks twice before it erases them.
+- **A dash and time orbs from the tree:** the dash (Shift) is bought at the altar. Each dash uses a charge that takes 2.5 s to fill; Quick feet shortens it and Second charge adds another, shown as small bars under the hero's feet. Time orbs are rare drops that add seconds to the clock when picked up.
 - **Hearts to win back:** with more than one heart, monsters can drop a heart while you're missing one. A bad-luck counter makes sure the drops don't dry up, and a dropped heart blinks out after a few seconds.
 - **A boss fight that keeps you moving:** the Big Zombie makes its entrance in the last room once its bar is full, and the clock stops for it. It casts a random move every couple of seconds, each with its own warning flash: a dash that leaves a trail of fire, a ring of 12 projectiles, or raising tiny zombies. Once the projectiles turn yellow, a swing bats them back at it. Below half health it becomes enraged: it dashes twice and fires a second ring that covers the gaps in the first.
 - **10 playable heroes, each with their own weapon:** pick one in the Heroes room, and it's remembered.
@@ -64,10 +65,10 @@ src/
   tree.js             the skill tree page: the web of nodes, zoom and drag, buying
   cutscenes.js        falling in, walking through doors, ladders, the well, being dragged down
   interact.js         using doors, levers, heroes, ladders and plaques
-  combat.js           the automatic swing, hearts, heart drops, getting hurt
+  combat.js           the automatic swing, hearts, heart and time-orb drops, getting hurt
   mobs.js             monster types, spawning, rising from the floor, chasing, the skeleton's charge
   coins.js            coins on the floor and the magnet
-  hud.js              the clock, the XP bar, the gold, and damage numbers
+  hud.js              the clock (and the seconds time orbs add), the XP bar, the gold, and damage numbers
   boss.js             the boss's moves: dash and fire trail, projectile rings, raising minions, rage
   player.js           the hero: walking and dashing
   doors.js, room.js, props.js, heroes.js   building the rooms and characters

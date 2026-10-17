@@ -41,8 +41,10 @@ const CREDITS = [
   { title: "PAIR PROGRAMMER", lines: ["Claude (Anthropic)"] },
 ];
 
-// Whether the dash has been bought in the tree (it starts locked).
-const hasTheDash = () => heroStats(getSave().levels).unlocked.has("dash");
+// The hero as the tree has made him, and whether that includes the dash
+// (it starts locked).
+const savedStats = () => heroStats(getSave().levels);
+const hasTheDash = () => savedStats().unlocked.has("dash");
 
 // ---------------------------------------------------------------------------
 // The title room
@@ -84,7 +86,7 @@ function registerTitle() {
     const start = besideHatch(hatch);
     const player = addPlayer(start.x, start.y);
     setupPlayerMovement(player);
-    if (hasDash) setupDash(player);
+    setupDash(player, savedStats);
     const fader = addFader();
 
     hidePrompt();
@@ -140,7 +142,7 @@ function registerSubRoom(name, title, setup, hint) {
     const ladder = addLadder(LAND_X);
     const player = addPlayer(LAND_X, LAND_Y);
     setupPlayerMovement(player);
-    setupDash(player, hasTheDash); // until a reset in Options takes it away
+    setupDash(player, savedStats); // a reset in Options takes it away at once
     const fader = addFader();
 
     hidePrompt();

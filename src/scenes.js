@@ -11,7 +11,7 @@ import {
 } from "./cutscenes.js";
 import { sleep, animate, addFader, fadeIn, fadeOut, shakeScreen, flashScreen, puffDust } from "./effects.js";
 import { startSpawning, raiseMob, bossSpot, MOB_TYPES } from "./mobs.js";
-import { setupAutoSwing, setupHurt, addHearts, setupHeartDrops } from "./combat.js";
+import { setupAutoSwing, setupHurt, addHearts, setupHeartDrops, setupOrbDrops } from "./combat.js";
 import { dropCoins, collectFloor, sweepFloor, floorValue } from "./coins.js";
 import { addHud } from "./hud.js";
 import { addLadder, addWell } from "./props.js";
@@ -50,7 +50,7 @@ export function registerRoomScene() {
     chainDoor(door);
     const player = addPlayer(LAND_X, LAND_Y);
     setupPlayerMovement(player);
-    if (stats.unlocked.has("dash")) setupDash(player); // the dash is bought in the tree
+    setupDash(player, () => stats); // it does nothing until the dash is bought in the tree
     const fader = addFader();
     const hearts = addHearts(run);
     hearts.update();
@@ -76,6 +76,7 @@ export function registerRoomScene() {
         if (fight.over) return; // too late: the run is over
         run.kills++;
         maybeDropHeart(mob);
+        maybeDropOrb(mob);
         dropCoins(mob.pos.clone(), coins(mob.gold * (1 + stats.goldBonus)), run, player, () => stats.magnetRange,
           { spread: mob.def.boss ? 44 : 10 });
         if (mob.def.boss) return bossBeaten(mob);
@@ -88,7 +89,12 @@ export function registerRoomScene() {
     };
     setupAutoSwing(player, fight, stats);
     setupHurt(player, run, hearts, fight, defeated, stats);
-    addHud(() => ({ clock: run.clock, stopped: clockStopped, xp, xpNeeded: room.xp, gold: run.gold }));
+    const hud = addHud(() => ({ clock: run.clock, stopped: clockStopped, xp, xpNeeded: room.xp, gold: run.gold }));
+    // Time orbs: while the clock runs, a kill may drop one, worth seconds.
+    const maybeDropOrb = setupOrbDrops(player, stats, () => clockRunning && !clockStopped, (seconds) => {
+      run.clock += seconds;
+      hud.addTime(seconds);
+    });
 
     const things = [doorInteraction(door, () => (door.locked ? null : ["Go deeper"]), () => {
       if (fight.over) return false; // the run is over
@@ -112,7 +118,9 @@ export function registerRoomScene() {
       if (!clockRunning || clockStopped || fight.over) return;
       run.clock = Math.max(0, run.clock - dt());
       const whole = Math.ceil(run.clock);
-      if (whole !== lastWhole && whole <= 5 && whole > 0) playSound("tick"); // each of the last 5 seconds
+      // A tick for each of the last 5 seconds (only counting down: a time
+      // orb that pushes the clock back up doesn't tick).
+      if (whole < lastWhole && whole <= 5 && whole > 0) playSound("tick");
       lastWhole = whole;
       if (run.clock <= 0) outOfTime();
     });
@@ -168,6 +176,10 @@ export function registerRoomScene() {
       shakeScreen(6);
       playSound("crumble");
       for (const mob of get("mob")) crumble(mob, { dropsCoins: true });
+      for (const orb of get("orb")) {
+        puffDust(orb.pos.x, orb.pos.y, 3, 6); // no use for time now: they fizzle out
+        destroy(orb);
+      }
       await sleep(0.4);
       await shoveAside(player, bossSpot(), BOSS_CLEARANCE);
       fight.frozen = false;
