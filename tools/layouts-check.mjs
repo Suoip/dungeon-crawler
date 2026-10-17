@@ -26,9 +26,9 @@ const CLEAR = {
   well: [[5, 6], [13, 15]],    // sub-depth 10: the well it leaves (column 14) and the floor in front
 };
 
-export function checkLayout(sub, rows) {
+export function checkLayout(depth, sub, rows) {
   const errors = [];
-  const room = BALANCE.rooms[sub - 1];
+  const room = BALANCE.depths[depth - 1].rooms[sub - 1];
   const at = (r, c) => rows[r]?.[c];
   if (rows.length !== ROWS) errors.push(`${rows.length} rows, not ${ROWS}`);
   rows.forEach((row, r) => {
@@ -121,22 +121,28 @@ export function checkLayout(sub, rows) {
 // Run as a script: check every layout.
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   let problems = 0;
-  if (LAYOUTS.length !== 10) {
-    console.log(`${LAYOUTS.length} sub-depths of layouts, not 10`);
+  if (LAYOUTS.length !== BALANCE.depths.length) {
+    console.log(`layouts for ${LAYOUTS.length} depths, but balance.js has ${BALANCE.depths.length}`);
     problems++;
   }
-  LAYOUTS.forEach((layouts, i) => {
-    if (layouts.length < 2) {
-      console.log(`sub-depth ${i + 1}: only ${layouts.length} layout(s); each room wants 2 or 3`);
+  LAYOUTS.forEach((depthLayouts, d) => {
+    if (depthLayouts.length !== 10) {
+      console.log(`depth ${d + 1}: ${depthLayouts.length} sub-depths of layouts, not 10`);
       problems++;
     }
-    layouts.forEach((rows, j) => {
-      for (const error of checkLayout(i + 1, rows)) {
-        console.log(`sub-depth ${i + 1}, layout ${j + 1}: ${error}`);
+    depthLayouts.forEach((layouts, i) => {
+      if (layouts.length < 2) {
+        console.log(`depth ${d + 1}, sub-depth ${i + 1}: only ${layouts.length} layout(s); each room wants 2 or 3`);
         problems++;
       }
+      layouts.forEach((rows, j) => {
+        for (const error of checkLayout(d + 1, i + 1, rows)) {
+          console.log(`depth ${d + 1}, sub-depth ${i + 1}, layout ${j + 1}: ${error}`);
+          problems++;
+        }
+      });
     });
   });
-  console.log(problems ? `${problems} problem(s).` : `All ${LAYOUTS.flat().length} layouts are fine.`);
+  console.log(problems ? `${problems} problem(s).` : `All ${LAYOUTS.flat(2).length} layouts are fine.`);
   process.exitCode = problems ? 1 : 0;
 }

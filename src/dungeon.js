@@ -1,27 +1,36 @@
+import { BALANCE } from "./balance.js";
 import { getSave } from "./save.js";
 import { heroStats } from "./stats.js";
 
-// The depth being played. Only depth 1, the crypt, exists so far.
-export const DEPTH = 1;
+// The depths there are (balance.js), and a depth's data by its number.
+export const DEPTHS = BALANCE.depths.length;
+export const depthData = (depth) => BALANCE.depths[depth - 1];
 
-// A run is one attempt at the depth: ROOMS rooms deep (config.js), the boss
-// in the last one. It starts with the hero as your upgrades make him
-// (stats.js), a clock that counts down only while you're in control, and
-// hearts that carry over from room to room.
-export function newRun() {
+// The depths you can play: the first, and one more past each boss beaten.
+export const unlockedDepths = () => Math.min(getSave().cleared + 1, DEPTHS);
+// The depth the next run goes to (picked at the underworld's signpost).
+export const chosenDepth = () => Math.min(getSave().depth, unlockedDepths());
+
+// A run is one attempt at a depth (the one picked in the underworld, unless
+// another is given): ROOMS rooms deep (config.js), the boss in the last one.
+// It starts with the hero as your upgrades make him (stats.js), a clock that
+// counts down only while you're in control, and hearts that carry over from
+// room to room.
+export function newRun(depth = chosenDepth()) {
   const stats = heroStats(getSave().levels);
   return {
+    depth,                    // which depth, 1 = the crypt
     index: 0,                 // the room he's in, 0 = the first
     stats,
     hearts: stats.hearts, maxHearts: stats.hearts,
     clock: stats.startTime,   // seconds left
     gold: 0,                  // coins picked up this run
-    bones: 0,                 // bones picked up this run (from sub-depth 6)
+    bones: 0,                 // bones picked up this run (the crypt, from sub-depth 6)
     kills: 0,
     deepest: 0,               // how far it got: 3.4 = 3 rooms cleared, 40% of the 4th's bar
     dropStreak: 0,            // kills in a row that didn't drop a heart (see combat.js)
   };
 }
 
-// A room's name in the strip and the results: "1-3" is depth 1, sub-depth 3.
-export const depthLabel = (sub) => `${DEPTH}-${sub}`;
+// A room's name in the strip and the results: "2-3" is depth 2, sub-depth 3.
+export const depthLabel = (depth, sub) => `${depth}-${sub}`;

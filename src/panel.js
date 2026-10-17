@@ -22,8 +22,8 @@ function focusGame() {
 
 // The right end of the strip: "Depth 1-3" in the dungeon (depth 1,
 // sub-depth 3), or the menu room's name in the menu.
-export function showDepth(sub) {
-  $("progress").textContent = `Depth ${depthLabel(sub)}`;
+export function showDepth(depth, sub) {
+  $("progress").textContent = `Depth ${depthLabel(depth, sub)}`;
 }
 
 // While the player stands at something they can use (a door, a lever, a

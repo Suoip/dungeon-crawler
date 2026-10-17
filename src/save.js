@@ -1,3 +1,5 @@
+import { BALANCE } from "./balance.js";
+
 // Your progress, remembered between visits in the browser's localStorage
 // (next to the settings, see settings.js): the gold you've banked and the
 // upgrades you've bought. It's saved after every run and every purchase.
@@ -10,8 +12,9 @@ const FRESH = {
   gold: 0,                   // banked gold, to spend in the skill tree
   levels: { descend: 1 },    // the tree: node id -> level bought (see balance.js)
   runs: 0,                   // runs played
-  best: 0,                   // the deepest a run has got, as sub-depths: 3.4 = into room 4
+  best: 0,                   // the deepest a run has got, in sub-depths from the top: 13.4 = depth 2, into room 4
   cleared: 0,                // the deepest depth whose boss has been beaten
+  depth: 1,                  // the depth the next run goes to (picked in the underworld)
   bones: 0,                  // the crypt's material: kept for later, nothing buys with it yet
   seenUnderworld: false,     // the first visit puts the well in the title room
 };
@@ -37,14 +40,25 @@ function write() {
   }
 }
 
-// A run is over: bank its gold and bones, and remember how deep it got
-// (`cleared` is true when it beat the boss).
-export function endRun(gold, deepest, cleared = false, bones = 0) {
+// A run in `depth` is over: bank its gold and bones, and remember how deep
+// it got (`cleared` is true when it beat the boss). Beating a depth's boss
+// for the first time unlocks the next depth, and the next run goes there.
+// Returns true when that happened.
+export function endRun({ gold, deepest, depth, cleared = false, bones = 0 }) {
   save.gold += gold;
   save.bones += bones;
   save.runs++;
-  save.best = Math.max(save.best, deepest);
-  if (cleared) save.cleared = Math.max(save.cleared, 1);
+  save.best = Math.max(save.best, (depth - 1) * 10 + deepest);
+  const unlocked = cleared && depth > save.cleared && depth < BALANCE.depths.length;
+  if (cleared) save.cleared = Math.max(save.cleared, depth);
+  if (unlocked) save.depth = depth + 1;
+  write();
+  return unlocked;
+}
+
+// Picks the depth the next run goes to.
+export function chooseDepth(depth) {
+  save.depth = depth;
   write();
 }
 

@@ -1,8 +1,8 @@
 import { TILE, TOP, GAME_WIDTH, GAME_HEIGHT } from "./config.js";
 import { buildRoom } from "./room.js";
 import { addPlayer, setupPlayerMovement, setupDash } from "./player.js";
-import { newRun, depthLabel } from "./dungeon.js";
-import { getSave, seeUnderworld } from "./save.js";
+import { newRun, depthLabel, depthData, unlockedDepths, chosenDepth } from "./dungeon.js";
+import { getSave, seeUnderworld, chooseDepth } from "./save.js";
 import { heroStats } from "./stats.js";
 import { setupInteractions } from "./interact.js";
 import { fallIn, climbLadder, giveControl, LAND_X } from "./cutscenes.js";
@@ -16,7 +16,9 @@ import { hidePrompt, showRoomName } from "./panel.js";
 // the clock ran out or the last heart went, or down the well after beating
 // the boss. The run's results are written on the floor, the altar in the
 // middle opens the skill tree (tree.js), and two ladders up the back wall
-// lead to the next run and back to the menu.
+// lead to the next run and back to the menu. Once a second depth is open, a
+// signpost beside the first ladder says which depth the next run goes to,
+// and using it switches to the next one.
 //   ending  "died", "time" or "boss"; or "visit" when he came down the
 //           title room's well, with no run behind him (run is null)
 export function registerEndScenes() {
@@ -48,6 +50,7 @@ function underworld(run, ending) {
   });
   const altar = addAltar(LAND_X, ALTAR_Y);
   altar.setLit(canBuyAnything());
+  const signpost = unlockedDepths() > 1 ? addDepthSignpost() : null;
 
   const player = addPlayer(LAND_X, LAND_Y);
   if (ending === "died") player.use(color(255, 110, 110)); // still red, down here
@@ -81,10 +84,21 @@ function underworld(run, ending) {
       });
     }),
   };
+  // The signpost: the next depth that's open (round to the first again).
+  const pick = signpost && {
+    zone: signpost.zone,
+    prompt: ["Pick the depth"],
+    use: () => {
+      chooseDepth((chosenDepth() % unlockedDepths()) + 1);
+      signpost.show();
+      playSound("lever");
+      return false; // still in the room
+    },
+  };
   const interactions = setupInteractions(
     player,
-    [pray, ...climb],
-    () => "Use the altar to spend your gold, or climb a ladder.",
+    [pray, ...climb, ...(pick ? [pick] : [])],
+    () => (pick ? "Use the altar, pick a depth at the signpost, or climb a ladder." : "Use the altar to spend your gold, or climb a ladder."),
   );
 
   hidePrompt();
@@ -115,8 +129,10 @@ async function writeResults(run, ending) {
     { text: ENDINGS[ending].text, size: 16, color: ENDINGS[ending].color },
     { text: `GOLD EARNED ${run.gold}`, color: [255, 205, 70] },
     { text: `TOTAL ${getSave().gold}` },
-    { text: `DEEPEST ${depthLabel(reached)}` },
+    { text: `DEEPEST ${depthLabel(run.depth, reached)}` },
     { text: `KILLS ${run.kills}${run.bones ? `  BONES ${run.bones}` : ""}` },
+    // The first time a depth's boss falls, the next depth opens.
+    ...(run.unlocked ? [{ text: `DEPTH ${run.depth + 1} UNLOCKED`, color: [99, 199, 77] }] : []),
   ];
   // Between the lava basins on the back wall and the altar.
   let y = TOP + 3 * TILE + 6;
@@ -129,6 +145,25 @@ async function writeResults(run, ending) {
     await sleep(0.18);
   }
   return total;
+}
+
+// The signpost beside the TRY AGAIN ladder: a board on a post, saying which
+// depth the next run goes to. show() writes it again after a switch.
+// Returns { zone, show }.
+function addDepthSignpost() {
+  const x = 40;
+  const foot = TOP + 4 * TILE + 4; // the post's foot, on the floor
+  add([rect(4, 16), pos(x - 2, foot - 16), color(24, 20, 37), z(2)]);
+  add([rect(2, 15), pos(x - 1, foot - 16), color(92, 52, 30), z(2)]);
+  let board = null;
+  const show = () => {
+    board?.destroy();
+    const depth = chosenDepth();
+    board = addSign([{ text: `DEPTH ${depth}`, color: [255, 205, 70] }, { text: depthData(depth).name }], x, foot - 24, { depth: 3 });
+  };
+  show();
+  const zone = add([pos(x - 12, foot - 4), area({ shape: new Rect(vec2(0), 24, 14) })]);
+  return { zone, show };
 }
 
 // The underworld: the same kind of room, but dark red, with lava pouring

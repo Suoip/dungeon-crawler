@@ -158,6 +158,41 @@ What's in the rooms (built in step 6):
   picked up like a coin. They're saved and shown on the run's results, and
   don't buy anything yet.
 
+### Depth 2, the goblin warrens
+
+The same kind of rooms as the crypt, tinted a warm, earthy brown, with
+their own three layouts per room (the same breakables, spikes and chests as
+the crypt's room at that sub-depth, arranged as burrows). Its monsters have
+6x the hp and 3x the gold of their numbers in `balance.js` (the depth's
+`scale`), so the power curve starts over with bigger numbers. They follow
+the crypt's spawn rule:
+
+| Sub-depth | What's new | Spawns: goblins / imps / wogols |
+|---|---|---|
+| 1–2 | Goblins: fast chasers | 100% / – / – |
+| 3 | Imps: shooters | 75% / 25% / – |
+| 4 | | 60% / 40% / – |
+| 5 | Wogols: bombers | 50% / 40% / 10% |
+| 6–9 | | easing to 33% / 34% / 33% |
+| 10 | **The ogre** (a stand-in until the warrens have their own boss) | 30% / 35% / 35% until its bar fills; then the ogre appears and raises goblins |
+
+- **Imps** keep their distance: each heads for a spot about 80 px from the
+  hero, on its own side of him, nudged around him away from the other imps,
+  so they spread out and come at him from different angles. They never run
+  off to a far corner. Every few seconds one stops, glows orange for half a
+  second and throws a fireball at where he is. Fireballs are a little
+  slower than he walks, and pillars, crates and chests stop them.
+- **Shots can only be dodged.** A swing does nothing to a fireball or to
+  the Big Zombie's spit: neither can be batted back or broken. (Shielding
+  or dodging may become the hook.)
+- **Wogols** run at him, and once close they stop, flash, swell, and go off
+  0.7 s later, with the blast's reach marked on the floor. Beating one
+  doesn't stop it: it goes off where it fell, a moment later. The blast
+  costs him a heart if he's inside the mark, and doesn't hurt other
+  monsters. One that goes off by itself is gone, with no gold or XP.
+- **No material yet:** the warrens' teeth come later; for now nothing drops
+  but coins, hearts and orbs.
+
 ## The run timer
 
 - **Per run, and very short:** about 15–20 seconds at the start.
@@ -225,10 +260,12 @@ to:
   - wanderers (crawl about and never hunt; they hurt on contact, but they
     never come after you), chasers (walk at you) and rushers (wind up, then
     charge in a line)
-  - shooters that keep their distance and fire projectiles
+  - shooters that keep their distance and fire projectiles (the warrens'
+    imps)
   - summoners (the necromancer raises skeletons) and splitters (something
     that splits in two when it falls; none in the crypt now)
-  - bombers that run up and explode, and mimics: chests that turn out to be
+  - bombers that run up and explode (the warrens' wogols), and mimics:
+    chests that turn out to be
     monsters
 - **The tileset has enough monsters** for five themed depths: tiny zombie,
   skeleton, goblin, imp, wogol, chort, orc warrior, masked orc, orc shaman,
@@ -240,7 +277,7 @@ to:
   | Depth | Theme | Mobs | Boss |
   |---|---|---|---|
   | 1 | Crypt | tiny zombie, skeleton, slug | Big Zombie |
-  | 2 | Goblin warrens | goblin, imp, wogol | a giant chest mimic? |
+  | 2 | Goblin warrens | goblin, imp, wogol | a giant chest mimic? (the ogre stands in) |
   | 3 | Orc fort | orc warrior, masked orc, orc shaman | Ogre |
   | 4 | Sunken swamp | muddy, swampy, ice zombie, necromancer | a giant necromancer? |
   | 5 | Demon pit | chort, imp, pumpkin dude | Big Demon |
@@ -248,7 +285,10 @@ to:
 ## 6. The economy
 
 - **Three currencies:**
-  - **Gold** drops everywhere and buys most nodes.
+  - **Gold** drops everywhere and buys most nodes. It drops as green gems
+    worth 5 and coins for the rest (8 gold is a gem and 3 coins), so a room
+    full of kills doesn't bury the floor in coins, and the gems show you're
+    earning more.
   - **A depth material** is different for each depth (bones in the crypt,
     teeth in the warrens, and so on) and rarer. **It doesn't buy tree
     upgrades.** It has another use, to be designed later. It's banked from
@@ -468,9 +508,11 @@ A rough estimate to size things by:
   ladder up to the main room. The next depth is unlocked. (The separate
   treasure room isn't needed any more; its coin-spill code can be reused
   for the boss's coins.)
-- **Choosing a depth** (once there are two): a sign next to the TRY AGAIN
-  ladder shows the depth, and hitting it switches to the next unlocked one,
-  like the volume blocks. Not needed for the first milestone.
+- **Choosing a depth** (once there are two): a signpost next to the TRY
+  AGAIN ladder shows the depth the next run goes to; pressing E at it
+  switches to the next one that's open. Beating a depth's boss for the first
+  time opens the next depth, picks it, and says so on the results. The
+  title room's PLAY door goes to the picked depth too.
 - **The first visit unlocks the underworld.** Every run ends there, by
   death or by time, so that's the end of the very first run. From then on,
   the title room has a well that leads straight down to it, so you can reach
