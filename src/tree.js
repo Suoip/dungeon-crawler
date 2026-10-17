@@ -39,8 +39,11 @@ const PLACES = {
   sharper: { branch: "weapon", ring: 1 }, quicker: { branch: "weapon", ring: 2 },
   reach: { branch: "weapon", ring: 3 }, arc: { branch: "weapon", ring: 4 },
   heart: { branch: "hearts", ring: 1 }, nerves: { branch: "hearts", ring: 2, fork: -1 }, lucky: { branch: "hearts", ring: 2, fork: 1 },
+  // The time branch has two tracks: down the middle, the clock and the
+  // orbs; to one side, each depth's own clock upgrades, one depth after
+  // another.
   time: { branch: "time", ring: 1 }, wind: { branch: "time", ring: 2 }, orbs: { branch: "time", ring: 3 },
-  orbFinder: { branch: "time", ring: 4, fork: -1 }, biggerOrbs: { branch: "time", ring: 4, fork: 1 },
+  orbFinder: { branch: "time", ring: 4 }, biggerOrbs: { branch: "time", ring: 5 },
   dash: { branch: "dash", ring: 1 }, feet: { branch: "dash", ring: 2 }, charge: { branch: "dash", ring: 3 },
   greed: { branch: "money", ring: 1 }, magnet: { branch: "money", ring: 2 }, smash: { branch: "money", ring: 3 },
   crowded: { branch: "horde", ring: 1 }, hordes: { branch: "horde", ring: 2 }, restless: { branch: "horde", ring: 3 },
@@ -52,6 +55,11 @@ const PLACES = {
   feet2: { branch: "dash", ring: 4 },
   greed2: { branch: "money", ring: 4 },
   crowded2: { branch: "horde", ring: 3, fork: -1.4 },
+  // Depth 3's ring (each depth's horde nodes sit two rings further out)
+  edge3: { branch: "weapon", ring: 7 },
+  time3: { branch: "time", ring: 4, fork: -1 }, wind3: { branch: "time", ring: 5, fork: -1 },
+  greed3: { branch: "money", ring: 5 },
+  hordes3: { branch: "horde", ring: 4 }, restless3: { branch: "horde", ring: 5 }, crowded3: { branch: "horde", ring: 5, fork: -1.4 },
 };
 
 // A node's spot in the web, in px from the middle at 1x.
@@ -93,6 +101,12 @@ const ICONS = {
   feet2: { draw: "dash3" },
   greed2: { draw: "gem" },
   crowded2: { sprite: "goblin", box: [3, 4, 10, 12] },
+  // Depth 3's ring
+  edge3: { sprite: "weapon_red_gem_sword", box: [0, 7, 10, 14] },
+  time3: { draw: "hourglass3" }, wind3: { sprite: "flask_big_red", box: [3, 3, 10, 11] },
+  greed3: { draw: "gemBlue" },
+  hordes3: { sprite: "masked_orc", box: [2, 6, 12, 15] }, restless3: { sprite: "skull", box: [5, 7, 6, 6], scale: 2 },
+  crowded3: { sprite: "orc_warrior", box: [2, 6, 12, 15] },
 };
 
 // The page's colors. Kaplay's rgb() only exists once the game has started,
@@ -147,6 +161,11 @@ const PIXELS = {
     [0, -4, 2, 2, "gold"], [2, -2, 2, 2, "gold"], [4, 0, 2, 2, "gold"], [2, 2, 2, 2, "gold"], [0, 4, 2, 2, "gold"]],
   gem: [[-3, -5, 6, 1, "gemLight"], [-5, -4, 10, 3, "gem"], [-4, -1, 8, 2, "gem"], [-2, 1, 4, 2, "gem"], [-1, 3, 2, 1, "gem"],
     [-4, -4, 3, 1, "gemLight"], [1, 0, 3, 1, "gemDark"]],
+  // Depth 3's: a green hourglass and a blue gem.
+  hourglass3: [[-4, -6, 8, 2, "gem"], [-4, 4, 8, 2, "gem"], [-3, -4, 6, 2, "light"], [-2, -2, 4, 2, "light"],
+    [-1, 0, 2, 1, "light"], [-2, 1, 4, 1, "gem"], [-3, 2, 6, 2, "gem"]],
+  gemBlue: [[-3, -5, 6, 1, "pale"], [-5, -4, 10, 3, "blue"], [-4, -1, 8, 2, "blue"], [-2, 1, 4, 2, "blue"], [-1, 3, 2, 1, "blue"],
+    [-4, -4, 3, 1, "pale"], [1, 0, 3, 1, "ink"]],
 };
 function drawPixels(kind, at, zoom, opacity) {
   for (const [x, y, w, h, color] of PIXELS[kind]) {

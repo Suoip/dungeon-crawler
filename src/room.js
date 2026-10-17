@@ -100,3 +100,26 @@ export function buildRoom() {
 export function tintRoom(rgb) {
   get("*").filter((part) => part.has("sprite")).forEach((part) => part.use(color(...rgb)));
 }
+
+// Things on the back wall that make a depth look like itself (balance.js
+// `decor`), kept clear of the door and of the boss room's ladder:
+//   banners  red banners hanging on the brick face (the orc fort)
+//   goo      green goo dripping down the wall into a puddle (the swamp)
+//   lava     lava pouring out of two fountains (the demon pit)
+const DECOR_COLUMNS = [2, 4, 15, 17];
+export function addDecor(kind) {
+  if (kind === "banners") {
+    for (const col of DECOR_COLUMNS) placeTile("wall_banner_red", col, 1);
+  } else if (kind === "goo") {
+    for (const col of [3, 16]) {
+      placeTile("wall_goo", col, 1);
+      placeTile("wall_goo_base", col, 2);
+    }
+  } else if (kind === "lava") {
+    for (const col of [3, 16]) {
+      placeTile("wall_fountain_top", col, 0);
+      add([sprite("wall_fountain_mid_red", { anim: "flow" }), pos(col * TILE, TOP + TILE)]);
+      add([sprite("wall_fountain_basin_red", { anim: "flow" }), pos(col * TILE, TOP + 2 * TILE)]);
+    }
+  }
+}

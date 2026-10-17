@@ -130,7 +130,7 @@ const MOVES = {
   // the others raise tougher ones once enraged.
   async spawn(boss, room) {
     if (!(await windUp(boss, room, "spawn", 0.6, "summon"))) return;
-    const own = boss.def.minions;
+    const own = room.minion ? [room.minion] : boss.def.minions; // the depth's own (balance.js), or the boss's
     const types = own ? [0, 1, 2].map((i) => own[i % own.length])
       : boss.raging ? ["goblin", "goblin", "orc_warrior"] : ["tiny_zombie", "tiny_zombie", "tiny_zombie"];
     const turn = rand(0, 120);

@@ -81,8 +81,14 @@ export function addHud(state) {
 }
 
 // A damage number that pops up from a hit and floats away.
-export function popNumber(at, amount, crit = false) {
-  const label = String(Math.round(amount));
+// `kind`: "hit", "crit" (bigger, gold), "blocked" (grey: a shield took most
+// of it) or "heal" (green, with a plus).
+const NUMBER_LOOKS = { hit: [8, null], crit: [16, null], blocked: [8, [150, 144, 160]], heal: [8, null] };
+export function popNumber(at, amount, kind = "hit") {
+  const crit = kind === "crit";
+  const label = (kind === "heal" ? "+" : "") + String(Math.round(amount));
+  const [size, grey] = NUMBER_LOOKS[kind];
+  const colorOf = kind === "heal" ? GREEN : crit ? GOLD : grey ?? LIGHT;
   const number = add([pos(at), opacity(1), z(70), { born: time() }]);
   const drift = rand(-6, 6);
   const life = crit ? 0.8 : 0.6; // a critical hit's number stays a little longer
@@ -92,5 +98,5 @@ export function popNumber(at, amount, crit = false) {
     number.opacity = age < life - 0.25 ? 1 : 1 - (age - (life - 0.25)) / 0.25;
     if (age > life) destroy(number);
   });
-  number.onDraw(() => drawShadowText(label, vec2(0, 0), crit ? 16 : 8, crit ? GOLD : LIGHT, "center", number.opacity));
+  number.onDraw(() => drawShadowText(label, vec2(0, 0), size, colorOf, "center", number.opacity));
 }

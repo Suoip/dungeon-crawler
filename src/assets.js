@@ -44,6 +44,8 @@ export function loadAssets() {
     imp: monster(368, 64, 16, 16),
     wogol: monster(368, 249, 16, 23),
     orc_warrior: monster(368, 177, 16, 23),
+    orc_shaman: monster(368, 201, 16, 23),
+    masked_orc: monster(368, 153, 16, 23),
     big_demon: monster(16, 428, 32, 36),
     ogre: monster(16, 380, 32, 36),
     big_zombie: monster(16, 332, 32, 36),
@@ -70,6 +72,9 @@ export function loadAssets() {
     // back wall: the top sits on the wall's cap, the lava pours down the
     // brick face, and the basin is on the floor in front of it.
     wall_fountain_top: tile(64, 0),
+    wall_banner_red: tile(16, 32),
+    wall_goo: tile(64, 80),
+    wall_goo_base: tile(64, 96),
     wall_fountain_mid_red: { ...tile(64, 16, TILE * 3, TILE), sliceX: 3, anims: { flow: { from: 0, to: 2, speed: 6, loop: true } } },
     wall_fountain_basin_red: { ...tile(64, 32, TILE * 3, TILE), sliceX: 3, anims: { flow: { from: 0, to: 2, speed: 6, loop: true } } },
     lever_left: tile(80, 208),
@@ -98,6 +103,7 @@ export function loadAssets() {
     weapon_double_axe: tile(288, 167, 16, 24),
     weapon_big_hammer: tile(291, 26, 10, 37),
     weapon_golden_sword: tile(291, 137, 10, 22),
+    weapon_red_gem_sword: tile(339, 10, 10, 21),
     necromancer: tile(368, 225, 16, 23),
     button_red_up: tile(16, 208),
     button_red_down: tile(32, 208),
