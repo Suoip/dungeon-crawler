@@ -207,16 +207,19 @@ function addTrail(player, reach) {
 // The hearts, big and centered at the bottom of the screen, a little
 // see-through so you can still see the floor under them. They're painted on
 // the floor (z 1): everything that moves walks over them, so a mob can never
-// hide behind them.
+// hide behind them. They're drawn at 2x up to the 7 that depth 2's ring
+// allows, and at 1x past that (the deeper rings' Extra hearts), mostly on
+// the bottom wall, so the row never spreads over more of the floor.
 export function addHearts(run) {
-  const SIZE = 13 * 2; // the heart sprite is 13 px wide, drawn at 2x
-  const GAP = 6;
+  const BIG = run.maxHearts <= 7 ? 2 : 1;
+  const SIZE = 13 * BIG; // the heart sprite is 13 px wide
+  const GAP = 3 * BIG;
   const total = run.maxHearts * SIZE + (run.maxHearts - 1) * GAP;
   const hearts = Array.from({ length: run.maxHearts }, (_, i) => add([
     sprite("heart_full"),
-    pos(GAME_WIDTH / 2 - total / 2 + i * (SIZE + GAP), GAME_HEIGHT - 6),
+    pos(Math.round(GAME_WIDTH / 2 - total / 2) + i * (SIZE + GAP), GAME_HEIGHT - 6), // whole pixels, so they're drawn crisp
     anchor("botleft"),
-    scale(2),
+    scale(BIG),
     opacity(0.85),
     z(1),
   ]));
@@ -230,10 +233,10 @@ export function addHearts(run) {
   hearts[0].onUpdate(() => {
     if (lastHeart()) {
       beating = true;
-      hearts[0].scale = vec2(2 + 0.25 * Math.max(0, Math.sin(time() * 6)) ** 4);
+      hearts[0].scale = vec2(BIG * (1 + 0.125 * Math.max(0, Math.sin(time() * 6)) ** 4));
     } else if (beating) {
       beating = false; // healed (or lost it): back to its normal size
-      hearts[0].scale = vec2(2);
+      hearts[0].scale = vec2(BIG);
     }
   });
   const vignette = add([pos(0, TOP), z(44)]);
@@ -259,13 +262,13 @@ export function addHearts(run) {
     pop() {
       const heart = hearts[run.hearts];
       if (!heart) return;
-      tween(3.2, 2, 0.3, (s) => (heart.scale = vec2(s)), easings.easeOutBack);
+      tween(1.6 * BIG, BIG, 0.3, (s) => (heart.scale = vec2(s)), easings.easeOutBack);
     },
     // And the one just won back.
     grow() {
       const heart = hearts[run.hearts - 1];
       if (!heart) return;
-      tween(3.2, 2, 0.4, (s) => (heart.scale = vec2(s)), easings.easeOutElastic);
+      tween(1.6 * BIG, BIG, 0.4, (s) => (heart.scale = vec2(s)), easings.easeOutElastic);
     },
   };
 }

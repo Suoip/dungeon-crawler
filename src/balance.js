@@ -4,12 +4,13 @@
 // things can read the same file:
 //   - the game (in the browser), from step 3 of DESIGN.md on
 //   - the pacing simulator (tools/simulate.mjs, in Node), which "plays" these
-//     numbers to check how long depth 1 takes and that every good run can
-//     buy something (DESIGN.md section 8)
+//     numbers to check how long each depth takes and that every good run
+//     can buy something (DESIGN.md section 8)
 // To tune the game, change numbers here and run the simulator again.
 //
-// Depths 1 (the crypt) and 2 (the goblin warrens) exist so far. Times are in
-// seconds, distances in game pixels, chances from 0 (never) to 1 (always).
+// The five depths: the crypt, the goblin warrens, the orc fort, the sunken
+// swamp and the demon pit. Times are in seconds, distances in game pixels,
+// chances from 0 (never) to 1 (always).
 
 export const BALANCE = {
   // ---- The run ----------------------------------------------------------
@@ -76,7 +77,8 @@ export const BALANCE = {
   },
 
   // How much tougher and richer each sub-depth is than the one above:
-  // sub-depth n has hp × hp^(n-1) and gold × gold^(n-1).
+  // sub-depth n has hp × hp^(n-1) and gold × gold^(n-1). A depth can have
+  // its own (its `growth`, in `depths`).
   growth: { hp: 1.265, gold: 1.064 },
 
   // ---- Spawning -----------------------------------------------------------
@@ -94,7 +96,7 @@ export const BALANCE = {
 
   // ---- Breakables -------------------------------------------------------
   // Things in rooms you can smash for a little gold. Their hp and gold grow
-  // with the sub-depth like the monsters'.
+  // with the sub-depth and the depth, like the monsters'.
   breakables: {
     pot:   { hp: 1, gold: 1 },    // one hit
     crate: { hp: 4, gold: 4 },    // a few hits
@@ -107,9 +109,14 @@ export const BALANCE = {
   //   name    shown on the sign where you pick the depth (in the underworld)
   //   scale   how much tougher (hp) and richer (gold) its monsters are than
   //           their numbers in `mobs`. Each depth starts the power curve
-  //           over: the 11 damage that one-shots the crypt's monsters by the
-  //           end takes 3 hits on a 30 hp goblin, like 1 damage on a 3 hp
-  //           slug at the start of the crypt
+  //           over: the 11 damage the hero has by the crypt's end (3-4 hits
+  //           on its last room's monsters) takes about a dozen hits on a
+  //           goblin (more than the 3 a slug took at the crypt's start,
+  //           because the swing and the arc carry over). Depth 2 is about
+  //           30x richer than the crypt and each depth after it hundreds of
+  //           times richer than the one before, and its ring is priced to
+  //           match
+  //   growth  its own `growth` (see above), if it has one
   //   tint    the color its floor and walls are tinted (none: as drawn)
   //   decor   what hangs on its back wall (room.js addDecor), if anything
   //   bones   whether its kills drop bones (the crypt's material, see drops)
@@ -151,7 +158,7 @@ export const BALANCE = {
         { xp: 20, spawns: { slug: 33, tiny_zombie: 34, skeleton: 33 }, breakables: ["crate", "crate", "urn"], hazard: 0.01, chest: { chance: 0.7, mimic: 0.6 } },
         { xp: 23, spawns: { slug: 30, tiny_zombie: 35, skeleton: 35 }, breakables: ["crate", "crate"] }, // then the boss
       ],
-      boss: { type: "big_zombie", hp: 300, gold: 300, threat: 0.08, minion: "tiny_zombie" },
+      boss: { type: "big_zombie", hp: 300, gold: 33, threat: 0.08, minion: "tiny_zombie" },
     },
     {
       // The goblin warrens: goblins chase, imps (from room 3) keep their
@@ -159,45 +166,47 @@ export const BALANCE = {
       // explode. The ogre stands in for the depth's boss until it has its
       // own.
       name: "WARRENS",
-      scale: { hp: 10, gold: 10 },
+      scale: { hp: 42, gold: 29 },
+      growth: { hp: 1.080 }, // each room's monsters are this much tougher than the last's
       tint: [196, 168, 120],
       bones: false,
       rooms: [
-        { xp: 6, spawns: { goblin: 100 }, breakables: ["pot", "pot"] },
-        { xp: 5, spawns: { goblin: 100 }, breakables: ["pot", "pot"] },
-        { xp: 9, spawns: { goblin: 75, imp: 25 }, breakables: ["pot", "pot"] },
-        { xp: 10, spawns: { goblin: 60, imp: 40 }, breakables: ["pot", "pot"], hazard: 0.005 },
-        { xp: 12, spawns: { goblin: 50, imp: 40, wogol: 10 }, breakables: ["pot", "pot"], hazard: 0.005 },
-        { xp: 13, spawns: { goblin: 45, imp: 38, wogol: 17 }, breakables: ["pot", "crate", "crate"], hazard: 0.005, chest: { chance: 0.6, mimic: 0 } },
-        { xp: 15, spawns: { goblin: 40, imp: 37, wogol: 23 }, breakables: ["pot", "crate", "crate"], hazard: 0.005, chest: { chance: 0.7, mimic: 0.5 } },
-        { xp: 17, spawns: { goblin: 36, imp: 35, wogol: 29 }, breakables: ["pot", "crate", "crate"], hazard: 0.01, chest: { chance: 0.7, mimic: 0.5 } },
-        { xp: 20, spawns: { goblin: 33, imp: 34, wogol: 33 }, breakables: ["crate", "crate", "urn"], hazard: 0.01, chest: { chance: 0.7, mimic: 0.6 } },
-        { xp: 23, spawns: { goblin: 30, imp: 35, wogol: 35 }, breakables: ["crate", "crate"] }, // then the boss
+        { xp: 8, spawns: { goblin: 100 }, breakables: ["pot", "pot"] },
+        { xp: 7, spawns: { goblin: 100 }, breakables: ["pot", "pot"] },
+        { xp: 12, spawns: { goblin: 75, imp: 25 }, breakables: ["pot", "pot"] },
+        { xp: 14, spawns: { goblin: 60, imp: 40 }, breakables: ["pot", "pot"], hazard: 0.005 },
+        { xp: 17, spawns: { goblin: 50, imp: 40, wogol: 10 }, breakables: ["pot", "pot"], hazard: 0.005 },
+        { xp: 18, spawns: { goblin: 45, imp: 38, wogol: 17 }, breakables: ["pot", "crate", "crate"], hazard: 0.005, chest: { chance: 0.6, mimic: 0 } },
+        { xp: 21, spawns: { goblin: 40, imp: 37, wogol: 23 }, breakables: ["pot", "crate", "crate"], hazard: 0.005, chest: { chance: 0.7, mimic: 0.5 } },
+        { xp: 23, spawns: { goblin: 36, imp: 35, wogol: 29 }, breakables: ["pot", "crate", "crate"], hazard: 0.01, chest: { chance: 0.7, mimic: 0.5 } },
+        { xp: 28, spawns: { goblin: 33, imp: 34, wogol: 33 }, breakables: ["crate", "crate", "urn"], hazard: 0.01, chest: { chance: 0.7, mimic: 0.6 } },
+        { xp: 32, spawns: { goblin: 30, imp: 35, wogol: 35 }, breakables: ["crate", "crate"] }, // then the boss
       ],
-      boss: { type: "ogre", hp: 3000, gold: 3000, threat: 0.1, minion: "goblin" },
+      boss: { type: "ogre", hp: 2400, gold: 1700, threat: 0.1, minion: "goblin" },
     },
     {
       // The orc fort: orc warriors shove, shamans (from room 3) heal the
       // others from a distance, and masked orcs (from room 5) hide behind
       // shields. The ogre stands in for the depth's boss, raising orcs.
       name: "FORT",
-      scale: { hp: 100, gold: 100 },
+      scale: { hp: 630, gold: 15000 },
+      growth: { hp: 1.071 }, // each room's monsters are this much tougher than the last's
       tint: [148, 164, 204],
       decor: "banners",
       bones: false,
       rooms: [
-        { xp: 6, spawns: { orc_warrior: 100 }, breakables: ["pot", "pot"] },
-        { xp: 5, spawns: { orc_warrior: 100 }, breakables: ["pot", "pot"] },
-        { xp: 9, spawns: { orc_warrior: 75, orc_shaman: 25 }, breakables: ["pot", "pot"] },
-        { xp: 10, spawns: { orc_warrior: 60, orc_shaman: 40 }, breakables: ["pot", "pot"], hazard: 0.005 },
-        { xp: 12, spawns: { orc_warrior: 50, orc_shaman: 40, masked_orc: 10 }, breakables: ["pot", "pot"], hazard: 0.005 },
-        { xp: 13, spawns: { orc_warrior: 45, orc_shaman: 38, masked_orc: 17 }, breakables: ["pot", "crate", "crate"], hazard: 0.005, chest: { chance: 0.6, mimic: 0 } },
-        { xp: 15, spawns: { orc_warrior: 40, orc_shaman: 37, masked_orc: 23 }, breakables: ["pot", "crate", "crate"], hazard: 0.005, chest: { chance: 0.7, mimic: 0.5 } },
-        { xp: 17, spawns: { orc_warrior: 36, orc_shaman: 35, masked_orc: 29 }, breakables: ["pot", "crate", "crate"], hazard: 0.01, chest: { chance: 0.7, mimic: 0.5 } },
-        { xp: 20, spawns: { orc_warrior: 33, orc_shaman: 34, masked_orc: 33 }, breakables: ["crate", "crate", "urn"], hazard: 0.01, chest: { chance: 0.7, mimic: 0.6 } },
-        { xp: 23, spawns: { orc_warrior: 30, orc_shaman: 35, masked_orc: 35 }, breakables: ["crate", "crate"] }, // then the boss
+        { xp: 7, spawns: { orc_warrior: 100 }, breakables: ["pot", "pot"] },
+        { xp: 7, spawns: { orc_warrior: 100 }, breakables: ["pot", "pot"] },
+        { xp: 13, spawns: { orc_warrior: 75, orc_shaman: 25 }, breakables: ["pot", "pot"] },
+        { xp: 16, spawns: { orc_warrior: 60, orc_shaman: 40 }, breakables: ["pot", "pot"], hazard: 0.005 },
+        { xp: 21, spawns: { orc_warrior: 50, orc_shaman: 40, masked_orc: 10 }, breakables: ["pot", "pot"], hazard: 0.005 },
+        { xp: 25, spawns: { orc_warrior: 45, orc_shaman: 38, masked_orc: 17 }, breakables: ["pot", "crate", "crate"], hazard: 0.005, chest: { chance: 0.6, mimic: 0 } },
+        { xp: 32, spawns: { orc_warrior: 40, orc_shaman: 37, masked_orc: 23 }, breakables: ["pot", "crate", "crate"], hazard: 0.005, chest: { chance: 0.7, mimic: 0.5 } },
+        { xp: 40, spawns: { orc_warrior: 36, orc_shaman: 35, masked_orc: 29 }, breakables: ["pot", "crate", "crate"], hazard: 0.01, chest: { chance: 0.7, mimic: 0.5 } },
+        { xp: 51, spawns: { orc_warrior: 33, orc_shaman: 34, masked_orc: 33 }, breakables: ["crate", "crate", "urn"], hazard: 0.01, chest: { chance: 0.7, mimic: 0.6 } },
+        { xp: 65, spawns: { orc_warrior: 30, orc_shaman: 35, masked_orc: 35 }, breakables: ["crate", "crate"] }, // then the boss
       ],
-      boss: { type: "ogre", hp: 30000, gold: 30000, threat: 0.12, minion: "orc_warrior" },
+      boss: { type: "ogre", hp: 230000, gold: 620000, threat: 0.12, minion: "orc_warrior" },
     },
     {
       // The sunken swamp: swampies split in two, muddies (from room 3) leave
@@ -205,46 +214,48 @@ export const BALANCE = {
       // from a distance. A swamp-green Big Zombie stands in for the depth's
       // boss, raising swampies.
       name: "SWAMP",
-      scale: { hp: 1000, gold: 1000 },
+      scale: { hp: 11000, gold: 6500000 },
+      growth: { hp: 1.100 }, // each room's monsters are this much tougher than the last's
       tint: [140, 180, 140],
       decor: "goo",
       bones: false,
       rooms: [
-        { xp: 6, spawns: { swampy: 100 }, breakables: ["pot", "pot"] },
-        { xp: 5, spawns: { swampy: 100 }, breakables: ["pot", "pot"] },
-        { xp: 9, spawns: { swampy: 75, muddy: 25 }, breakables: ["pot", "pot"] },
-        { xp: 10, spawns: { swampy: 60, muddy: 40 }, breakables: ["pot", "pot"], hazard: 0.005 },
-        { xp: 12, spawns: { swampy: 50, muddy: 40, necromancer: 10 }, breakables: ["pot", "pot"], hazard: 0.005 },
-        { xp: 13, spawns: { swampy: 45, muddy: 38, necromancer: 17 }, breakables: ["pot", "crate", "crate"], hazard: 0.005, chest: { chance: 0.6, mimic: 0 } },
-        { xp: 15, spawns: { swampy: 40, muddy: 37, necromancer: 23 }, breakables: ["pot", "crate", "crate"], hazard: 0.005, chest: { chance: 0.7, mimic: 0.5 } },
-        { xp: 17, spawns: { swampy: 36, muddy: 35, necromancer: 29 }, breakables: ["pot", "crate", "crate"], hazard: 0.01, chest: { chance: 0.7, mimic: 0.5 } },
-        { xp: 20, spawns: { swampy: 33, muddy: 34, necromancer: 33 }, breakables: ["crate", "crate", "urn"], hazard: 0.01, chest: { chance: 0.7, mimic: 0.6 } },
-        { xp: 23, spawns: { swampy: 30, muddy: 35, necromancer: 35 }, breakables: ["crate", "crate"] }, // then the boss
+        { xp: 7, spawns: { swampy: 100 }, breakables: ["pot", "pot"] },
+        { xp: 7, spawns: { swampy: 100 }, breakables: ["pot", "pot"] },
+        { xp: 13, spawns: { swampy: 75, muddy: 25 }, breakables: ["pot", "pot"] },
+        { xp: 17, spawns: { swampy: 60, muddy: 40 }, breakables: ["pot", "pot"], hazard: 0.005 },
+        { xp: 23, spawns: { swampy: 50, muddy: 40, necromancer: 10 }, breakables: ["pot", "pot"], hazard: 0.005 },
+        { xp: 28, spawns: { swampy: 45, muddy: 38, necromancer: 17 }, breakables: ["pot", "crate", "crate"], hazard: 0.005, chest: { chance: 0.6, mimic: 0 } },
+        { xp: 37, spawns: { swampy: 40, muddy: 37, necromancer: 23 }, breakables: ["pot", "crate", "crate"], hazard: 0.005, chest: { chance: 0.7, mimic: 0.5 } },
+        { xp: 47, spawns: { swampy: 36, muddy: 35, necromancer: 29 }, breakables: ["pot", "crate", "crate"], hazard: 0.01, chest: { chance: 0.7, mimic: 0.5 } },
+        { xp: 63, spawns: { swampy: 33, muddy: 34, necromancer: 33 }, breakables: ["crate", "crate", "urn"], hazard: 0.01, chest: { chance: 0.7, mimic: 0.6 } },
+        { xp: 82, spawns: { swampy: 30, muddy: 35, necromancer: 35 }, breakables: ["crate", "crate"] }, // then the boss
       ],
-      boss: { type: "big_zombie", name: "BOG ZOMBIE", tint: [150, 220, 170], hp: 300000, gold: 300000, threat: 0.12, minion: "swampy" },
+      boss: { type: "big_zombie", name: "BOG ZOMBIE", tint: [150, 220, 170], hp: 8100000, gold: 250000000, threat: 0.12, minion: "swampy" },
     },
     {
       // The demon pit: chorts teleport next to you, pumpkin dudes (from room
       // 3) leap at you, and plague doctors (from room 5) lob flasks that
       // burst into fire. The Big Demon waits at the bottom, raising chorts.
       name: "PIT",
-      scale: { hp: 10000, gold: 10000 },
+      scale: { hp: 93000, gold: 2800000000 },
+      growth: { hp: 1.046 }, // each room's monsters are this much tougher than the last's
       tint: [196, 112, 148],
       decor: "lava",
       bones: false,
       rooms: [
+        { xp: 7, spawns: { chort: 100 }, breakables: ["pot", "pot"] },
         { xp: 6, spawns: { chort: 100 }, breakables: ["pot", "pot"] },
-        { xp: 5, spawns: { chort: 100 }, breakables: ["pot", "pot"] },
-        { xp: 9, spawns: { chort: 75, pumpkin_dude: 25 }, breakables: ["pot", "pot"] },
-        { xp: 10, spawns: { chort: 60, pumpkin_dude: 40 }, breakables: ["pot", "pot"], hazard: 0.005 },
-        { xp: 12, spawns: { chort: 50, pumpkin_dude: 40, doc: 10 }, breakables: ["pot", "pot"], hazard: 0.005 },
-        { xp: 13, spawns: { chort: 45, pumpkin_dude: 38, doc: 17 }, breakables: ["pot", "crate", "crate"], hazard: 0.005, chest: { chance: 0.6, mimic: 0 } },
-        { xp: 15, spawns: { chort: 40, pumpkin_dude: 37, doc: 23 }, breakables: ["pot", "crate", "crate"], hazard: 0.005, chest: { chance: 0.7, mimic: 0.5 } },
-        { xp: 17, spawns: { chort: 36, pumpkin_dude: 35, doc: 29 }, breakables: ["pot", "crate", "crate"], hazard: 0.01, chest: { chance: 0.7, mimic: 0.5 } },
-        { xp: 20, spawns: { chort: 33, pumpkin_dude: 34, doc: 33 }, breakables: ["crate", "crate", "urn"], hazard: 0.01, chest: { chance: 0.7, mimic: 0.6 } },
-        { xp: 23, spawns: { chort: 30, pumpkin_dude: 35, doc: 35 }, breakables: ["crate", "crate"] }, // then the boss
+        { xp: 13, spawns: { chort: 75, pumpkin_dude: 25 }, breakables: ["pot", "pot"] },
+        { xp: 16, spawns: { chort: 60, pumpkin_dude: 40 }, breakables: ["pot", "pot"], hazard: 0.005 },
+        { xp: 22, spawns: { chort: 50, pumpkin_dude: 40, doc: 10 }, breakables: ["pot", "pot"], hazard: 0.005 },
+        { xp: 27, spawns: { chort: 45, pumpkin_dude: 38, doc: 17 }, breakables: ["pot", "crate", "crate"], hazard: 0.005, chest: { chance: 0.6, mimic: 0 } },
+        { xp: 35, spawns: { chort: 40, pumpkin_dude: 37, doc: 23 }, breakables: ["pot", "crate", "crate"], hazard: 0.005, chest: { chance: 0.7, mimic: 0.5 } },
+        { xp: 45, spawns: { chort: 36, pumpkin_dude: 35, doc: 29 }, breakables: ["pot", "crate", "crate"], hazard: 0.01, chest: { chance: 0.7, mimic: 0.5 } },
+        { xp: 60, spawns: { chort: 33, pumpkin_dude: 34, doc: 33 }, breakables: ["crate", "crate", "urn"], hazard: 0.01, chest: { chance: 0.7, mimic: 0.6 } },
+        { xp: 79, spawns: { chort: 30, pumpkin_dude: 35, doc: 35 }, breakables: ["crate", "crate"] }, // then the boss
       ],
-      boss: { type: "big_demon", hp: 3000000, gold: 3000000, threat: 0.15, minion: "chort" },
+      boss: { type: "big_demon", hp: 44000000, gold: 120000000000, threat: 0.15, minion: "chort" },
     },
   ],
 
@@ -284,18 +295,25 @@ export const BALANCE = {
     { id: "quicker", name: "Quicker swing", parent: "sharper", levels: 10, cost: 18, growth: 1.47, effect: { stat: "swingEvery", mul: 0.91 } },
     { id: "reach", name: "Longer reach", parent: "quicker", levels: 5, cost: 24, growth: 1.48, effect: { stat: "reach", mul: 1.1 } },
     { id: "arc", name: "Wider arc", parent: "reach", levels: 3, cost: 48, growth: 1.55, effect: { stat: "arc", add: 20 } },
-    { id: "keen", name: "Keen edge", parent: "arc", levels: 10, cost: 20, growth: 1.45, effect: { stat: "damage", add: 10 }, depth: 2 },
-    { id: "crit", name: "Critical hits", parent: "keen", levels: 5, cost: 300, growth: 1.5, effect: { stat: "critChance", add: 0.04 }, depth: 2 },
-    { id: "edge3", name: "Brutal edge", parent: "crit", levels: 10, cost: 200, growth: 1.45, effect: { stat: "damage", add: 100 }, depth: 3 },
-    { id: "edge4", name: "Savage edge", parent: "edge3", levels: 10, cost: 2000, growth: 1.45, effect: { stat: "damage", add: 1000 }, depth: 4 },
-    { id: "edge5", name: "Demon edge", parent: "edge4", levels: 10, cost: 20000, growth: 1.45, effect: { stat: "damage", add: 10000 }, depth: 5 },
+    { id: "keen", name: "Keen edge", parent: "arc", levels: 10, cost: 190, growth: 1.45, effect: { stat: "damage", add: 10 }, depth: 2 },
+    { id: "crit", name: "Critical hits", parent: "keen", levels: 5, cost: 3000, growth: 1.5, effect: { stat: "critChance", add: 0.04 }, depth: 2 },
+    { id: "edge3", name: "Brutal edge", parent: "crit", levels: 10, cost: 100000, growth: 1.45, effect: { stat: "damage", add: 100 }, depth: 3 },
+    { id: "edge4", name: "Savage edge", parent: "edge3", levels: 10, cost: 110000000, growth: 1.45, effect: { stat: "damage", add: 1000 }, depth: 4 },
+    { id: "edge5", name: "Demon edge", parent: "edge4", levels: 10, cost: 48000000000, growth: 1.45, effect: { stat: "damage", add: 10000 }, depth: 5 },
+    // Depths 3-5's copies of depth 2's extras, one more of each per ring
+    { id: "crit3", name: "Critical hits II", parent: "edge3", levels: 5, cost: 1600000, growth: 1.5, effect: { stat: "critChance", add: 0.04 }, depth: 3 },
+    { id: "crit4", name: "Critical hits III", parent: "edge4", levels: 5, cost: 1800000000, growth: 1.5, effect: { stat: "critChance", add: 0.04 }, depth: 4 },
+    { id: "crit5", name: "Critical hits IV", parent: "edge5", levels: 5, cost: 800000000000, growth: 1.5, effect: { stat: "critChance", add: 0.04 }, depth: 5 },
 
     // Hearts
     { id: "heart", name: "Extra heart", parent: "descend", levels: 4, cost: 3, growth: 1.6, effect: { stat: "hearts", add: 1 } },
     { id: "nerves", name: "Steady nerves", parent: "heart", levels: 3, cost: 59, growth: 1.55, effect: { stat: "invincibleFor", add: 0.25 } },
     // After Extra heart, because a heart only drops while you're missing one.
     { id: "lucky", name: "Lucky hearts", parent: "heart", levels: 5, cost: 72, growth: 1.5, effect: { stat: "heartChance", add: 0.004 } },
-    { id: "heart2", name: "Extra heart II", parent: "heart", levels: 2, cost: 80, growth: 1.6, effect: { stat: "hearts", add: 1 }, depth: 2 },
+    { id: "heart2", name: "Extra heart II", parent: "heart", levels: 2, cost: 790, growth: 1.6, effect: { stat: "hearts", add: 1 }, depth: 2 },
+    { id: "heart3", name: "Extra heart III", parent: "heart2", levels: 2, cost: 420000, growth: 1.6, effect: { stat: "hearts", add: 1 }, depth: 3 },
+    { id: "heart4", name: "Extra heart IV", parent: "heart3", levels: 2, cost: 460000000, growth: 1.6, effect: { stat: "hearts", add: 1 }, depth: 4 },
+    { id: "heart5", name: "Extra heart V", parent: "heart4", levels: 2, cost: 200000000000, growth: 1.6, effect: { stat: "hearts", add: 1 }, depth: 5 },
 
     // Time
     { id: "time", name: "More time", parent: "descend", levels: 10, cost: 2, growth: 1.42, effect: { stat: "startTime", add: 4 }, perDepth: true },
@@ -303,48 +321,57 @@ export const BALANCE = {
     { id: "orbs", name: "Time orbs", parent: "wind", levels: 1, cost: 160, growth: 1, effect: { unlock: "timeOrbs" } },
     // Orbs come from kills, and depth 1 has too few kills for these to pay
     // off, so they're an investment for depth 2.
-    { id: "orbFinder", name: "Orb finder", parent: "orbs", levels: 5, cost: 1200, growth: 1.5, effect: { stat: "timeOrbChance", add: 0.004 }, depth: 2 },
-    { id: "biggerOrbs", name: "Bigger orbs", parent: "orbFinder", levels: 3, cost: 2000, growth: 1.55, effect: { stat: "timeOrbSeconds", add: 0.5 }, depth: 2 },
-    { id: "time2", name: "More time II", parent: "time", levels: 10, cost: 20, growth: 1.42, effect: { stat: "startTime", add: 4 }, depth: 2, perDepth: true },
-    { id: "wind2", name: "Second wind II", parent: "time2", levels: 5, cost: 290, growth: 1.52, effect: { stat: "timePerSubDepth", add: 1.5 }, depth: 2, perDepth: true },
-    { id: "time3", name: "More time III", parent: "wind2", levels: 10, cost: 200, growth: 1.42, effect: { stat: "startTime", add: 4 }, depth: 3, perDepth: true },
-    { id: "wind3", name: "Second wind III", parent: "time3", levels: 5, cost: 2900, growth: 1.52, effect: { stat: "timePerSubDepth", add: 1.5 }, depth: 3, perDepth: true },
-    { id: "time4", name: "More time IV", parent: "wind3", levels: 10, cost: 2000, growth: 1.42, effect: { stat: "startTime", add: 4 }, depth: 4, perDepth: true },
-    { id: "wind4", name: "Second wind IV", parent: "time4", levels: 5, cost: 29000, growth: 1.52, effect: { stat: "timePerSubDepth", add: 1.5 }, depth: 4, perDepth: true },
-    { id: "time5", name: "More time V", parent: "wind4", levels: 10, cost: 20000, growth: 1.42, effect: { stat: "startTime", add: 4 }, depth: 5, perDepth: true },
-    { id: "wind5", name: "Second wind V", parent: "time5", levels: 5, cost: 290000, growth: 1.52, effect: { stat: "timePerSubDepth", add: 1.5 }, depth: 5, perDepth: true },
+    { id: "orbFinder", name: "Orb finder", parent: "orbs", levels: 5, cost: 12000, growth: 1.5, effect: { stat: "timeOrbChance", add: 0.004 }, depth: 2 },
+    { id: "biggerOrbs", name: "Bigger orbs", parent: "orbFinder", levels: 3, cost: 19000, growth: 1.55, effect: { stat: "timeOrbSeconds", add: 0.5 }, depth: 2 },
+    { id: "orbFinder3", name: "Orb finder II", parent: "biggerOrbs", levels: 5, cost: 6500000, growth: 1.5, effect: { stat: "timeOrbChance", add: 0.004 }, depth: 3 },
+    { id: "biggerOrbs3", name: "Bigger orbs II", parent: "orbFinder3", levels: 3, cost: 10000000, growth: 1.55, effect: { stat: "timeOrbSeconds", add: 0.5 }, depth: 3 },
+    { id: "orbFinder4", name: "Orb finder III", parent: "biggerOrbs3", levels: 5, cost: 7100000000, growth: 1.5, effect: { stat: "timeOrbChance", add: 0.004 }, depth: 4 },
+    { id: "biggerOrbs4", name: "Bigger orbs III", parent: "orbFinder4", levels: 3, cost: 11000000000, growth: 1.55, effect: { stat: "timeOrbSeconds", add: 0.5 }, depth: 4 },
+    { id: "orbFinder5", name: "Orb finder IV", parent: "biggerOrbs4", levels: 5, cost: 3100000000000, growth: 1.5, effect: { stat: "timeOrbChance", add: 0.004 }, depth: 5 },
+    { id: "biggerOrbs5", name: "Bigger orbs IV", parent: "orbFinder5", levels: 3, cost: 4800000000000, growth: 1.55, effect: { stat: "timeOrbSeconds", add: 0.5 }, depth: 5 },
+    { id: "time2", name: "More time II", parent: "time", levels: 10, cost: 190, growth: 1.42, effect: { stat: "startTime", add: 4 }, depth: 2, perDepth: true },
+    { id: "wind2", name: "Second wind II", parent: "time2", levels: 5, cost: 2800, growth: 1.52, effect: { stat: "timePerSubDepth", add: 1.5 }, depth: 2, perDepth: true },
+    { id: "time3", name: "More time III", parent: "wind2", levels: 10, cost: 100000, growth: 1.42, effect: { stat: "startTime", add: 4 }, depth: 3, perDepth: true },
+    { id: "wind3", name: "Second wind III", parent: "time3", levels: 5, cost: 1500000, growth: 1.52, effect: { stat: "timePerSubDepth", add: 1.5 }, depth: 3, perDepth: true },
+    { id: "time4", name: "More time IV", parent: "wind3", levels: 10, cost: 110000000, growth: 1.42, effect: { stat: "startTime", add: 4 }, depth: 4, perDepth: true },
+    { id: "wind4", name: "Second wind IV", parent: "time4", levels: 5, cost: 1700000000, growth: 1.52, effect: { stat: "timePerSubDepth", add: 1.5 }, depth: 4, perDepth: true },
+    { id: "time5", name: "More time V", parent: "wind4", levels: 10, cost: 48000000000, growth: 1.42, effect: { stat: "startTime", add: 4 }, depth: 5, perDepth: true },
+    { id: "wind5", name: "Second wind V", parent: "time5", levels: 5, cost: 760000000000, growth: 1.52, effect: { stat: "timePerSubDepth", add: 1.5 }, depth: 5, perDepth: true },
 
     // Dash
     { id: "dash", name: "Dash", parent: "descend", levels: 1, cost: 6, growth: 1, effect: { unlock: "dash" } },
     { id: "feet", name: "Quick feet", parent: "dash", levels: 5, cost: 59, growth: 1.46, effect: { stat: "dashCooldown", mul: 0.9 } },
     { id: "charge", name: "Second charge", parent: "feet", levels: 1, cost: 300, growth: 1, effect: { stat: "dashCharges", add: 1 } },
-    { id: "feet2", name: "Quick feet II", parent: "charge", levels: 3, cost: 590, growth: 1.46, effect: { stat: "dashCooldown", mul: 0.9 }, depth: 2 },
+    { id: "feet2", name: "Quick feet II", parent: "charge", levels: 3, cost: 5500, growth: 1.46, effect: { stat: "dashCooldown", mul: 0.9 }, depth: 2 },
+    { id: "feet3", name: "Quick feet III", parent: "feet2", levels: 3, cost: 2900000, growth: 1.46, effect: { stat: "dashCooldown", mul: 0.9 }, depth: 3 },
+    { id: "feet4", name: "Quick feet IV", parent: "feet3", levels: 3, cost: 3100000000, growth: 1.46, effect: { stat: "dashCooldown", mul: 0.9 }, depth: 4 },
+    { id: "feet5", name: "Quick feet V", parent: "feet4", levels: 3, cost: 1400000000000, growth: 1.46, effect: { stat: "dashCooldown", mul: 0.9 }, depth: 5 },
 
     // Money
     { id: "greed", name: "Greed", parent: "descend", levels: 10, cost: 2, growth: 1.4, effect: { stat: "goldBonus", add: 0.1 } }, // on kills; Smash is for breakables
     { id: "magnet", name: "Magnet", parent: "greed", levels: 5, cost: 14, growth: 1.44, effect: { stat: "magnetRange", mul: 1.25 } },
     { id: "smash", name: "Smash", parent: "magnet", levels: 3, cost: 24, growth: 1.5, effect: { stat: "breakableBonus", add: 0.25 } },
-    { id: "greed2", name: "Greed II", parent: "smash", levels: 10, cost: 20, growth: 1.4, effect: { stat: "goldBonus", add: 0.1 }, depth: 2 },
-    { id: "greed3", name: "Greed III", parent: "greed2", levels: 10, cost: 200, growth: 1.4, effect: { stat: "goldBonus", add: 0.1 }, depth: 3 },
-    { id: "greed4", name: "Greed IV", parent: "greed3", levels: 10, cost: 2000, growth: 1.4, effect: { stat: "goldBonus", add: 0.1 }, depth: 4 },
-    { id: "greed5", name: "Greed V", parent: "greed4", levels: 10, cost: 20000, growth: 1.4, effect: { stat: "goldBonus", add: 0.1 }, depth: 5 },
+    { id: "greed2", name: "Greed II", parent: "smash", levels: 10, cost: 190, growth: 1.4, effect: { stat: "goldBonus", add: 0.1 }, depth: 2 },
+    { id: "greed3", name: "Greed III", parent: "greed2", levels: 10, cost: 100000, growth: 1.4, effect: { stat: "goldBonus", add: 0.1 }, depth: 3 },
+    { id: "greed4", name: "Greed IV", parent: "greed3", levels: 10, cost: 110000000, growth: 1.4, effect: { stat: "goldBonus", add: 0.1 }, depth: 4 },
+    { id: "greed5", name: "Greed V", parent: "greed4", levels: 10, cost: 48000000000, growth: 1.4, effect: { stat: "goldBonus", add: 0.1 }, depth: 5 },
 
     // Horde: more monsters, sooner, and more XP from each, so rooms fill
     // their bars faster. Depth 1's rooms fill before most hordes arrive, so
     // the two horde nodes are depth 2's.
     { id: "crowded", name: "Crowded rooms", parent: "descend", levels: 10, cost: 2, growth: 1.45, effect: { stat: "onEnter", add: 1 }, perDepth: true },
-    { id: "hordes", name: "Bigger hordes", parent: "crowded", levels: 10, cost: 400, growth: 1.45, effect: { stat: "horde", add: 1 }, depth: 2, perDepth: true },
-    { id: "restless", name: "Restless dead", parent: "hordes", levels: 5, cost: 600, growth: 1.5, effect: { stat: "hordeEvery", add: -2 }, depth: 2, perDepth: true },
-    { id: "crowded2", name: "Crowded rooms II", parent: "hordes", levels: 10, cost: 20, growth: 1.45, effect: { stat: "onEnter", add: 1 }, depth: 2, perDepth: true },
-    { id: "hordes3", name: "Bigger hordes II", parent: "restless", levels: 10, cost: 4000, growth: 1.45, effect: { stat: "horde", add: 1 }, depth: 3, perDepth: true },
-    { id: "restless3", name: "Restless dead II", parent: "hordes3", levels: 5, cost: 6000, growth: 1.5, effect: { stat: "hordeEvery", add: -2 }, depth: 3, perDepth: true },
-    { id: "crowded3", name: "Crowded rooms III", parent: "hordes3", levels: 10, cost: 200, growth: 1.45, effect: { stat: "onEnter", add: 1 }, depth: 3, perDepth: true },
-    { id: "hordes4", name: "Bigger hordes III", parent: "restless3", levels: 10, cost: 40000, growth: 1.45, effect: { stat: "horde", add: 1 }, depth: 4, perDepth: true },
-    { id: "restless4", name: "Restless dead III", parent: "hordes4", levels: 5, cost: 60000, growth: 1.5, effect: { stat: "hordeEvery", add: -2 }, depth: 4, perDepth: true },
-    { id: "crowded4", name: "Crowded rooms IV", parent: "hordes4", levels: 10, cost: 2000, growth: 1.45, effect: { stat: "onEnter", add: 1 }, depth: 4, perDepth: true },
-    { id: "hordes5", name: "Bigger hordes IV", parent: "restless4", levels: 10, cost: 400000, growth: 1.45, effect: { stat: "horde", add: 1 }, depth: 5, perDepth: true },
-    { id: "restless5", name: "Restless dead IV", parent: "hordes5", levels: 5, cost: 600000, growth: 1.5, effect: { stat: "hordeEvery", add: -2 }, depth: 5, perDepth: true },
-    { id: "crowded5", name: "Crowded rooms V", parent: "hordes5", levels: 10, cost: 20000, growth: 1.45, effect: { stat: "onEnter", add: 1 }, depth: 5, perDepth: true },
+    { id: "hordes", name: "Bigger hordes", parent: "crowded", levels: 10, cost: 3700, growth: 1.45, effect: { stat: "horde", add: 1 }, depth: 2, perDepth: true },
+    { id: "restless", name: "Restless dead", parent: "hordes", levels: 5, cost: 6000, growth: 1.5, effect: { stat: "hordeEvery", add: -2 }, depth: 2, perDepth: true },
+    { id: "crowded2", name: "Crowded rooms II", parent: "hordes", levels: 10, cost: 190, growth: 1.45, effect: { stat: "onEnter", add: 1 }, depth: 2, perDepth: true },
+    { id: "hordes3", name: "Bigger hordes II", parent: "restless", levels: 10, cost: 2000000, growth: 1.45, effect: { stat: "horde", add: 1 }, depth: 3, perDepth: true },
+    { id: "restless3", name: "Restless dead II", parent: "hordes3", levels: 5, cost: 3200000, growth: 1.5, effect: { stat: "hordeEvery", add: -2 }, depth: 3, perDepth: true },
+    { id: "crowded3", name: "Crowded rooms III", parent: "hordes3", levels: 10, cost: 100000, growth: 1.45, effect: { stat: "onEnter", add: 1 }, depth: 3, perDepth: true },
+    { id: "hordes4", name: "Bigger hordes III", parent: "restless3", levels: 10, cost: 2300000000, growth: 1.45, effect: { stat: "horde", add: 1 }, depth: 4, perDepth: true },
+    { id: "restless4", name: "Restless dead III", parent: "hordes4", levels: 5, cost: 3600000000, growth: 1.5, effect: { stat: "hordeEvery", add: -2 }, depth: 4, perDepth: true },
+    { id: "crowded4", name: "Crowded rooms IV", parent: "hordes4", levels: 10, cost: 110000000, growth: 1.45, effect: { stat: "onEnter", add: 1 }, depth: 4, perDepth: true },
+    { id: "hordes5", name: "Bigger hordes IV", parent: "restless4", levels: 10, cost: 1000000000000, growth: 1.45, effect: { stat: "horde", add: 1 }, depth: 5, perDepth: true },
+    { id: "restless5", name: "Restless dead IV", parent: "hordes5", levels: 5, cost: 1600000000000, growth: 1.5, effect: { stat: "hordeEvery", add: -2 }, depth: 5, perDepth: true },
+    { id: "crowded5", name: "Crowded rooms V", parent: "hordes5", levels: 10, cost: 48000000000, growth: 1.45, effect: { stat: "onEnter", add: 1 }, depth: 5, perDepth: true },
     { id: "calls", name: "Death calls", parent: "crowded", levels: 5, cost: 29, growth: 1.5, effect: { stat: "deathCall", add: 0.03 } },
     { id: "wisdom", name: "Wisdom", parent: "crowded", levels: 10, cost: 14, growth: 1.42, effect: { stat: "xpBonus", add: 0.1 } },
   ],
