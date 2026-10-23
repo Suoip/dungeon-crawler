@@ -155,8 +155,8 @@ What's in the rooms (built in step 6):
   skeleton.
 - **The boss's dash** stops at pillars, breakables and chests, as at a wall.
 - **Bones** (from room 6): a kill may drop one (2%, plus 2% a room deeper),
-  picked up like a coin. They're saved and shown on the run's results, and
-  don't buy anything yet.
+  picked up like a coin. They're saved and shown on the run's results. Bones
+  are the crypt's material (see section 6).
 
 ### Depth 2, the goblin warrens
 
@@ -298,6 +298,12 @@ to:
 - **No swinging at nothing:** when no monster is up (the room is empty, or
   the next ones are still rising), the swing is skipped, but its timer
   keeps the rhythm, so the next one comes exactly when it would have.
+- **Hits:** a monster's touch costs one heart, and so do the crypt's floor
+  spikes. A special attack costs more: two hearts in depths 1-3 and three
+  in depths 4-5 (balance.js `hits`), for the boss's moves, fireballs and
+  spit, fire, a wogol's blast and a landing's shockwave. So late runs end in
+  deaths too, not only on the clock. To match, an Extra heart node gives
+  more hearts deeper (two in depths 2-3, three in depths 4-5).
 - **The swing starts slow:** one every 1.5 s. Quicker swing brings it down
   to about 0.6 s late in the game, so getting faster is a reward you feel,
   and one more way to grow the hero.
@@ -353,15 +359,21 @@ to:
 ## 6. The economy
 
 - **Three currencies:**
-  - **Gold** drops everywhere and buys most nodes. It drops as green gems
-    worth 5 and coins for the rest (8 gold is a gem and 3 coins), so a room
-    full of kills doesn't bury the floor in coins, and the gems show you're
-    earning more.
-  - **A depth material** is different for each depth (bones in the crypt,
-    teeth in the warrens, and so on) and rarer. **It doesn't buy tree
-    upgrades.** It has another use, to be designed later. It's banked from
-    the first milestone on. In each depth it doesn't drop in sub-depths 1–5,
-    is rare in sub-depth 6, and gets more common in every deeper one.
+  - **Gold** drops everywhere and buys the tree's nodes. It drops as coins
+    and stones, the biggest that fit: a coin is worth 1, an emerald 5, a
+    sapphire 100, a ruby 10K, an amethyst 1M and a diamond 100M. So each
+    depth's kills bring their own stone (the crypt's emeralds, the warrens'
+    sapphires, the fort's rubies, the swamp's amethysts, the pit's
+    diamonds), the floor never fills with coins (a drop is at most 12
+    pieces, each worth a share more past that), and the stones show you're
+    earning more. The tree's Greed icons are each depth's stone.
+  - **A depth material** is different for each depth and rarer: bones in
+    the crypt, teeth in the warrens, tusks in the fort, slime in the swamp
+    and embers in the pit (balance.js depths' `material`). **It doesn't
+    buy tree upgrades:** it buys the depth's special upgrade, a few levels
+    of it, at the altar (each depth's gimmick and upgrade come one depth at
+    a time). In each depth it doesn't drop in sub-depths 1–5, is rare in
+    sub-depth 6, and gets more common in every deeper one.
   - **A boss trophy.** Each boss drops it once, the first time you beat it,
     so there are exactly 5 in the game. Repeat boss kills still pay gold.
     Its use is decided later, because the first milestone ends at the first
@@ -634,7 +646,7 @@ A rough estimate to size things by:
   the red.
 - **The run results** are written on the underworld floor where YOU DIED
   and the stats are now: YOU DIED or OUT OF TIME, then GOLD EARNED, DEEPEST
-  (for example 1-6) and KILLS, plus bones once they drop.
+  (for example 1-6) and KILLS, plus the depth's material once it drops.
 - **Beating a depth's boss** ends the run in the boss room: the boss bursts
   into its pile of coins, you gather them with no rush (the clock stopped
   when it appeared), then take the well down to the underworld or the

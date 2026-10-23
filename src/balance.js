@@ -121,7 +121,8 @@ export const BALANCE = {
   //   growth  its own `growth` (see above), if it has one
   //   tint    the color its floor and walls are tinted (none: as drawn)
   //   decor   what hangs on its back wall (room.js addDecor), if anything
-  //   bones   whether its kills drop bones (the crypt's material, see drops)
+  //   material what its kills drop from sub-depth 6 on (see drops), which buys
+  //           its special upgrade at the altar
   //   rooms   one entry per sub-depth, 1 to 10 (see below)
   //   boss    its boss (see below); a stand-in can have its own `name` and `tint`
   //
@@ -147,7 +148,7 @@ export const BALANCE = {
       name: "CRYPT",
       scale: { hp: 1, gold: 1 },
       tint: null,
-      bones: true,
+      material: "bones",
       rooms: [
         { xp: 6, spawns: { slug: 100 }, breakables: ["pot", "pot"] },
         { xp: 5, spawns: { slug: 100 }, breakables: ["pot", "pot"] },
@@ -171,7 +172,7 @@ export const BALANCE = {
       scale: { hp: 42, gold: 29 },
       growth: { hp: 1.080 }, // each room's monsters are this much tougher than the last's
       tint: [196, 168, 120],
-      bones: false,
+      material: "teeth",
       rooms: [
         { xp: 8, spawns: { goblin: 100 }, breakables: ["pot", "pot"] },
         { xp: 7, spawns: { goblin: 100 }, breakables: ["pot", "pot"] },
@@ -195,7 +196,7 @@ export const BALANCE = {
       growth: { hp: 1.071 }, // each room's monsters are this much tougher than the last's
       tint: [148, 164, 204],
       decor: "banners",
-      bones: false,
+      material: "tusks",
       rooms: [
         { xp: 7, spawns: { orc_warrior: 100 }, breakables: ["pot", "pot"] },
         { xp: 7, spawns: { orc_warrior: 100 }, breakables: ["pot", "pot"] },
@@ -220,7 +221,7 @@ export const BALANCE = {
       growth: { hp: 1.100 }, // each room's monsters are this much tougher than the last's
       tint: [140, 180, 140],
       decor: "goo",
-      bones: false,
+      material: "slime",
       rooms: [
         { xp: 7, spawns: { swampy: 100 }, breakables: ["pot", "pot"] },
         { xp: 7, spawns: { swampy: 100 }, breakables: ["pot", "pot"] },
@@ -233,7 +234,7 @@ export const BALANCE = {
         { xp: 63, spawns: { swampy: 33, muddy: 34, necromancer: 33 }, breakables: ["crate", "crate", "urn"], hazard: 0.01, chest: { chance: 0.7, mimic: 0.6 } },
         { xp: 82, spawns: { swampy: 30, muddy: 35, necromancer: 35 }, breakables: ["crate", "crate"] }, // then the boss
       ],
-      boss: { type: "big_zombie", name: "BOG ZOMBIE", tint: [150, 220, 170], hp: 8100000, gold: 250000000, threat: 0.12, minion: "swampy" },
+      boss: { type: "big_zombie", name: "BOG ZOMBIE", tint: [150, 220, 170], hp: 3200000, gold: 250000000, threat: 0.12, minion: "swampy" },
     },
     {
       // The demon pit: chorts teleport next to you, pumpkin dudes (from room
@@ -244,7 +245,7 @@ export const BALANCE = {
       growth: { hp: 1.046 }, // each room's monsters are this much tougher than the last's
       tint: [196, 112, 148],
       decor: "lava",
-      bones: false,
+      material: "embers",
       rooms: [
         { xp: 7, spawns: { chort: 100 }, breakables: ["pot", "pot"] },
         { xp: 6, spawns: { chort: 100 }, breakables: ["pot", "pot"] },
@@ -268,10 +269,17 @@ export const BALANCE = {
     heart: { chance: 0.008, step: 0.004 },
     // Time orbs only drop once they're unlocked in the tree.
     timeOrb: { chance: 0.005, seconds: 1 }, // much rarer than hearts (about 1 in 18 kills while one is missing)
-    // Bones (the crypt's material, for later): none before sub-depth 6, then
-    // more common the deeper you are.
-    bones: { fromSubDepth: 6, chance: 0.02, stepPerSubDepth: 0.02 },
+    // Each depth's material (bones, teeth, tusks, slime, embers: its
+    // `material`): none before sub-depth 6, then more common the deeper you are.
+    material: { fromSubDepth: 6, chance: 0.02, stepPerSubDepth: 0.02 },
   },
+
+  // ---- Hits ---------------------------------------------------------------
+  // A monster's touch costs one heart. A special attack costs more, by depth
+  // (depth 1 first): the boss's moves, shots and spit, fire, a wogol's blast,
+  // a landing's shockwave (everything tagged "hazard" except the crypt's
+  // floor spikes, which cost one).
+  hits: { special: [2, 2, 2, 3, 3] },
 
   // ---- The skill tree -----------------------------------------------------
   // Branches out from Descend (`@`) in the middle, drawn in `map`
@@ -319,7 +327,7 @@ export const BALANCE = {
       c: { name: "Critical hits", effect: { stat: "critChance", add: [null, 0.029, 0.025, 0.029, 0.05] }, worth: [null, 5.8, 4.47, 4.94, 4.56] },
       j: { name: "Critical damage", effect: { stat: "critDamage", add: [null, 0.17, 0.17, 0.25, 0.17] }, worth: [null, 13, 8.88, 16, 7.56] },
       // Hearts
-      h: { name: "Extra heart", effect: { stat: "hearts", add: 1 }, worth: [0.11, 0.69, 0.6, 0.38, 0.49] },
+      h: { name: "Extra heart", effect: { stat: "hearts", add: [1, 2, 2, 3, 3] }, worth: [0.11, 0.69, 0.6, 0.38, 0.49] }, // more per node deeper, where special attacks cost more (hits)
       n: { name: "Steady nerves", effect: { stat: "invincibleFor", add: [0.23, 0.05, 0.063, 0.05, 0.063] }, worth: [4.9, 0.15, 0.17, 0.12, 0.11] },
       l: { name: "Lucky hearts", effect: { stat: "heartChance", add: [0.004, 0.0033, 0.0025, 0.01, 0.01] }, needs: "h", worth: [4.59, 0.23, 0.14, 0.42, 0.44] }, // a heart only drops while you're missing one
       q: { name: "Mending", effect: { stat: "healOnClear", add: [0.067, 0.05, 0.05, 0.05, 0.1] }, worth: [0.26, 1.06, 1.03, 0.69, 1.68] },

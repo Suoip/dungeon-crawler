@@ -68,7 +68,8 @@ const ICONS = {
   ">": { draw: "dash" },
   f: [{ sprite: "flask_green", box: [4, 3, 8, 11] }, { draw: "dash3" }],
   "&": { draw: "dash2" },
-  g: [{ sprite: "coin", box: [0, 0, 6, 7], scale: 2 }, { draw: "gem" }, { draw: "gemBlue" }, { draw: "gemRed" }, { draw: "gemPurple" }],
+  // Greed: each depth's stone (coins.js): the coin, then sapphire, ruby, amethyst and diamond.
+  g: [{ sprite: "coin", box: [0, 0, 6, 7], scale: 2 }, { draw: "gemBlue" }, { draw: "gemRed" }, { draw: "gemPurple" }, { draw: "gemWhite" }],
   o: { sprite: "chest", box: [2, 3, 12, 12] },
   m: { draw: "magnet" },
   k: { sprite: "weapon_big_hammer", box: [0, 0, 10, 14] },
@@ -160,6 +161,8 @@ const PIXELS = {
   // Depth 5's: a purple hourglass and a purple gem.
   hourglass5: [[-4, -6, 8, 2, "purple"], [-4, 4, 8, 2, "purple"], [-3, -4, 6, 2, "light"], [-2, -2, 4, 2, "light"],
     [-1, 0, 2, 1, "light"], [-2, 1, 4, 1, "purple"], [-3, 2, 6, 2, "purple"]],
+  gemWhite: [[-3, -5, 6, 1, "light"], [-5, -4, 10, 3, "pale"], [-4, -1, 8, 2, "pale"], [-2, 1, 4, 2, "pale"], [-1, 3, 2, 1, "pale"],
+    [-4, -4, 3, 1, "light"], [1, 0, 3, 1, "blue"]],
   gemPurple: [[-3, -5, 6, 1, "lilac"], [-5, -4, 10, 3, "purple"], [-4, -1, 8, 2, "purple"], [-2, 1, 4, 2, "purple"], [-1, 3, 2, 1, "purple"],
     [-4, -4, 3, 1, "lilac"], [1, 0, 3, 1, "ink"]],
 };

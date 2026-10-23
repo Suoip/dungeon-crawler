@@ -1,4 +1,5 @@
 import { TILE, TOP, GAME_WIDTH, GAME_HEIGHT } from "./config.js";
+import { BALANCE } from "./balance.js";
 import { buildRoom } from "./room.js";
 import { addPlayer, setupPlayerMovement, setupDash } from "./player.js";
 import { newRun, depthLabel, depthData, unlockedDepths, chosenDepth } from "./dungeon.js";
@@ -131,7 +132,7 @@ async function writeResults(run, ending) {
     { text: `GOLD EARNED ${shortGold(run.gold)}`, color: [255, 205, 70] },
     { text: `TOTAL ${shortGold(getSave().gold)}` },
     { text: `DEEPEST ${depthLabel(run.depth, reached)}` },
-    { text: `KILLS ${run.kills}${run.bones ? `  BONES ${run.bones}` : ""}` },
+    { text: `KILLS ${run.kills}${run.material ? `  ${BALANCE.depths[run.depth - 1].material.toUpperCase()} ${run.material}` : ""}` },
     // The first time a depth's boss falls, the next depth opens.
     ...(run.unlocked ? [{ text: `DEPTH ${run.depth + 1} UNLOCKED`, color: [99, 199, 77] }] : []),
   ];

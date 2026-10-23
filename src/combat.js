@@ -278,7 +278,9 @@ export function addHearts(run) {
 // touches(player) says so. Each hit
 // costs a whole heart, knocks him back, and makes him blink for a moment,
 // during which he can't be hit again. `onDeath` runs when the last heart is
-// gone. How long the blinking lasts is stats.invincibleFor.
+// gone. A monster's touch costs one heart; a special attack (anything tagged
+// "hazard": the boss's moves, shots, fire, a blast, a shockwave) costs its
+// `damage`, or the depth's special hit (balance.js hits). How long the blinking lasts is stats.invincibleFor.
 export function setupHurt(player, run, heartsHud, room, onDeath, stats) {
   let invincibleUntil = 0;
   let knockVel = vec2(0);
@@ -301,9 +303,12 @@ export function setupHurt(player, run, heartsHud, room, onDeath, stats) {
     if (!attacker) return;
     attacker.onHit?.(); // a shot breaks when it hits
 
-    run.hearts--;
+    const lost = attacker.is("mob") ? 1 : attacker.damage ?? BALANCE.hits.special[run.depth - 1];
+    for (let i = 0; i < lost && run.hearts > 0; i++) {
+      run.hearts--;
+      heartsHud.pop();
+    }
     heartsHud.update();
-    heartsHud.pop();
     playSound("hurt");
     flashScreen([200, 30, 30], 0.3, 0.3);
     shakeScreen(3);
