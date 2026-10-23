@@ -36,7 +36,7 @@ const BOTTOM_ROWS = [1, 3, 5, 5, 7, 7];
 const HOLDS = TOP_ROWS.reduce((a, b) => a + b, 0); // px of sand each chamber holds (both the same)
 
 // Text with a dark copy one pixel down and right, so it reads on anything.
-function drawShadowText(content, at, size, rgb, anchorName, opacity = 1) {
+export function drawShadowText(content, at, size, rgb, anchorName, opacity = 1) {
   const options = { text: content, size, font: "pixel", anchor: anchorName, opacity };
   drawText({ ...options, pos: at.add(1, 1), color: rgb_(SHADOW) });
   drawText({ ...options, pos: at, color: rgb_(rgb) });
@@ -60,7 +60,8 @@ export const clockText = (seconds) => {
 };
 
 // The HUD for one room. `state()` returns { clock, stopped, xp, xpNeeded,
-// gold }, read every frame.
+// gold, goldTimes }, read every frame (`goldTimes`: what the pit's pacts
+// multiply dropped gold by, shown by the gold when it's more than 1).
 export function addHud(state) {
   let flashUntil = 0; // the bar shines for a moment once it's full
   let added = null;   // { text, at }: seconds a time orb just added
@@ -69,7 +70,7 @@ export function addHud(state) {
   hud.addTime = (seconds) => (added = { text: `+${seconds}S`, at: time() });
   hud.addSand = () => (sanded = time());
   hud.onDraw(() => {
-    const { clock, sand, stopped, xp, xpNeeded, gold } = state();
+    const { clock, sand, stopped, xp, xpNeeded, gold, goldTimes = 1 } = state();
     drawHourglass(vec2(4, 2), sand > 0 ? Math.min(1, clock / sand) : 0, !stopped && clock > 0, time() - sanded < 0.25);
 
     // The clock (green for a moment when time is added).
@@ -103,6 +104,7 @@ export function addHud(state) {
     drawShadowText(goldText, vec2(GAME_WIDTH - 6, 9), 8, GOLD, "right");
     const coinX = GAME_WIDTH - 10 - formatText({ text: goldText, size: 8, font: "pixel" }).width;
     drawSprite({ sprite: "coin", frame: 0, pos: vec2(coinX - 6, 5) });
+    if (goldTimes > 1) drawShadowText(`X${goldTimes.toFixed(1)}`, vec2(coinX - 9, 9), 8, RED, "right");
   });
   return hud;
 }

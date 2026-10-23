@@ -314,6 +314,29 @@ raising chorts.
   flask sails over pillars in an arc, with where it'll land marked on the
   floor, and bursts into three patches of fire that burn for 3 s.
 - **Big gold** shows short in the HUD: "123K", "12.3M".
+- **Pacts**, the pit's gimmick (`src/pacts.js`, the depth's `pacts` in
+  balance.js): as he lands in each of its rooms (the boss's too), the room
+  waits, with no clock and no monsters, and the pit offers three cards. He
+  picks one (1-3, or a click) before the fight starts. Each card is a
+  curse of one of four kinds, each kind once among the cards:
+  - **weaker:** he does less damage
+  - **slower:** he walks and dashes slower
+  - **tougher:** monsters (and the boss) have more health
+  - **harder:** monsters' hits cost more hearts
+
+  and is mild, harsh or brutal, at random (45% / 35% / 20%): -15%, -30% or
+  -50% of his damage or speed, +20%, +50% or +100% monster health, and +1
+  heart on a touch, +1 on every hit or +2 on every hit. Each pays: the gold
+  monsters drop is worth +20%, +50% or +120% more from then on (added up:
+  the HUD shows the total, like X2.2, by the gold). The cards stack for the
+  rest of the run. The card screen shows each card's strength in its color
+  (green, orange, red), its curse's mark, what it costs and what it pays.
+  The pit's own monsters and boss are tuned with the cards in mind: the
+  pacing simulator's player takes the mildest card on offer every room.
+- **Silver tongue**, the pit's special upgrade (bought with embers at the
+  altar, 3 levels for 5, 15 and 40 embers): more choice. Level 1 adds a
+  4th card, level 2 a reroll in every room (R, or the line under the
+  cards), and level 3 makes one card in every room always mild.
 
 ## The run timer
 
@@ -615,8 +638,8 @@ live in `src/balance.js`.
   | 2, the goblin warrens | 53 min | 58 min |
   | 3, the orc fort | 38 min | 42 min |
   | 4, the sunken swamp | 41 min | 52 min |
-  | 5, the demon pit | 44 min | 52 min |
-  | The whole game | about 3.6 hours | about 4.3 hours |
+  | 5, the demon pit | 39 min | 41 min |
+  | The whole game | about 3.6 hours | about 4.1 hours |
 
   Rooms 1-9 each take about 0-10 minutes to get through the first time,
   and the boss rooms up to about 15. The golden rule mostly holds; it slips

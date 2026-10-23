@@ -33,7 +33,8 @@ export function addPlayer(x, y) {
     // `wade` is how fast he gets through mud and the swamp's water (a share
     // of his speed: Waders raises them), and `inWater()` whether he's in it
     // (water.js sets it in the swamp).
-    { frozen: false, dashing: false, facing: vec2(1, 0), wade: { mud: MUD_SLOW, water: 1 }, inWater: () => false },
+    // `pace` is what his speed is multiplied by (the pit's pacts slow him).
+    { frozen: false, dashing: false, facing: vec2(1, 0), wade: { mud: MUD_SLOW, water: 1 }, inWater: () => false, pace: 1 },
   ]);
   // His shadow is hidden during cutscenes (they take away his body): falling
   // in has its own shadow, and in a doorway it would show over the door.
@@ -46,7 +47,7 @@ export function addPlayer(x, y) {
 // slower one counts.
 function footing(player) {
   const inMud = get("mud").some((mud) => mud.covers(player.pos));
-  return Math.min(inMud ? player.wade.mud : 1, player.inWater() ? player.wade.water : 1);
+  return player.pace * Math.min(inMud ? player.wade.mud : 1, player.inWater() ? player.wade.water : 1);
 }
 
 // Which way he's being told to go: the movement keys (WASD or the arrows,
@@ -139,7 +140,7 @@ export function setupDash(player, statsNow) {
     if (!statsNow().unlocked.has("dash") || player.frozen || player.dashing || ready < 1) return;
     const keys = heldDirection();
     const way = keys.len() > 0 ? keys.unit() : player.facing;
-    const reach = BALANCE.hero.dash.distance * (player.inWater() ? player.wade.water : 1);
+    const reach = BALANCE.hero.dash.distance * player.pace * (player.inWater() ? player.wade.water : 1);
     ready--;
     player.dashing = true;
     playSound("dash");
