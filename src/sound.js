@@ -43,6 +43,7 @@ const SOUNDS = {
   plate:    [0.3, 0.05, 400, 0, 0.01, 0.04, 3, 1, 0, 0, 0, 0, 0, 0.3],       // a pressure plate clicks down
   arrow:    [0.3, 0.05, 900, 0, 0.02, 0.12, 0, 1, -40, 0, 0, 0, 0, 0.2],     // an arrow shoots from the wall: a twang
   shieldReady: [0.15, 0.02, 1200, 0.01, 0.03, 0.1, 1, 1, 0, 0, 400, 0.05], // the Shield is ready again: a soft ting
+  waterRise: [0.25, 0.1, 120, 0.1, 0.2, 0.4, 0, 1, 0, 0, 0, 0, 0.05, 0.5, 0, 0.3], // the swamp's water creeps up a row: a low gurgle
   coin:     [0.2, 0.05, 1600, 0, 0.02, 0.12, 1, 1, 0, 0, 600, 0.03],         // a little jingle
   gem:      [0.2, 0.02, 2100, 0, 0.03, 0.2, 0, 1, 0, 0, 700, 0.04],          // a gem: a brighter, ringing chime
   orb:      [0.3, 0, 784, 0.01, 0.06, 0.25, 0, 1, 0, 0, 392, 0.06],          // a time orb: a bright two-note chime
