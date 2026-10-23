@@ -27,6 +27,7 @@ The game needs a keyboard. On phones and tablets, a notice says so.
 - **Rooms that fill an XP bar:** monsters rise as you land, a horde arrives every 20 seconds whether or not the room is clear, and when the last monster falls, another rises at once. Every kill fills the room's bar, split in two halves on either side of the door, and a full bar unchains it. The monsters still up stay, for their gold, if you want it.
 - **A clock that ends the run:** 15 seconds at the start, counting down only while you're in control, red and ticking for the last five. A monster's touch costs a whole heart, and a special attack (a boss's move, a fireball, fire, a blast) costs two or three; you start with one.
 - **The crypt's monsters:** slugs crawl about without hunting you, so the first rooms are calm practice; from room 3, tiny zombies chase you; from room 5, skeletons rattle as a warning and then charge in a straight line. Each kind gets more common after it first shows up, until the next one arrives, so room 10 is about a third of each. Deeper rooms bring more monsters, with more health. Every hit's damage pops up as a number.
+- **Restless graves in the crypt:** a tiny zombie or skeleton that falls may leave a grave, and climbs back out of it a few seconds later unless you walk over it and stamp it flat. Gravedigger, bought with bones in its own row at the top of the skill tree, makes each stamp pay some of the monster's gold again and a little time.
 - **Depth 5, the demon pit:** deep red with lava pouring down the walls, and the Big Demon at the bottom. Chorts mark a spot next to you with smoke and teleport onto it, pumpkin dudes leap at you and land with a shockwave, and plague doctors lob flasks over the pillars that burst into fire.
 - **Depth 4, the sunken swamp:** murky green with goo on the walls. Swampies split in two when they fall, muddies leave trails of mud that slow you down, and necromancers keep their distance and raise ice zombies.
 - **Depth 3, the orc fort:** cold stone with red banners. Orc warriors shove you across the room, orc shamans keep their distance and heal the monsters around them, and masked orcs block hits from the front with a shield, so you circle round them.
@@ -77,6 +78,7 @@ src/
   mobs.js             monster types, spawning, rising from the floor, chasing, the skeleton's charge, the mimic, the imp's distance-keeping, the wogol's blast
   shots.js            fireballs and spit: thrown at the hero, dodged, stopped by walls and pillars
   crypt.js            the rooms' pillars, floor spikes, breakables and chests
+  graves.js           the crypt's restless graves: left by fallen undead, stamped flat or risen from
   layouts.js          each depth's designed room layouts, as small text grids
   coins.js            coins, stones and the depths' materials on the floor, and the magnet
   hud.js              the clock (and the seconds time orbs add), the XP bar, the gold, and damage numbers

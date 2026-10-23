@@ -80,6 +80,14 @@ export function buyLevel(id, price) {
   write();
 }
 
+// Buys a level of a special upgrade (balance.js specials) for `cost` of its
+// depth's `material`.
+export function buySpecial(id, material, cost) {
+  save.materials[material] -= cost;
+  save.levels[`special:${id}`] = (save.levels[`special:${id}`] ?? 0) + 1;
+  write();
+}
+
 // The first time he's in the underworld, the title room gets its well.
 export function seeUnderworld() {
   if (save.seenUnderworld) return;
