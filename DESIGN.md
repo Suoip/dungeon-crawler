@@ -175,14 +175,16 @@ The same kind of rooms as the crypt, tinted a warm, earthy brown, with
 their own three layouts per room (the same breakables, spikes and chests as
 the crypt's room at that sub-depth, arranged as burrows). Its monsters have
 their own hp and gold scale (the depth's `scale` in `balance.js`), so the
-power curve starts over: a goblin starts at 126 hp, about a dozen hits for
+power curve starts over: a goblin starts at 96 hp, about nine hits for
 the 11 damage the hero has by the crypt's end (where its last room's
 monsters take 3-4). That's more
 hits than a slug took at the crypt's start (3), because everything else
 carries over (a swing more than twice as fast, an arc that catches several
 at once), so it's about the same struggle. Each room's monsters are 8%
 tougher than the last room's (`growth` in the depth's entry; the crypt's
-grow 26.5% a room), and the rooms' bars are bigger than the crypt's. The clock and the spawns
+grow 26.5% a room), and the rooms' bars are bigger than the crypt's.
+(Its monsters' health and its bars were lowered after the hard hits and
+the coin thieves had made it the slowest depth, at about 53 minutes.) The clock and the spawns
 start over too (see "Each depth starts over" in section 7). Its monsters
 follow the crypt's spawn rule:
 
@@ -635,11 +637,11 @@ live in `src/balance.js`.
   | Depth | Value shopper | Cheapest shopper |
   |---|---|---|
   | 1, the crypt | 43 min | 55 min |
-  | 2, the goblin warrens | 53 min | 58 min |
-  | 3, the orc fort | 38 min | 42 min |
-  | 4, the sunken swamp | 41 min | 52 min |
+  | 2, the goblin warrens | 37 min | 40 min |
+  | 3, the orc fort | 39 min | 44 min |
+  | 4, the sunken swamp | 43 min | 53 min |
   | 5, the demon pit | 39 min | 41 min |
-  | The whole game | about 3.6 hours | about 4.1 hours |
+  | The whole game | about 3.4 hours | about 3.9 hours |
 
   Rooms 1-9 each take about 0-10 minutes to get through the first time,
   and the boss rooms up to about 15. The golden rule mostly holds; it slips
