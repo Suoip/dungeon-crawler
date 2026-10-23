@@ -214,6 +214,12 @@ function addMob(type, spot, room, onDeath) {
 // true if that hit beat it.
 export function hurtMob(mob, from, room, damage = 1, crit = false) {
   if (!mob.active) return false;
+  // While the fort's war drums beat (fort.js), its orcs rage: hits bounce off.
+  if (mob.raging) {
+    playSound("block");
+    popNumber(mob.pos.add(rand(-3, 3), -mob.def.size - 2), 0, "blocked");
+    return false;
+  }
   const blocked = mob.def.shield && shieldFaces(mob, from);
   if (blocked) damage = Math.max(1, Math.ceil(damage * SHIELD.lets));
   mob.hp -= damage;

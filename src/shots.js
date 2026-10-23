@@ -13,11 +13,11 @@ export const SHOT_HEIGHT = 12; // px above the floor they fly at
 
 // Where flying things are allowed to be: inside the room's walls.
 const ROOM = { left: 6, right: GAME_WIDTH - 6, top: TOP + 2 * TILE, bottom: GAME_HEIGHT - 5 };
-const inRoom = (p) => p.x > ROOM.left && p.x < ROOM.right && p.y > ROOM.top && p.y < ROOM.bottom;
+export const inRoom = (p) => p.x > ROOM.left && p.x < ROOM.right && p.y > ROOM.top && p.y < ROOM.bottom;
 
 // Whether a point on the floor is inside something solid (crypt.js tags
 // pillars, breakables and chests "solid", with a box around their base).
-const inSolid = (p) => get("solid").some(({ box }) =>
+export const inSolid = (p) => get("solid").some(({ box }) =>
   p.x > box.left && p.x < box.right && p.y > box.top && p.y < box.bottom);
 
 // How each kind of shot is drawn: its outer and inner colors.

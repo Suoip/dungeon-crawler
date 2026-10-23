@@ -5,7 +5,7 @@ import { getSetting } from "./settings.js";
 import { hurtMob } from "./mobs.js";
 import { keepInRoom } from "./room.js";
 import { PLAYER_FEET } from "./player.js";
-import { flashScreen, shakeScreen } from "./effects.js";
+import { flashScreen, shakeScreen, sparks } from "./effects.js";
 import { playSound } from "./sound.js";
 
 const SWING_TIME = 0.15;     // seconds the weapon takes to sweep across
@@ -280,13 +280,27 @@ export function addHearts(run) {
 // during which he can't be hit again. `onDeath` runs when the last heart is
 // gone. A monster's touch costs one heart; a special attack (anything tagged
 // "hazard": the boss's moves, shots, fire, a blast, a shockwave) costs its
-// `damage`, or the depth's special hit (balance.js hits). How long the blinking lasts is stats.invincibleFor.
+// `damage`, or the depth's special hit (balance.js hits), and so does a
+// raging orc's touch (the fort's war drums). How long the blinking lasts is stats.invincibleFor.
+// The Shield (the fort's special upgrade) is one block, drawn at his side
+// while it's ready: it stops one hit from a shot (an arrow, a fireball,
+// spit) or a raging orc (which bounces off), and is ready again some
+// seconds later (balance.js specials).
 export function setupHurt(player, run, heartsHud, room, onDeath, stats) {
   let invincibleUntil = 0;
   let knockVel = vec2(0);
   let knockTime = 0;
+  const shield = stats.shield ? BALANCE.specials.find((sp) => sp.id === "shield").recharge[stats.shield - 1] : 0;
+  let shieldAt = 0;        // when it's ready again
+  let shieldTold = true;   // the "ready" ting has played
+  const shieldUp = () => shield > 0 && time() >= shieldAt;
+  if (shield) player.onDraw(() => shieldUp() && !player.frozen && drawShield(player.flipX));
 
   player.onUpdate(() => {
+    if (shield && !shieldTold && shieldUp()) {
+      shieldTold = true;
+      playSound("shieldReady");
+    }
     if (knockTime > 0) {
       knockTime -= dt();
       player.move(knockVel);
@@ -303,7 +317,21 @@ export function setupHurt(player, run, heartsHud, room, onDeath, stats) {
     if (!attacker) return;
     attacker.onHit?.(); // a shot breaks when it hits
 
-    const lost = attacker.is("mob") ? 1 : attacker.damage ?? BALANCE.hits.special[run.depth - 1];
+    if (shieldUp() && (attacker.is("shot") || attacker.raging)) {
+      shieldAt = time() + shield;
+      shieldTold = false;
+      playSound("block");
+      sparks(player.pos.x + (player.flipX ? -6 : 6), player.pos.y - 8);
+      if (attacker.is("mob")) {
+        attacker.knockVel = attacker.pos.sub(player.pos).unit().scale(260); // bounced off
+        attacker.knockTime = 0.2;
+      }
+      invincibleUntil = time() + 0.3;
+      return;
+    }
+
+    const special = BALANCE.hits.special[run.depth - 1];
+    const lost = attacker.is("mob") ? (attacker.raging ? special : 1) : attacker.damage ?? special;
     for (let i = 0; i < lost && run.hearts > 0; i++) {
       run.hearts--;
       heartsHud.pop();
@@ -321,6 +349,17 @@ export function setupHurt(player, run, heartsHud, room, onDeath, stats) {
 
     if (run.hearts <= 0) onDeath();
   });
+}
+
+// The Shield at his side (in front of him, whichever way he faces): a small
+// steel shield with a gold boss.
+function drawShield(facingLeft) {
+  const x = facingLeft ? -9 : 4;
+  drawRect({ pos: vec2(x - 1, -12), width: 7, height: 9, color: rgb(24, 20, 37) });
+  drawRect({ pos: vec2(x, -11), width: 5, height: 6, color: rgb(150, 160, 190) });
+  drawRect({ pos: vec2(x + 1, -5), width: 3, height: 1, color: rgb(150, 160, 190) });
+  drawRect({ pos: vec2(x, -11), width: 5, height: 1, color: rgb(200, 210, 230) });
+  drawRect({ pos: vec2(x + 2, -9), width: 1, height: 2, color: rgb(255, 205, 70) });
 }
 
 // Hearts that monsters drop. They only drop while you're missing one, so

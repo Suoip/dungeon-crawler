@@ -250,6 +250,28 @@ in as the boss, raising orc warriors.
   They walk at him but turn slowly; a hit from in front only does a quarter
   of its damage (a grey number and a clank), one from the side or behind
   does it all. Circling one, or dashing past it, gets round the shield.
+- **War drums**, half of the fort's gimmick (`src/fort.js`, the depth's
+  `drums` in balance.js): every 12-30 s, at random, a deep boom warns that
+  the drums are coming, and 1 s later they beat for 4 s. While they beat,
+  the orcs rage: a red glow pulses on the floor under each one with the
+  beat, they move 50% faster, his hits bounce off them (a grey 0 and a
+  clank), and a touch costs the depth's special hit (2 hearts) instead of
+  one. So for those few seconds he's the prey, and runs. The drums stop
+  for good once the room's bar is full, and never beat in the boss fight.
+- **Pressure plates**, the other half (the depth's `plates`): 2-3 stone
+  plates on each room's floor, clear of the landing spot, the layout and
+  each other, each with an arrow shooter (a slit) in one of the side
+  walls, level with it. When he steps on one, it clicks down, and 0.4 s
+  later an arrow shoots straight across that row. It costs him the special
+  hit, and takes half the health of the first monster it meets (not a
+  boss's), so he can lure orcs into the line, though raging orcs shrug it
+  off. Pillars, breakables and chests stop arrows. Only he sets plates off;
+  each comes back up 1.5 s after he steps off.
+- **The Shield**, the fort's special upgrade (bought with tusks at the
+  altar, 3 levels for 5, 15 and 40 tusks): one block, drawn as a small
+  shield at his side while it's ready, that stops one hit from a shot (an
+  arrow, a fireball, spit) or a raging orc, which bounces off. It's ready
+  again 20 s later (12 s at level 2, 6 s at level 3), with a soft ting.
 
 **Depth 4, the sunken swamp:** murky green, goo dripping down the back wall
 (a swampy starts at 33,000 hp). A swamp-green Big Zombie, the "Bog Zombie",
@@ -578,7 +600,7 @@ live in `src/balance.js`.
   |---|---|---|
   | 1, the crypt | 43 min | 55 min |
   | 2, the goblin warrens | 53 min | 58 min |
-  | 3, the orc fort | 35 min | 41 min |
+  | 3, the orc fort | 38 min | 42 min |
   | 4, the sunken swamp | 39 min | 52 min |
   | 5, the demon pit | 44 min | 52 min |
   | The whole game | about 3.6 hours | about 4.3 hours |
