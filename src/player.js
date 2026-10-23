@@ -30,12 +30,23 @@ export function addPlayer(x, y) {
     // A plain object adds our own properties. While frozen, the keyboard does
     // nothing, so cutscenes (like walking through a door) can move him instead.
     // `facing` is the direction he last walked in; his weapon swings that way.
-    { frozen: false, dashing: false, facing: vec2(1, 0) },
+    // `wade` is how fast he gets through mud and the swamp's water (a share
+    // of his speed: Waders raises them), and `inWater()` whether he's in it
+    // (water.js sets it in the swamp).
+    { frozen: false, dashing: false, facing: vec2(1, 0), wade: { mud: MUD_SLOW, water: 1 }, inWater: () => false },
   ]);
   // His shadow is hidden during cutscenes (they take away his body): falling
   // in has its own shadow, and in a doorway it would show over the door.
   addShadow(player, 12, () => player.has("body"));
   return player;
+}
+
+// How fast he can walk where he stands, as a share of his speed: mud (a
+// muddy's trail) and the swamp's water slow him, and where they meet, the
+// slower one counts.
+function footing(player) {
+  const inMud = get("mud").some((mud) => mud.covers(player.pos));
+  return Math.min(inMud ? player.wade.mud : 1, player.inWater() ? player.wade.water : 1);
 }
 
 // Which way he's being told to go: the movement keys (WASD or the arrows,
@@ -63,9 +74,7 @@ export function setupPlayerMovement(player) {
     const dir = heldDirection();
 
     if (dir.len() > 0) {
-      // Mud (a muddy's trail) slows him down.
-      const inMud = get("mud").some((mud) => mud.covers(player.pos));
-      player.move(dir.scale(PLAYER_SPEED * (inMud ? MUD_SLOW : 1)));
+      player.move(dir.scale(PLAYER_SPEED * footing(player)));
       keepInRoom(player, PLAYER_FEET);
       player.facing = dir.unit();
       if (dir.x !== 0) player.flipX = dir.x < 0; // face the way he's walking
@@ -88,7 +97,8 @@ export function setupPlayerMovement(player) {
 
 // Shift: a quick dash in the direction he's moving (or facing, if he's
 // standing still), for getting into position. It doesn't make him safe
-// from hits; it's only for moving. Afterimages trail behind him.
+// from hits; it's only for moving. Afterimages trail behind him. Water (the
+// swamp's) makes it shorter; mud doesn't.
 //
 // Each dash uses a charge. A charge takes stats.dashCooldown seconds to fill
 // (Quick feet shortens it), and Second charge gives him two. While one is
@@ -129,6 +139,7 @@ export function setupDash(player, statsNow) {
     if (!statsNow().unlocked.has("dash") || player.frozen || player.dashing || ready < 1) return;
     const keys = heldDirection();
     const way = keys.len() > 0 ? keys.unit() : player.facing;
+    const reach = BALANCE.hero.dash.distance * (player.inWater() ? player.wade.water : 1);
     ready--;
     player.dashing = true;
     playSound("dash");
@@ -139,7 +150,7 @@ export function setupDash(player, statsNow) {
       // move() (not setting pos) so walls still stop him.
       // At most 8 px a frame, so on a slow frame he can't skip through a
       // pot's or a chest's 12 px box.
-      player.moveBy(way.scale(Math.min((BALANCE.hero.dash.distance / DASH_TIME) * dt(), 8)));
+      player.moveBy(way.scale(Math.min((reach / DASH_TIME) * dt(), 8)));
       keepInRoom(player, PLAYER_FEET);
       if (elapsed - lastGhost > 0.035) {
         lastGhost = elapsed;

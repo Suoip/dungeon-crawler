@@ -285,6 +285,19 @@ stands in as the boss, raising swampies.
   while fewer than four of their ice zombies are up, one glows purple and
   raises two around itself (chasers, worth half a normal kill's XP). They
   stop once the bar is full, like the room's own spawns.
+- **Rising water**, the swamp's gimmick (`src/water.js`, the depth's `water`
+  in balance.js): each room starts with the bottom of its floor flooded
+  (1 row in room 1, up to 3 in room 10), and every 12 s (7 s by room 10)
+  the murky water creeps up another row, with a gurgle, up to 6 rows, so
+  the longer he takes, the less dry floor is left. It stops rising once
+  the bar is full. In it he wades at 60% of his speed, and his dash is
+  that much shorter; the swamp's monsters live there and don't mind it.
+  It's murky: spikes, mud and coins under it only show within 28 px of
+  him (they still hurt, slow and get picked up as usual). Where mud and
+  water meet, the slower one counts.
+- **Waders**, the swamp's special upgrade (bought with slime at the altar,
+  3 levels for 5, 15 and 40 slime): 10% more of his speed in water a
+  level (70%, 80%, then 90%), and in mud the same way.
 
 **Depth 5, the demon pit:** deep red, lava pouring from two fountains in the
 back wall (a chort starts at about 280,000 hp). The Big Demon waits in room 10,
@@ -601,7 +614,7 @@ live in `src/balance.js`.
   | 1, the crypt | 43 min | 55 min |
   | 2, the goblin warrens | 53 min | 58 min |
   | 3, the orc fort | 38 min | 42 min |
-  | 4, the sunken swamp | 39 min | 52 min |
+  | 4, the sunken swamp | 41 min | 52 min |
   | 5, the demon pit | 44 min | 52 min |
   | The whole game | about 3.6 hours | about 4.3 hours |
 

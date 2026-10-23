@@ -156,6 +156,8 @@ const PIXELS = {
   // The Shield's: steel with a gold boss.
   shield: [[-5, -6, 10, 7, "pale"], [-4, 1, 8, 2, "pale"], [-3, 3, 6, 2, "pale"], [-1, 5, 2, 1, "pale"], [-5, -6, 10, 1, "light"],
     [-1, -3, 2, 3, "gold"]],
+  // Waders: a tall green boot.
+  boot: [[-4, -7, 7, 2, "gemLight"], [-3, -5, 5, 7, "gem"], [-3, 2, 9, 3, "gem"], [-3, -2, 5, 1, "gold"], [-4, 5, 11, 1, "gemDark"], [5, 2, 1, 1, "gemDark"]],
   // Sticky fingers' sack of loot.
   sack: [[-2, -7, 4, 1, "wood"], [-1, -6, 2, 1, "gold"], [-4, -5, 8, 2, "wood"], [-5, -3, 10, 7, "wood"], [-4, 4, 8, 1, "wood"],
     [-1, -1, 3, 3, "gold"], [0, 0, 1, 1, "light"]],
@@ -265,7 +267,7 @@ const canBuy = (node) => !blockerOf(getSave().levels, node) && getSave().gold >=
 // material. A slot shows once that material has been found (or a level
 // bought). Their ids are "special:<id>", like the save's (stats.js).
 const SPECIAL_ROW = 20; // the row's height, under the title bar
-const SPECIAL_ICONS = { gravedigger: { draw: "shovel" }, sticky_fingers: { draw: "sack" }, shield: { draw: "shield" } };
+const SPECIAL_ICONS = { gravedigger: { draw: "shovel" }, sticky_fingers: { draw: "sack" }, shield: { draw: "shield" }, waders: { draw: "boot" } };
 const specialOf = (id) => (id?.startsWith("special:") ? BALANCE.specials.find((sp) => `special:${sp.id}` === id) : null);
 const materialOf = (special) => BALANCE.depths[special.depth - 1].material;
 const specialLevel = (special) => getSave().levels[`special:${special.id}`] ?? 0;
@@ -281,6 +283,7 @@ const SPECIAL_TEXT = {
     return level ? `${Math.round(graveGold * level * 100)}% GOLD +${graveTime * level}S` : "NOTHING";
   }],
   sticky_fingers: ["A CAUGHT THIEF'S LOOT", (level) => `${2 + effectOf("sticky_fingers").thiefBonus * level}X`],
+  waders: ["SPEED IN WATER", (level) => `${Math.round((BALANCE.depths[3].water.slow + effectOf("waders").waders * level) * 100)}%`],
   shield: ["BLOCKS A HIT", (level) => (level ? `EVERY ${BALANCE.specials.find((sp) => sp.id === "shield").recharge[level - 1]}S` : "NEVER")],
 };
 

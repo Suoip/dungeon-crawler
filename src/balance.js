@@ -243,6 +243,12 @@ export const BALANCE = {
       tint: [140, 180, 140],
       decor: "goo",
       material: "slime",
+      // Rising water (water.js): each room starts with `start` rows of the
+      // floor flooded from the bottom (from room 1's to room 10's), and every
+      // `rise` s (room 1's to room 10's) it creeps up a row, up to `most`.
+      // In it he wades at `slow` of his speed (his dash too), and what lies
+      // under it (spikes, mud, coins) can only be seen from `seeFrom` px.
+      water: { start: [1, 3], rise: [12, 7], most: 6, slow: 0.6, seeFrom: 28 },
       rooms: [
         { xp: 7, spawns: { swampy: 100 }, breakables: ["pot", "pot"] },
         { xp: 7, spawns: { swampy: 100 }, breakables: ["pot", "pot"] },
@@ -307,6 +313,8 @@ export const BALANCE = {
     // One block that stops a hit from a shot (an arrow, a fireball) or a
     // raging orc, and is ready again `recharge[level - 1]` seconds later.
     { id: "shield", name: "Shield", depth: 3, costs: [5, 15, 40], effect: { shield: 1 }, recharge: [20, 12, 6] },
+    // He wades through water and mud this much more of his speed, a level.
+    { id: "waders", name: "Waders", depth: 4, costs: [5, 15, 40], effect: { waders: 0.1 } },
   ],
 
   // ---- Hits ---------------------------------------------------------------

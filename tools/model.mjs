@@ -37,6 +37,7 @@ export const MODEL = {
   caught: 0.6,          // ...and the share of them he catches before they reach a burrow
   drumDanger: 0.5,      // while the fort's drums beat he keeps away from the orcs: this share of their danger is left...
   arrowThreat: 0.004,   // ...and the fort's arrows (stepping on a plate in the fight) add this danger, a special hit
+  wet: 0.35,            // the share of his walking done in the swamp's water (it rises as the room goes on)
   hubPerRun: 12,        // after a run: dragged down, the underworld, the tree, the ladder, the fall
   dodgeTime: 1.3,       // only 1 in this many swings lands on the boss: the rest of the time you're dodging
   bossRaiseEvery: 6.5,  // seconds between the boss's raises when raising is its favorite move (boss.js: a cast every 1.5-3 s, raising half the time); other bosses raise half as often
@@ -221,9 +222,11 @@ export function simulateRun(stats, dice, player = PLAYERS.efficient, depth = 1) 
     const waiting = [];     // { type, upAt }: walked-to monsters up, in the order they got up
     // The monsters up (close or waiting) with a behavior, counted.
     const up = (test) => close.filter((m) => test(behavior(m.type))).length + waiting.filter((m) => test(behavior(m.type))).length;
-    // Mud: for a while after a muddy was last up, walking takes longer.
+    // Mud: for a while after a muddy was last up, walking takes longer. So
+    // does the swamp's water, for the share of the walking done in it.
     let mudUntil = -Infinity;
-    const mud = () => (t < mudUntil ? BEHAVIORS.muddy.slows : 1);
+    const wading = DEPTH.water ? 1 - MODEL.wet + MODEL.wet / (DEPTH.water.slow + stats.waders) : 1;
+    const mud = () => (t < mudUntil ? BEHAVIORS.muddy.slows : 1) * wading;
     // The danger right now: everything up close, plus the ones that throw
     // things from wherever they are.
     const rangedNow = () => [...close, ...waiting].reduce((sum, m) => sum + (behavior(m.type).ranged ? BALANCE.mobs[m.type].threat : 0), 0);

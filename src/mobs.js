@@ -617,8 +617,8 @@ function explode(at, room) {
 
 // A muddy chases the hero like a zombie, leaving a trail of mud: a puddle
 // every MUD.every px it crawls. Puddles last MUD.life seconds, and while the
-// hero stands in one he walks at MUD.slow of his speed (player.js). The dash
-// isn't slowed.
+// hero stands in one he walks at MUD_SLOW of his speed (player.js; Waders
+// raises it). The dash isn't slowed.
 const MUD = {
   every: 10,     // px crawled between puddles
   life: 4,       // seconds a puddle lasts
