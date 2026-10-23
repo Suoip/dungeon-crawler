@@ -263,7 +263,8 @@ export function hurtMob(mob, from, room, damage = 1, crit = false) {
 // (for necromancers) keep their distance and raise ice zombies, or (for
 // chorts) blink next to him, or (for pumpkin dudes) leap at him, or (for
 // plague doctors) keep their distance and lob flasks. A muddy chases and
-// leaves mud behind it.
+// leaves mud behind it. A thief (a warrens goblin with a sack, thieves.js)
+// goes for coins on the floor instead, while there are any.
 function setupBrain(mob, room) {
   const rush = mob.def.rusher ? setupRush(mob, room) : null;
   const wander = BALANCE.mobs[mob.type]?.wanders ? setupWander(mob) : null;
@@ -276,6 +277,7 @@ function setupBrain(mob, room) {
   const blink = mob.def.blinker ? setupBlinker(mob, room) : null;
   const leap = mob.def.leaper ? setupLeaper(mob, room) : null;
   const lob = mob.def.lobber ? setupLobber(mob, room) : null;
+  const steal = room.thiefBrain?.(mob) ?? null;
   mob.onUpdate(() => {
     mob.z = 10 + mob.pos.y / 1000; // lower on screen = drawn in front
     if (!mob.active || room.frozen) {
@@ -291,6 +293,7 @@ function setupBrain(mob, room) {
     }
 
     if (mob.def.boss && mob.bossTurn()) return; // busy casting a move
+    if (steal && steal()) return;               // after coins, or off with them
     if (wander) return wander();                // it doesn't hunt
     if (shoot) return shoot();                  // it keeps its distance
     if (heal) return heal();                    // it keeps its distance too

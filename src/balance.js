@@ -177,6 +177,13 @@ export const BALANCE = {
       growth: { hp: 1.080 }, // each room's monsters are this much tougher than the last's
       tint: [196, 168, 120],
       material: "teeth",
+      // Coin thieves (thieves.js): a goblin may be a thief, with a sack on its
+      // back. It goes for coins lying on the floor, scoops up the ones within
+      // `grab` px, and runs for one of the burrows dug into the side walls.
+      // One that gets away takes the coins with it, and climbs back out
+      // `comeBack` seconds later to steal again; one that's caught drops
+      // double what it carried. With no coins about, it fights like a goblin.
+      thieves: { type: "goblin", chance: 0.25, grab: 24, comeBack: 5 },
       rooms: [
         { xp: 8, spawns: { goblin: 100 }, breakables: ["pot", "pot"] },
         { xp: 7, spawns: { goblin: 100 }, breakables: ["pot", "pot"] },
@@ -285,6 +292,8 @@ export const BALANCE = {
   specials: [
     // Stamping a grave down pays a share of its monster's gold, and seconds.
     { id: "gravedigger", name: "Gravedigger", depth: 1, costs: [5, 15, 40], effect: { graveGold: 0.5, graveTime: 0.5 } },
+    // A caught thief drops one more time what it carried, a level.
+    { id: "sticky_fingers", name: "Sticky fingers", depth: 2, costs: [5, 15, 40], effect: { thiefBonus: 1 } },
   ],
 
   // ---- Hits ---------------------------------------------------------------

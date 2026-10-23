@@ -209,8 +209,22 @@ follow the crypt's spawn rule:
   doesn't stop it: it goes off where it fell, a moment later. The blast
   costs him a heart if he's inside the mark, and doesn't hurt other
   monsters. One that goes off by itself is gone, with no gold or XP.
-- **No material yet:** the warrens' teeth come later; for now nothing drops
-  but coins, hearts and orbs.
+- **Teeth** (from room 6) are the warrens' material, dropped like the
+  crypt's bones (see section 6).
+- **Coin thieves**, the warrens' gimmick (`src/thieves.js`, the depth's
+  `thieves` in balance.js): a goblin may (25%) be a thief, with a sack on
+  its back. While there are coins lying on the floor (not ones already
+  flying to the hero), it goes for the nearest, scoops up every coin within
+  24 px, and runs for the nearer of the room's two burrows, one dug into
+  each side wall at a height clear of the layout. If it gets there, it
+  dives in and the coins are gone for good; 5 s later it climbs back out,
+  sack empty, to steal again (unless the bar has filled). Caught on the
+  way, it drops double what it carried. With no coins about, it fights
+  like any goblin. So leaving coins on the floor is a risk here, and a
+  thief running off with a full sack is worth chasing.
+- **Sticky fingers**, the warrens' special upgrade (bought with teeth at
+  the altar, 3 levels for 5, 15 and 40 teeth): a caught thief drops one
+  more time its loot per level (3x, 4x, then 5x).
 
 ### Depths 3 to 5
 
@@ -563,11 +577,11 @@ live in `src/balance.js`.
   | Depth | Value shopper | Cheapest shopper |
   |---|---|---|
   | 1, the crypt | 43 min | 55 min |
-  | 2, the goblin warrens | 32 min | 40 min |
-  | 3, the orc fort | 35 min | 39 min |
-  | 4, the sunken swamp | 41 min | 52 min |
-  | 5, the demon pit | 25 min | 35 min |
-  | The whole game | about 2.9 hours | about 3.5 hours |
+  | 2, the goblin warrens | 53 min | 58 min |
+  | 3, the orc fort | 35 min | 41 min |
+  | 4, the sunken swamp | 39 min | 52 min |
+  | 5, the demon pit | 44 min | 52 min |
+  | The whole game | about 3.6 hours | about 4.3 hours |
 
   Rooms 1-9 each take about 0-10 minutes to get through the first time,
   and the boss rooms up to about 15. The golden rule mostly holds; it slips

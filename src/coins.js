@@ -145,11 +145,12 @@ function addPickup(from, to, kind, value, run, player, magnet, material = null) 
       coin.pos = from.lerp(to, t).sub(0, Math.sin(t * Math.PI) * 8);
       return;
     }
+    coin.landed = true;
     // It starts flying once he's close enough and free to move, or as soon
     // as the floor is swept, wherever it is.
     const distance = coin.pos.dist(player.pos);
     if (!flying && !coin.swept && (player.frozen || distance > magnet())) return;
-    flying = true;
+    flying = coin.flying = true;
     flewFor += dt();
     if (distance < PICKUP) {
       if (kind === "material") {
