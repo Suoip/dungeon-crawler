@@ -32,6 +32,7 @@ export const MODEL = {
   collectPerRoom: 1.2,  // gathering the room's coins on the way, with the starting magnet
   perBreakable: 0.5,    // walking over to a breakable (on top of the swings it takes)
   cutscenePerRoom: 2.0, // through the door, the fade, and falling into the next room
+  stamp: 0.5,           // s to walk over and stamp a grave flat (the crypt, graves.js)
   hubPerRun: 12,        // after a run: dragged down, the underworld, the tree, the ladder, the fall
   dodgeTime: 1.3,       // only 1 in this many swings lands on the boss: the rest of the time you're dodging
   bossRaiseEvery: 6.5,  // seconds between the boss's raises when raising is its favorite move (boss.js: a cast every 1.5-3 s, raising half the time); other bosses raise half as often
@@ -301,6 +302,13 @@ export function simulateRun(stats, dice, player = PLAYERS.efficient, depth = 1) 
       if (!full && xp >= room.xp) fill();
       roomGold += coins((def.gold + stats.goldPerKill) * scale.gold * (1 + stats.goldBonus)); // flat gold per kill on top
       if (!clockStopped) clock += stats.timePerKill; // seconds per kill
+      // The crypt's restless graves: he stamps each one flat (a short walk),
+      // and Gravedigger pays for it.
+      if (DEPTH.graves && !full && DEPTH.graves.types.includes(type) && dice() < DEPTH.graves.chance) {
+        t += MODEL.stamp * walk * player.clearTime;
+        roomGold += stats.graveGold ? coins(def.gold * scale.gold * stats.graveGold * (1 + stats.goldBonus)) : 0;
+        if (!clockStopped) clock += stats.graveTime;
+      }
       // A splitter's children, right there (unless its kill just started the
       // boss's entrance, which cancels them; in the boss fight they come).
       if (boss || !(isBossRoom && full)) for (const child of def.splitsInto ?? []) comeClose(child);

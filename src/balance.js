@@ -149,6 +149,10 @@ export const BALANCE = {
       scale: { hp: 1, gold: 1 },
       tint: null,
       material: "bones",
+      // Restless graves (graves.js): a tiny zombie or skeleton that falls may
+      // leave a grave, and climb back out of it after `riseAfter` seconds
+      // unless he stamps it down first (walks over it).
+      graves: { chance: 0.3, types: ["tiny_zombie", "skeleton"], riseAfter: 4 },
       rooms: [
         { xp: 6, spawns: { slug: 100 }, breakables: ["pot", "pot"] },
         { xp: 5, spawns: { slug: 100 }, breakables: ["pot", "pot"] },
@@ -273,6 +277,15 @@ export const BALANCE = {
     // `material`): none before sub-depth 6, then more common the deeper you are.
     material: { fromSubDepth: 6, chance: 0.02, stepPerSubDepth: 0.02 },
   },
+
+  // ---- Special upgrades ---------------------------------------------------
+  // One per depth, tied to its gimmick, bought at the altar a level at a time
+  // with that depth's material (its `material`). `costs`: each level's price
+  // in material; `effect`: what each level adds to the hero (stats.js).
+  specials: [
+    // Stamping a grave down pays a share of its monster's gold, and seconds.
+    { id: "gravedigger", name: "Gravedigger", depth: 1, costs: [5, 15, 40], effect: { graveGold: 0.5, graveTime: 0.5 } },
+  ],
 
   // ---- Hits ---------------------------------------------------------------
   // A monster's touch costs one heart. A special attack costs more, by depth

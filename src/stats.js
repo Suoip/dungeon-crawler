@@ -32,6 +32,8 @@ export function heroStats(levels, depth = 1) {
     goldPerKill: 0,      // flat gold on every kill, in the room's gold (scenes.js)
     timePerKill: 0,      // seconds every kill adds to the clock
     healOnClear: 0,      // the chance of a heart back when a room's bar fills
+    graveGold: 0,        // stamping a grave pays this share of its monster's gold (Gravedigger)
+    graveTime: 0,        // ...and these seconds
     breakableBonus: 0,
     onEnter: spawning.onEnter,
     horde: spawning.horde,
@@ -41,6 +43,13 @@ export function heroStats(levels, depth = 1) {
     unlocked: new Set(),
   };
   for (const [id, level] of Object.entries(levels)) {
+    // A special upgrade ("special:<id>", bought with a depth's material):
+    // its effect once per level, in every depth.
+    const special = id.startsWith("special:") && BALANCE.specials.find((s) => `special:${s.id}` === id);
+    if (special) {
+      for (const [stat, add] of Object.entries(special.effect)) stats[stat] += add * level;
+      continue;
+    }
     const node = byId[id];
     if (!node) continue; // a node the map doesn't have (any more)
     if (node.perDepth && node.depth !== depth) continue; // it only works in its own depth

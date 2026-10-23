@@ -14,6 +14,7 @@ import { startSpawning, raiseMob, bossSpot, MOB_TYPES } from "./mobs.js";
 import { setupAutoSwing, setupHurt, addHearts, setupHeartDrops, setupOrbDrops } from "./combat.js";
 import { dropCoins, dropMaterial, collectFloor, sweepFloor, floorValue, floorMaterial } from "./coins.js";
 import { buildLayout } from "./crypt.js";
+import { setupGraves } from "./graves.js";
 import { addHud } from "./hud.js";
 import { addLadder, addWell } from "./props.js";
 import { playSound } from "./sound.js";
@@ -92,6 +93,7 @@ export function registerRoomScene() {
         dropCoins(mob.pos.clone(), coins((mob.gold + flat) * (1 + stats.goldBonus)), run, player, () => stats.magnetRange,
           { spread: mob.def.boss ? 44 : 10 });
         if (mob.def.boss) return bossBeaten(mob);
+        graves.onKill(mob); // the crypt's restless graves (graves.js)
         // Seconds per kill (a tree upgrade): while the clock runs, every kill
         // adds a little sand to the hourglass.
         if (stats.timePerKill > 0 && clockRunning && !clockStopped) {
@@ -122,6 +124,13 @@ export function registerRoomScene() {
     const hud = addHud(() => ({ clock: run.clock, sand: run.sand, stopped: clockStopped, xp, xpNeeded: room.xp, gold: run.gold }));
     // Time orbs: while the clock runs, a kill may drop one, worth seconds.
     const maybeDropOrb = setupOrbDrops(player, stats, () => clockRunning && !clockStopped, (seconds) => {
+      run.clock += seconds;
+      run.sand += seconds;
+      hud.addTime(seconds);
+    });
+    // The depth's gimmick, if it has one: the crypt's restless graves.
+    const graves = setupGraves(fight, run, stats, (seconds) => {
+      if (!clockRunning || clockStopped) return;
       run.clock += seconds;
       run.sand += seconds;
       hud.addTime(seconds);

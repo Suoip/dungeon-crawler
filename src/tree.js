@@ -2,7 +2,7 @@ import { GAME_WIDTH, GAME_HEIGHT } from "./config.js";
 import { BALANCE } from "./balance.js";
 import { heroStats, costOf, isEarly } from "./stats.js";
 import { NODES, byId, CENTER, isShown, blockerOf, needsName } from "./nodes.js";
-import { getSave, buyLevel } from "./save.js";
+import { getSave, buyLevel, buySpecial as buySpecialLevel } from "./save.js";
 import { playSound } from "./sound.js";
 import { puffDust } from "./effects.js";
 import { getGamePixel } from "./display.js";
@@ -16,6 +16,9 @@ import { shortGold } from "./hud.js";
 // and lines for the links between them. Each deeper depth's nodes sit
 // further out. You only see the nodes you own and the ones linked to them;
 // buying one brings its neighbours into view.
+//
+// Under the title bar, once a depth's material has been found, a row holds
+// the special upgrades it buys (balance.js specials), a level at a time.
 //
 // Mouse: point at a node to read it, click it to pick it, click it again to
 // buy it. Hold the button and drag to move around, and the wheel zooms
@@ -102,7 +105,7 @@ let C = null;
 
 // Draws a node's icon centered on `at` (whole pixels).
 function drawIcon(node, at, zoom, opacity = 1) {
-  const icon = iconOf(node);
+  const icon = node.icon ?? iconOf(node); // (a special upgrade brings its own)
   if (icon.draw) return drawPixels(icon.draw, at, zoom, opacity);
   // The sprite's first frame, in px (Kaplay keeps it as a share, 0 to 1, of
   // the whole tileset), and the part of it to show, as a share of the frame.
@@ -148,6 +151,8 @@ const PIXELS = {
     [-1, -3, 2, 6, "light"], [-3, -1, 6, 2, "light"]],
   sands: [[-4, -6, 8, 2, "wood"], [-4, 4, 8, 2, "wood"], [-3, -4, 6, 2, "sand"], [-2, -2, 4, 2, "sand"],
     [-1, 0, 2, 1, "sand"], [-2, 1, 4, 1, "sand"], [-3, 2, 6, 2, "sand"]],
+  // Gravedigger's shovel.
+  shovel: [[-1, -7, 2, 8, "wood"], [-3, -7, 6, 1, "wood"], [-3, 1, 6, 3, "muted"], [-2, 4, 4, 1, "muted"], [-1, 5, 2, 1, "muted"]],
   // Depth 3's: a green hourglass and a blue gem.
   hourglass3: [[-4, -6, 8, 2, "gem"], [-4, 4, 8, 2, "gem"], [-3, -4, 6, 2, "light"], [-2, -2, 4, 2, "light"],
     [-1, 0, 2, 1, "light"], [-2, 1, 4, 1, "gem"], [-3, 2, 6, 2, "gem"]],
@@ -250,14 +255,36 @@ const early = (node) => isEarly(node, getSave().cleared);
 const priceOf = (node) => (owned(node.id) ? null : costOf(node, 0, early(node)));
 const canBuy = (node) => !blockerOf(getSave().levels, node) && getSave().gold >= priceOf(node);
 
+// The special upgrades: each depth's, bought a level at a time with its
+// material. A slot shows once that material has been found (or a level
+// bought). Their ids are "special:<id>", like the save's (stats.js).
+const SPECIAL_ROW = 20; // the row's height, under the title bar
+const SPECIAL_ICONS = { gravedigger: { draw: "shovel" } };
+const specialOf = (id) => (id?.startsWith("special:") ? BALANCE.specials.find((sp) => `special:${sp.id}` === id) : null);
+const materialOf = (special) => BALANCE.depths[special.depth - 1].material;
+const specialLevel = (special) => getSave().levels[`special:${special.id}`] ?? 0;
+const specialCost = (special) => special.costs[specialLevel(special)] ?? null; // null once it's maxed
+const specialsOnShow = () => BALANCE.specials.filter((sp) => specialLevel(sp) > 0 || (getSave().materials[materialOf(sp)] ?? 0) > 0);
+const canBuySpecial = (special) => specialCost(special) !== null && getSave().materials[materialOf(special)] >= specialCost(special);
+// What a special upgrade does at a level, as the panel says it.
+const SPECIAL_TEXT = {
+  gravedigger: (level) => {
+    const { graveGold, graveTime } = BALANCE.specials.find((sp) => sp.id === "gravedigger").effect;
+    return level ? `${Math.round(graveGold * level * 100)}% GOLD +${graveTime * level}S` : "NOTHING";
+  },
+};
+
 // Whether there's anything you could buy right now (the altar's sigil glows).
-export const canBuyAnything = () => NODES.some(canBuy);
+export const canBuyAnything = () => NODES.some(canBuy) || BALANCE.specials.some(canBuySpecial);
 
 // Opens the tree over the current scene. `onClose` runs when it's closed.
 export function openTree(onClose) {
   C ??= Object.fromEntries(Object.entries(PALETTE).map(([name, [r, g, b]]) => [name, rgb(r, g, b)]));
-  const VIEW_MIDDLE = vec2(GAME_WIDTH / 2, (TOP_BAR + PANEL_Y) / 2);
   const save = getSave();
+  const slots = specialsOnShow();
+  const VIEW_TOP = TOP_BAR + (slots.length ? SPECIAL_ROW : 0); // where the tree's view starts
+  const VIEW_MIDDLE = vec2(GAME_WIDTH / 2, (VIEW_TOP + PANEL_Y) / 2);
+  const slotCenter = (special) => vec2(16 + slots.indexOf(special) * 62, TOP_BAR + SPECIAL_ROW / 2);
   const levels = save.levels;
   // The nodes on show (owned, or touching one that is), worked out again
   // whenever something's bought, and how far the view can go: its middle
@@ -287,13 +314,34 @@ export function openTree(onClose) {
   const revealed = {};       // node id -> when it came into view (it pops in)
 
   const toScreen = (place) => VIEW_MIDDLE.add(place.sub(camera).scale(zoom));
-  const nodeAt = (point) => (point.y > TOP_BAR && point.y < PANEL_Y
-    ? visible.find((n) => toScreen(placeOf(n.id)).dist(point) < (frameOf(n) + 2) * zoom)?.id ?? null
-    : null);
+  const nodeAt = (point) => {
+    if (point.y > TOP_BAR && point.y < VIEW_TOP) {
+      const special = slots.find((sp) => slotCenter(sp).dist(point) < 11);
+      return special ? `special:${special.id}` : null;
+    }
+    return point.y > VIEW_TOP && point.y < PANEL_Y
+      ? visible.find((n) => toScreen(placeOf(n.id)).dist(point) < (frameOf(n) + 2) * zoom)?.id ?? null
+      : null;
+  };
+  // Where something is in the web, for the arrow keys: a slot in the row is
+  // wherever on the web is under it right now.
+  const worldOf = (id) => (specialOf(id) ? camera.add(slotCenter(specialOf(id)).sub(VIEW_MIDDLE).scale(1 / zoom)) : placeOf(id));
+  const radiusOf = (id) => (specialOf(id) ? 8 : frameOf(byId[id])); // a frame's radius at 1x
 
   function buy(id) {
-    const node = byId[id];
     const say = (text, color = C.red) => (message = { id, text, color, until: time() + 1.6 });
+    const special = specialOf(id);
+    if (special) {
+      const cost = specialCost(special);
+      const material = materialOf(special);
+      if (cost === null) return say("ALREADY MAXED", C.muted), playSound("locked");
+      if (save.materials[material] < cost) return say(`NEEDS ${cost} ${material.toUpperCase()}`), playSound("locked");
+      buySpecialLevel(special.id, material, cost);
+      flashes[id] = time();
+      playSound("unlock");
+      return say(`${special.name.toUpperCase()} ${specialLevel(special)}/${special.costs.length}`, C.green);
+    }
+    const node = byId[id];
     const blocker = blockerOf(levels, node);
     if (blocker === "owned") return say("ALREADY YOURS", C.muted), playSound("locked");
     if (blocker === "hidden") return say("BUY ONE NEXT TO IT FIRST"), playSound("locked");
@@ -313,26 +361,27 @@ export function openTree(onClose) {
 
   // Keyboard: the arrows move to the nearest node on show that way.
   function step(direction) {
-    const from = placeOf(selected);
+    const from = worldOf(selected);
     let best = null;
-    for (const node of visible) {
-      if (node.id === selected) continue;
-      const offset = placeOf(node.id).sub(from);
+    for (const id of [...visible.map((n) => n.id), ...slots.map((sp) => `special:${sp.id}`)]) {
+      if (id === selected) continue;
+      const offset = worldOf(id).sub(from);
       const along = offset.dot(direction);
       if (along <= 0) continue;
       const across = Math.abs(offset.x * direction.y - offset.y * direction.x);
       const score = along + across * 2;
-      if (!best || score < best.score) best = { id: node.id, score };
+      if (!best || score < best.score) best = { id, score };
     }
     if (!best) return;
     selected = best.id;
     playSound("letter");
+    if (specialOf(selected)) return; // the row doesn't move
     // Keep it in view: if it's too close to an edge, slide the view just
     // enough to bring it back in.
-    const margin = (frameOf(byId[selected]) + 3) * zoom;
+    const margin = (radiusOf(selected) + 3) * zoom;
     const at = toScreen(placeOf(selected));
     const dx = Math.min(0, at.x - margin) + Math.max(0, at.x - (GAME_WIDTH - margin));
-    const dy = Math.min(0, at.y - (TOP_BAR + margin)) + Math.max(0, at.y - (PANEL_Y - margin));
+    const dy = Math.min(0, at.y - (VIEW_TOP + margin)) + Math.max(0, at.y - (PANEL_Y - margin));
     camera = camera.add(dx / zoom, dy / zoom);
     keepCamera();
   }
@@ -420,8 +469,8 @@ export function openTree(onClose) {
   for (const [button, dir] of Object.entries(dirs)) handles.push(onButtonPress(button, byKey(() => step(dir))));
   handles.push(onButtonPress("use", byKey(() => buy(selected))));
   // The keys zoom around the selected node, so it stays on screen.
-  handles.push(onKeyPress(["=", "+"], byKey(() => setZoom(zoom + 1, toScreen(placeOf(selected))))));
-  handles.push(onKeyPress("-", byKey(() => setZoom(zoom - 1, toScreen(placeOf(selected))))));
+  handles.push(onKeyPress(["=", "+"], byKey(() => setZoom(zoom + 1, specialOf(selected) ? VIEW_MIDDLE : screenOf(selected)))));
+  handles.push(onKeyPress("-", byKey(() => setZoom(zoom - 1, specialOf(selected) ? VIEW_MIDDLE : screenOf(selected)))));
   handles.push(onKeyPress("escape", byKey(close)));
   // The strip above the game says how it works, and how to get out.
   setPrompt(null, () => {}, "Click twice or press E to buy. Drag, scroll to zoom. Esc closes.");
@@ -444,6 +493,7 @@ export function openTree(onClose) {
       }
     }
     for (const node of visible) drawNode(node, appear);
+    if (slots.length) drawSpecials(appear);
     drawCursor(appear);
 
     // The title bar.
@@ -482,14 +532,40 @@ export function openTree(onClose) {
     if (since < 0.4) drawCircle({ pos: spot, radius: r + (4 + since * 30) * zoom * 0.3, outline: { width: zoom, color: C.gold }, fill: false, opacity: 1 - since / 0.4 });
   }
 
-  // Where a node is on screen, in whole pixels so it's drawn crisp.
+  // The row of special upgrades: each slot's frame (gold when maxed, green
+  // when you can afford the next level), its icon, its levels as pips, and
+  // how much of its material you have.
+  function drawSpecials(appear) {
+    drawRect({ pos: vec2(0, TOP_BAR), width: GAME_WIDTH, height: SPECIAL_ROW, color: C.ink, opacity: appear });
+    drawRect({ pos: vec2(0, TOP_BAR + SPECIAL_ROW - 1), width: GAME_WIDTH, height: 1, color: C.stoneLight, opacity: appear });
+    for (const special of slots) {
+      const id = `special:${special.id}`;
+      const spot = spotOf(id);
+      const level = specialLevel(special);
+      const rim = specialCost(special) === null ? C.gold : canBuySpecial(special) ? C.green : C.stoneLight;
+      drawCircle({ pos: spot, radius: 9, color: C.ink, opacity: appear });
+      drawCircle({ pos: spot, radius: 8, color: rim, opacity: appear });
+      drawCircle({ pos: spot, radius: 6, color: C.stone, opacity: appear });
+      drawIcon({ icon: SPECIAL_ICONS[special.id] }, spot, 1, appear);
+      const at = slotCenter(special).add(12, -7);
+      for (let i = 0; i < special.costs.length; i++) {
+        drawRect({ pos: at.add(i * 5, 0), width: 3, height: 3, color: i < level ? C.gold : C.stoneLight, opacity: appear });
+      }
+      drawText({ text: String(save.materials[materialOf(special)]), pos: at.add(0, 5), size: 8, font: "pixel", color: C.light, opacity: appear });
+      const since = time() - (flashes[id] ?? -9);
+      if (since < 0.4) drawCircle({ pos: spot, radius: 9 + since * 9, outline: { width: 1, color: C.gold }, fill: false, opacity: 1 - since / 0.4 });
+    }
+  }
+
+  // Where a node (or a slot in the row) is on screen, in whole pixels so it's drawn crisp.
   function screenOf(id) {
+    if (specialOf(id)) return slotCenter(specialOf(id));
     const at = toScreen(placeOf(id));
     return vec2(Math.round(at.x), Math.round(at.y));
   }
   // Where a node is drawn: the selected one bobs a little.
   function spotOf(id) {
-    const bob = id === selected ? Math.round(Math.sin(time() * 5) * 0.8 * zoom) : 0;
+    const bob = id === selected ? Math.round(Math.sin(time() * 5) * 0.8 * (specialOf(id) ? 1 : zoom)) : 0;
     return screenOf(id).add(0, bob);
   }
 
@@ -498,30 +574,50 @@ export function openTree(onClose) {
   // show where they cross a neighbour's light rim.
   function drawCursor(appear) {
     const spot = spotOf(selected);
-    const out = (frameOf(byId[selected]) + 4) * zoom + Math.round(Math.sin(time() * 5)) * zoom;
-    const arm = 3 * zoom;
+    const scale = specialOf(selected) ? 1 : zoom; // the row isn't zoomed
+    const out = (radiusOf(selected) + 4) * scale + Math.round(Math.sin(time() * 5)) * scale;
+    const arm = 3 * scale;
     const arms = [];
     for (const sx of [-1, 1]) {
       for (const sy of [-1, 1]) {
         const corner = spot.add(sx * out, sy * out);
         const x = sx < 0 ? corner.x : corner.x - arm;
         const y = sy < 0 ? corner.y : corner.y - arm;
-        arms.push([x, sy < 0 ? corner.y : corner.y - zoom, arm, zoom]);   // across
-        arms.push([sx < 0 ? corner.x : corner.x - zoom, y, zoom, arm]);   // down
+        arms.push([x, sy < 0 ? corner.y : corner.y - scale, arm, scale]);   // across
+        arms.push([sx < 0 ? corner.x : corner.x - scale, y, scale, arm]);   // down
       }
     }
     for (const [x, y, w, h] of arms) {
-      drawRect({ pos: vec2(x - zoom, y - zoom), width: w + 2 * zoom, height: h + 2 * zoom, color: C.ink, opacity: appear });
+      drawRect({ pos: vec2(x - scale, y - scale), width: w + 2 * scale, height: h + 2 * scale, color: C.ink, opacity: appear });
     }
     for (const [x, y, w, h] of arms) drawRect({ pos: vec2(x, y), width: w, height: h, color: C.light, opacity: appear });
   }
 
   function drawPanel(id) {
-    const node = byId[id];
     drawRect({ pos: vec2(0, PANEL_Y), width: GAME_WIDTH, height: GAME_HEIGHT - PANEL_Y, color: C.ink });
     drawRect({ pos: vec2(0, PANEL_Y), width: GAME_WIDTH, height: 1, color: C.stoneLight });
     const text = (content, x, y, color = C.light, anchorName = "topleft") =>
       drawText({ text: content, pos: vec2(x, y), size: 8, font: "pixel", color, anchor: anchorName });
+    const special = specialOf(id);
+    if (special) {
+      // "GRAVEDIGGER  1/3", what the next level does, and its price in material.
+      const level = specialLevel(special);
+      const cost = specialCost(special);
+      const material = materialOf(special).toUpperCase();
+      drawIcon({ icon: SPECIAL_ICONS[special.id] }, vec2(15, PANEL_Y + 19), 1);
+      text(special.name.toUpperCase(), 30, PANEL_Y + 4, C.gold);
+      text(`${level}/${special.costs.length}`, GAME_WIDTH - 6, PANEL_Y + 4, C.muted, "topright");
+      const say = SPECIAL_TEXT[special.id];
+      text(cost === null ? `STAMPS: ${say(level)}` : `STAMPS: ${say(level)} > ${say(level + 1)}`, 30, PANEL_Y + 15);
+      let status;
+      if (message?.id === id && time() < message.until) status = [message.text, message.color];
+      else if (cost === null) status = ["MAXED", C.gold];
+      else if (save.materials[materialOf(special)] < cost) status = [`COSTS ${cost} ${material} (YOU HAVE ${save.materials[materialOf(special)]})`, C.red];
+      else status = [id === selected ? `BUY ${cost} ${material}: CLICK OR E` : `${cost} ${material}: CLICK TO PICK`, C.green];
+      text(status[0], 30, PANEL_Y + 26, status[1]);
+      return;
+    }
+    const node = byId[id];
 
     drawIcon(node, vec2(15, PANEL_Y + 19), 1);
     text(node.name.toUpperCase(), 30, PANEL_Y + 4, C.gold);

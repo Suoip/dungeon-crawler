@@ -157,6 +157,17 @@ What's in the rooms (built in step 6):
 - **Bones** (from room 6): a kill may drop one (2%, plus 2% a room deeper),
   picked up like a coin. They're saved and shown on the run's results. Bones
   are the crypt's material (see section 6).
+- **Restless graves**, the crypt's gimmick (`src/graves.js`, the depth's
+  `graves` in balance.js): a tiny zombie or skeleton that falls may (30%)
+  leave a grave, a mound of dirt with a little headstone. After 4 s it
+  climbs back out where it fell (the headstone shakes for the last moment
+  first), unless the hero walks over the grave and stamps it flat. A
+  monster that climbed out doesn't leave another grave, the boss never
+  does, and when the bar fills the room's graves crumble away. So it pays
+  to fight over the graves rather than run from them.
+- **Gravedigger**, the crypt's special upgrade (bought with bones at the
+  altar, 3 levels for 5, 15 and 40 bones): stamping a grave pays half the
+  monster's gold again and puts half a second on the clock, per level.
 
 ### Depth 2, the goblin warrens
 
@@ -372,7 +383,9 @@ to:
     and embers in the pit (balance.js depths' `material`). **It doesn't
     buy tree upgrades:** it buys the depth's special upgrade, a few levels
     of it, at the altar (each depth's gimmick and upgrade come one depth at
-    a time). In each depth it doesn't drop in sub-depths 1–5, is rare in
+    a time). The special upgrades sit in their own row at the top of the
+    tree page, the altar's row, each with its level pips and the material
+    you have; one shows once you own a level or have its material. In each depth it doesn't drop in sub-depths 1–5, is rare in
     sub-depth 6, and gets more common in every deeper one.
   - **A boss trophy.** Each boss drops it once, the first time you beat it,
     so there are exactly 5 in the game. Repeat boss kills still pay gold.
@@ -549,7 +562,7 @@ live in `src/balance.js`.
 
   | Depth | Value shopper | Cheapest shopper |
   |---|---|---|
-  | 1, the crypt | 41 min | 46 min |
+  | 1, the crypt | 43 min | 55 min |
   | 2, the goblin warrens | 32 min | 40 min |
   | 3, the orc fort | 35 min | 39 min |
   | 4, the sunken swamp | 41 min | 52 min |
