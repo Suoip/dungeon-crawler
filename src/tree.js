@@ -1,6 +1,7 @@
 import { GAME_WIDTH, GAME_HEIGHT } from "./config.js";
 import { BALANCE } from "./balance.js";
 import { heroStats, costOf, isEarly } from "./stats.js";
+import { NODES, byId, CENTER, isShown, blockerOf, needsName } from "./nodes.js";
 import { getSave, buyLevel } from "./save.js";
 import { playSound } from "./sound.js";
 import { puffDust } from "./effects.js";
@@ -10,144 +11,80 @@ import { shortGold } from "./hud.js";
 
 // The skill tree page (DESIGN.md section 7), opened at the underworld's altar.
 // It's drawn in the game itself, over the dimmed room, like a stone tablet:
-// a web out from Descend in the middle, six branches around it, each node a
-// round frame with an icon and pips for its levels. Each deeper depth's
-// nodes (its ring) sit further out on each branch. You see the nodes next to the
-// ones you own; the ones further out are dark outlines.
+// branches out from Descend in the middle (balance.js skillTree, built in
+// nodes.js), each node a round frame with an icon, a big node's frame bigger,
+// and lines for the links between them. Each deeper depth's nodes sit
+// further out. You only see the nodes you own and the ones linked to them;
+// buying one brings its neighbours into view.
 //
 // Mouse: point at a node to read it, click it to pick it, click it again to
-// buy a level. Hold the button and drag to move around, and the wheel zooms
+// buy it. Hold the button and drag to move around, and the wheel zooms
 // (1x to 3x, whole sizes so the pixels stay crisp). Keyboard: the arrows or
 // WASD move between nodes, E buys, + and - zoom, Esc closes. Whichever was
 // used last decides which node the panel at the bottom describes.
 
 // ---- The layout ---------------------------------------------------------------
 
-// Each branch heads out from the middle at its own angle (degrees, 0 = right,
-// 90 = down). The two longest branches go sideways, where there's most room,
-// and the two that split early (hearts, horde) sit across from each other so
-// their forks don't bump into a neighbour's.
-const BRANCH_ANGLE = { weapon: 180, hearts: -126, money: -54, time: 0, horde: 54, dash: 126 };
-const FIRST_RING = 30; // px from Descend to the first ring of nodes, at 1x
-const RING = 26;       // px between the rings after that
-const SPREAD = 26;     // px a fork sits to either side of its branch
-
-// Where each node sits: its branch, its ring (1 = next to Descend), and a
-// `fork` to one side (-1) or the other (+1) where a branch splits (further
-// for a node squeezed in beside a neighbour on the same ring).
-const PLACES = {
-  descend: { ring: 0 },
-  sharper: { branch: "weapon", ring: 1 }, quicker: { branch: "weapon", ring: 2 },
-  reach: { branch: "weapon", ring: 3 }, arc: { branch: "weapon", ring: 4 },
-  heart: { branch: "hearts", ring: 1 }, nerves: { branch: "hearts", ring: 2, fork: -1 }, lucky: { branch: "hearts", ring: 2, fork: 1 },
-  // The time branch has two tracks: down the middle, the clock and the
-  // orbs; to one side, each depth's own clock upgrades, one depth after
-  // another.
-  time: { branch: "time", ring: 1 }, wind: { branch: "time", ring: 2 }, orbs: { branch: "time", ring: 3 },
-  orbFinder: { branch: "time", ring: 4 }, biggerOrbs: { branch: "time", ring: 5 },
-  dash: { branch: "dash", ring: 1 }, feet: { branch: "dash", ring: 2 }, charge: { branch: "dash", ring: 3 },
-  greed: { branch: "money", ring: 1 }, magnet: { branch: "money", ring: 2 }, smash: { branch: "money", ring: 3 },
-  crowded: { branch: "horde", ring: 1 }, hordes: { branch: "horde", ring: 2 }, restless: { branch: "horde", ring: 3 },
-  calls: { branch: "horde", ring: 2, fork: -1 }, wisdom: { branch: "horde", ring: 2, fork: 1 },
-  // Depth 2's ring
-  keen: { branch: "weapon", ring: 5 }, crit: { branch: "weapon", ring: 6 },
-  heart2: { branch: "hearts", ring: 3 },
-  time2: { branch: "time", ring: 2, fork: -1 }, wind2: { branch: "time", ring: 3, fork: -1 },
-  feet2: { branch: "dash", ring: 4 },
-  greed2: { branch: "money", ring: 4 },
-  crowded2: { branch: "horde", ring: 3, fork: -1.4 },
-  // Depth 3's ring (each depth's horde nodes sit two rings further out)
-  edge3: { branch: "weapon", ring: 7 },
-  time3: { branch: "time", ring: 4, fork: -1 }, wind3: { branch: "time", ring: 5, fork: -1 },
-  greed3: { branch: "money", ring: 5 },
-  hordes3: { branch: "horde", ring: 4 }, restless3: { branch: "horde", ring: 5 }, crowded3: { branch: "horde", ring: 5, fork: -1.4 },
-  // Depth 4's ring
-  edge4: { branch: "weapon", ring: 8 },
-  time4: { branch: "time", ring: 6, fork: -1 }, wind4: { branch: "time", ring: 7, fork: -1 },
-  greed4: { branch: "money", ring: 6 },
-  hordes4: { branch: "horde", ring: 6 }, restless4: { branch: "horde", ring: 7 }, crowded4: { branch: "horde", ring: 7, fork: -1.4 },
-  // Depth 5's ring
-  edge5: { branch: "weapon", ring: 9 },
-  time5: { branch: "time", ring: 8, fork: -1 }, wind5: { branch: "time", ring: 9, fork: -1 },
-  greed5: { branch: "money", ring: 7 },
-  hordes5: { branch: "horde", ring: 8 }, restless5: { branch: "horde", ring: 9 }, crowded5: { branch: "horde", ring: 9, fork: -1.4 },
-  // Depths 3-5's copies of depth 2's extras: each ring's Critical hits off to
-  // the side, one ring past its own edge; the hearts and Quick feet one ring
-  // further out per depth, and the orb pair two (a ring each for Orb finder
-  // and Bigger orbs).
-  crit3: { branch: "weapon", ring: 8, fork: 1 }, crit4: { branch: "weapon", ring: 9, fork: 1 }, crit5: { branch: "weapon", ring: 10, fork: 1 },
-  heart3: { branch: "hearts", ring: 4 }, heart4: { branch: "hearts", ring: 5 }, heart5: { branch: "hearts", ring: 6 },
-  orbFinder3: { branch: "time", ring: 6 }, biggerOrbs3: { branch: "time", ring: 7 },
-  orbFinder4: { branch: "time", ring: 8 }, biggerOrbs4: { branch: "time", ring: 9 },
-  orbFinder5: { branch: "time", ring: 10 }, biggerOrbs5: { branch: "time", ring: 11 },
-  feet3: { branch: "dash", ring: 5 }, feet4: { branch: "dash", ring: 6 }, feet5: { branch: "dash", ring: 7 },
+const SPACING = 22; // px between neighbouring nodes, at 1x
+// A node's spot in the web, in px from the middle at 1x. Every other row is
+// shifted half a node (nodes.js), so x counts half nodes.
+const placeOf = (id) => {
+  const node = byId[id];
+  return vec2((node.x * SPACING) / 2, (node.y * SPACING * Math.sqrt(3)) / 2);
 };
-
-// A node's spot in the web, in px from the middle at 1x.
-function placeOf(id) {
-  const { branch, ring, fork = 0 } = PLACES[id];
-  if (!ring) return vec2(0, 0);
-  const radius = FIRST_RING + (ring - 1) * RING;
-  const angle = (BRANCH_ANGLE[branch] * Math.PI) / 180 + (fork * SPREAD) / radius;
-  return vec2(Math.cos(angle), Math.sin(angle)).scale(radius);
-}
 
 // ---- The icons --------------------------------------------------------------------
 
-// Each node's picture: a sprite from the tileset, or a few pixels drawn by
-// hand where the tileset has nothing (an hourglass, a glowing orb, dash
-// marks, a magnet). `box` is the part of the sprite to show, [x, y, width,
-// height] in its own pixels: the art without the empty space around it, or
-// for the long weapons, just the end you'd know them by (the spear's head,
-// the hammer's head, the sword's hilt). Nothing is shrunk, so the pixels stay crisp at every
-// zoom; a tiny one (the coin, the skull) is shown at `scale` 2.
+// Each kind's picture (by its letter in the map; a list is one per depth,
+// depth 1 first): a sprite from the tileset, or a few pixels drawn by hand
+// where the tileset has nothing (an hourglass, a glowing orb, dash marks, a
+// magnet). `box` is the part of the sprite to show, [x, y, width, height] in
+// its own pixels: the art without the empty space around it, or for the
+// long weapons, just the end you'd know them by (the spear's head, the
+// hammer's head, the sword's hilt). Nothing is shrunk, so the pixels stay
+// crisp at every zoom; a tiny one (the coin, the skull) is shown at `scale` 2.
+const SKULL = { sprite: "skull", box: [5, 7, 6, 6], scale: 2 };
 const ICONS = {
-  descend: { sprite: "floor_ladder", box: [2, 2, 12, 12] },
-  sharper: { sprite: "weapon_knight_sword", box: [0, 15, 10, 14] }, quicker: { sprite: "weapon_knife" },
-  reach: { sprite: "weapon_spear", box: [0, 0, 6, 14] }, arc: { sprite: "weapon_double_axe", box: [0, 0, 16, 13] },
-  heart: { sprite: "heart_full" },
-  nerves: { sprite: "flask_blue", box: [4, 3, 8, 11] }, lucky: { sprite: "flask_red", box: [4, 3, 8, 11] },
-  time: { draw: "hourglass" }, wind: { sprite: "flask_big_yellow", box: [3, 3, 10, 11] }, orbs: { draw: "orb" },
-  orbFinder: { sprite: "flask_big_blue", box: [3, 3, 10, 11] }, biggerOrbs: { sprite: "flask_big_green", box: [3, 3, 10, 11] },
-  dash: { draw: "dash" }, feet: { sprite: "flask_green", box: [4, 3, 8, 11] }, charge: { draw: "dash2" },
-  greed: { sprite: "coin", box: [0, 0, 6, 7], scale: 2 }, magnet: { draw: "magnet" },
-  smash: { sprite: "weapon_big_hammer", box: [0, 0, 10, 14] },
-  crowded: { sprite: "tiny_zombie", box: [4, 6, 9, 10] }, hordes: { sprite: "skeleton", box: [3, 2, 10, 14] },
-  restless: { sprite: "skull", box: [5, 7, 6, 6], scale: 2 }, calls: { sprite: "necromancer", box: [1, 8, 13, 15] },
-  wisdom: { sprite: "weapon_green_magic_staff", box: [0, 0, 8, 14] },
-  // Depth 2's ring
-  keen: { sprite: "weapon_golden_sword", box: [0, 8, 10, 14] }, crit: { draw: "crit" },
-  heart2: { sprite: "heart_full" },
-  time2: { draw: "hourglass2" }, wind2: { sprite: "flask_yellow", box: [4, 3, 8, 11] },
-  feet2: { draw: "dash3" },
-  greed2: { draw: "gem" },
-  crowded2: { sprite: "goblin", box: [3, 4, 10, 12] },
-  // Depth 3's ring
-  edge3: { sprite: "weapon_red_gem_sword", box: [0, 7, 10, 14] },
-  time3: { draw: "hourglass3" }, wind3: { sprite: "flask_big_red", box: [3, 3, 10, 11] },
-  greed3: { draw: "gemBlue" },
-  hordes3: { sprite: "masked_orc", box: [2, 6, 12, 15] }, restless3: { sprite: "skull", box: [5, 7, 6, 6], scale: 2 },
-  crowded3: { sprite: "orc_warrior", box: [2, 6, 12, 15] },
-  // Depth 4's ring
-  edge4: { sprite: "weapon_lavish_sword", box: [0, 16, 10, 14] },
-  time4: { draw: "hourglass4" }, wind4: { sprite: "flask_blue", box: [4, 3, 8, 11] },
-  greed4: { draw: "gemRed" },
-  hordes4: { sprite: "muddy", box: [1, 3, 14, 13] }, restless4: { sprite: "skull", box: [5, 7, 6, 6], scale: 2 },
-  crowded4: { sprite: "swampy", box: [1, 3, 14, 13] },
-  // Depth 5's ring
-  edge5: { sprite: "weapon_saw_sword", box: [0, 11, 10, 14] },
-  time5: { draw: "hourglass5" }, wind5: { sprite: "flask_red", box: [4, 3, 8, 11] },
-  greed5: { draw: "gemPurple" },
-  hordes5: { sprite: "pumpkin_dude", box: [2, 4, 12, 17] }, restless5: { sprite: "skull", box: [5, 7, 6, 6], scale: 2 },
-  crowded5: { sprite: "chort", box: [2, 4, 12, 17] },
-  // Depths 3-5's copies of depth 2's extras look like the originals.
-  crit3: { draw: "crit" }, crit4: { draw: "crit" }, crit5: { draw: "crit" },
-  heart3: { sprite: "heart_full" }, heart4: { sprite: "heart_full" }, heart5: { sprite: "heart_full" },
-  orbFinder3: { sprite: "flask_big_blue", box: [3, 3, 10, 11] }, biggerOrbs3: { sprite: "flask_big_green", box: [3, 3, 10, 11] },
-  orbFinder4: { sprite: "flask_big_blue", box: [3, 3, 10, 11] }, biggerOrbs4: { sprite: "flask_big_green", box: [3, 3, 10, 11] },
-  orbFinder5: { sprite: "flask_big_blue", box: [3, 3, 10, 11] }, biggerOrbs5: { sprite: "flask_big_green", box: [3, 3, 10, 11] },
-  feet3: { draw: "dash3" }, feet4: { draw: "dash3" }, feet5: { draw: "dash3" },
+  "@": { sprite: "floor_ladder", box: [2, 2, 12, 12] },
+  d: [{ sprite: "weapon_knight_sword", box: [0, 15, 10, 14] }, { sprite: "weapon_golden_sword", box: [0, 8, 10, 14] },
+    { sprite: "weapon_red_gem_sword", box: [0, 7, 10, 14] }, { sprite: "weapon_lavish_sword", box: [0, 16, 10, 14] },
+    { sprite: "weapon_saw_sword", box: [0, 11, 10, 14] }],
+  s: { sprite: "weapon_knife" },
+  r: { sprite: "weapon_spear", box: [0, 0, 6, 14] },
+  a: { sprite: "weapon_double_axe", box: [0, 0, 16, 13] },
+  c: { draw: "crit" },
+  j: { draw: "crit2" },
+  h: { sprite: "heart_full" },
+  n: { sprite: "flask_blue", box: [4, 3, 8, 11] },
+  l: { sprite: "flask_red", box: [4, 3, 8, 11] },
+  q: { draw: "mend" },
+  t: [{ draw: "hourglass" }, { draw: "hourglass2" }, { draw: "hourglass3" }, { draw: "hourglass4" }, { draw: "hourglass5" }],
+  w: [{ sprite: "flask_big_yellow", box: [3, 3, 10, 11] }, { sprite: "flask_yellow", box: [4, 3, 8, 11] },
+    { sprite: "flask_big_red", box: [3, 3, 10, 11] }, { sprite: "flask_blue", box: [4, 3, 8, 11] }, { sprite: "flask_red", box: [4, 3, 8, 11] }],
+  "*": { draw: "orb" },
+  z: { draw: "sands" },
+  p: { sprite: "flask_big_blue", box: [3, 3, 10, 11] },
+  b: { sprite: "flask_big_green", box: [3, 3, 10, 11] },
+  ">": { draw: "dash" },
+  f: [{ sprite: "flask_green", box: [4, 3, 8, 11] }, { draw: "dash3" }],
+  "&": { draw: "dash2" },
+  g: [{ sprite: "coin", box: [0, 0, 6, 7], scale: 2 }, { draw: "gem" }, { draw: "gemBlue" }, { draw: "gemRed" }, { draw: "gemPurple" }],
+  o: { sprite: "chest", box: [2, 3, 12, 12] },
+  m: { draw: "magnet" },
+  k: { sprite: "weapon_big_hammer", box: [0, 0, 10, 14] },
+  e: [{ sprite: "tiny_zombie", box: [4, 6, 9, 10] }, { sprite: "goblin", box: [3, 4, 10, 12] }, { sprite: "orc_warrior", box: [2, 6, 12, 15] },
+    { sprite: "swampy", box: [1, 3, 14, 13] }, { sprite: "chort", box: [2, 4, 12, 17] }],
+  u: [{ sprite: "skeleton", box: [3, 2, 10, 14] }, { sprite: "skeleton", box: [3, 2, 10, 14] }, { sprite: "masked_orc", box: [2, 6, 12, 15] },
+    { sprite: "muddy", box: [1, 3, 14, 13] }, { sprite: "pumpkin_dude", box: [2, 4, 12, 17] }],
+  v: SKULL,
+  y: { sprite: "necromancer", box: [1, 8, 13, 15] },
+  i: { sprite: "weapon_green_magic_staff", box: [0, 0, 8, 14] },
 };
+// A node's icon: its kind's, for its depth (a list's last one past its end).
+function iconOf(node) {
+  const icon = ICONS[node.letter];
+  return Array.isArray(icon) ? icon[Math.min(node.depth, icon.length) - 1] : icon;
+}
 
 // The page's colors. Kaplay's rgb() only exists once the game has started,
 // so they're made the first time the page opens.
@@ -158,12 +95,13 @@ const PALETTE = {
   blue: [120, 190, 255], pale: [220, 240, 255], // a time orb
   gem: [56, 183, 100], gemLight: [160, 236, 150], gemDark: [30, 120, 64], // a gem
   purple: [160, 90, 220], lilac: [220, 190, 250],
+  sand: [237, 201, 120], wood: [140, 92, 52],
 };
 let C = null;
 
 // Draws a node's icon centered on `at` (whole pixels).
-function drawIcon(id, at, zoom, opacity = 1) {
-  const icon = ICONS[id];
+function drawIcon(node, at, zoom, opacity = 1) {
+  const icon = iconOf(node);
   if (icon.draw) return drawPixels(icon.draw, at, zoom, opacity);
   // The sprite's first frame, in px (Kaplay keeps it as a share, 0 to 1, of
   // the whole tileset), and the part of it to show, as a share of the frame.
@@ -202,6 +140,13 @@ const PIXELS = {
     [0, -4, 2, 2, "gold"], [2, -2, 2, 2, "gold"], [4, 0, 2, 2, "gold"], [2, 2, 2, 2, "gold"], [0, 4, 2, 2, "gold"]],
   gem: [[-3, -5, 6, 1, "gemLight"], [-5, -4, 10, 3, "gem"], [-4, -1, 8, 2, "gem"], [-2, 1, 4, 2, "gem"], [-1, 3, 2, 1, "gem"],
     [-4, -4, 3, 1, "gemLight"], [1, 0, 3, 1, "gemDark"]],
+  // A red burst for Critical damage, a heart with a plus for Mending, and
+  // a wooden hourglass full of sand for Sands of time.
+  crit2: [[-1, -6, 2, 12, "red"], [-6, -1, 12, 2, "red"], [-3, -3, 6, 6, "red"], [-1, -1, 2, 2, "light"]],
+  mend: [[-5, -4, 4, 3, "red"], [1, -4, 4, 3, "red"], [-5, -1, 10, 3, "red"], [-3, 2, 6, 2, "red"], [-1, 4, 2, 1, "red"],
+    [-1, -3, 2, 6, "light"], [-3, -1, 6, 2, "light"]],
+  sands: [[-4, -6, 8, 2, "wood"], [-4, 4, 8, 2, "wood"], [-3, -4, 6, 2, "sand"], [-2, -2, 4, 2, "sand"],
+    [-1, 0, 2, 1, "sand"], [-2, 1, 4, 1, "sand"], [-3, 2, 6, 2, "sand"]],
   // Depth 3's: a green hourglass and a blue gem.
   hourglass3: [[-4, -6, 8, 2, "gem"], [-4, 4, 8, 2, "gem"], [-3, -4, 6, 2, "light"], [-2, -2, 4, 2, "light"],
     [-1, 0, 2, 1, "light"], [-2, 1, 4, 1, "gem"], [-3, 2, 6, 2, "gem"]],
@@ -254,70 +199,80 @@ const STAT_TEXT = {
   hordeEvery: ["HORDE EVERY", (x) => `${x}S`],
   deathCall: ["DEATH CALLS", pct],
   xpBonus: ["XP PER KILL", (x) => `+${Math.round(x * 100)}%`],
-  critChance: ["3X HITS", pct],
+  critChance: ["CRITICAL HITS", pct],
+  critDamage: ["CRITS DO", (x) => `${Math.round(x * 100) / 100}X`],
+  goldPerKill: ["BOUNTY", null],
+  timePerKill: ["EACH KILL ADDS", (x) => `${Math.round(x * 100) / 100}S`],
+  healOnClear: ["HEART BACK ON A CLEAR", pct],
 };
 const UNLOCK_TEXT = { descend: "WHERE EVERYTHING GROWS FROM", dash: "UNLOCKS THE DASH (SHIFT)", timeOrbs: "UNLOCKS TIME ORBS" };
 
-// "DAMAGE 3 > 4": what the next level changes, now and after. Or, for a
-// stat shown as a percentage, "MAGNET RANGE +25%": how much bigger the next
-// level makes it (and once it's maxed, how much bigger it is in all). A node
-// that only works in its own depth shows that depth's numbers.
+// "DAMAGE 3 > 4": what buying the node changes, now and after. Or, for a
+// stat shown as a percentage, "MAGNET RANGE +25%": how much bigger it makes
+// it (and once it's owned, how much bigger it is in all). A node that only
+// works in its own depth shows that depth's numbers.
 function effectText(node, levels) {
   if (node.effect.unlock) return UNLOCK_TEXT[node.effect.unlock] ?? "UNLOCKS SOMETHING NEW";
   const { stat } = node.effect;
   const [label, show] = STAT_TEXT[stat];
-  const depth = node.depth ?? 1;
-  const now = heroStats(levels, depth)[stat];
-  const level = levels[node.id] ?? 0;
-  const maxed = level >= node.levels;
-  const next = maxed ? now : heroStats({ ...levels, [node.id]: level + 1 }, depth)[stat];
+  // Bounty: in gold as it is in the node's depth (its first room).
+  if (stat === "goldPerKill") {
+    const scale = BALANCE.depths[node.depth - 1].scale.gold;
+    const gold = (x) => `+${shortGold(Math.round(x * scale * 10) / 10)} GOLD A KILL`;
+    const owned = (levels[node.id] ?? 0) > 0;
+    return owned ? `${label} ${gold(heroStats(levels, node.depth)[stat])}` : `${label} ${gold(node.effect.add)} MORE`;
+  }
+  const now = heroStats(levels, node.depth)[stat];
+  const owned = (levels[node.id] ?? 0) > 0;
+  const next = owned ? now : heroStats({ ...levels, [node.id]: 1 }, node.depth)[stat];
   const percent = (ratio) => `+${Math.round((ratio - 1) * 100)}%`;
-  if (!show) return maxed ? `${label} ${percent(now / heroStats({})[stat])} IN ALL` : `${label} ${percent(next / now)}`;
-  return maxed ? `${label} ${show(now)}` : `${label} ${show(now)} > ${show(next)}`;
+  if (!show) return owned ? `${label} ${percent(now / heroStats({})[stat])} IN ALL` : `${label} ${percent(next / now)}`;
+  return owned ? `${label} ${show(now)}` : `${label} ${show(now)} > ${show(next)}`;
 }
 
 // ---- The page -------------------------------------------------------------------
 
-const nodes = BALANCE.tree;
-const byId = Object.fromEntries(nodes.map((n) => [n.id, n]));
 const TOP_BAR = 12;                       // the title bar's height
 const PANEL_Y = GAME_HEIGHT - 38;         // the info panel's top
 const ZOOMS = [1, 2, 3];
-const FRAME = 9; // a node frame's radius at 1x
+const frameOf = (node) => (node.big || node.id === CENTER ? 9 : 7); // a node frame's radius at 1x
 
-// The rules for what you can see and buy, from the save (save.js).
+// The rules for what you can see and buy (nodes.js), from the save (save.js).
 const owned = (id) => (getSave().levels[id] ?? 0) > 0;
-// Seen: next to something owned (its parent is), or owned itself.
-const shown = (node) => owned(node.id) || !node.parent || owned(node.parent);
+const shown = (node) => isShown(getSave().levels, node);
 // For a depth not reached yet (stats.js): on sale already, at the early
 // price (balance.js earlyPrice), for anyone who'd rather save up for it.
 const early = (node) => isEarly(node, getSave().cleared);
-// What its next level costs, or null when it's maxed.
-function nextPrice(node) {
-  const level = getSave().levels[node.id] ?? 0;
-  return level < node.levels ? costOf(node, level, early(node)) : null;
-}
-const canBuy = (node) => shown(node) && nextPrice(node) !== null && getSave().gold >= nextPrice(node);
+// What it costs, or null once it's owned.
+const priceOf = (node) => (owned(node.id) ? null : costOf(node, 0, early(node)));
+const canBuy = (node) => !blockerOf(getSave().levels, node) && getSave().gold >= priceOf(node);
 
 // Whether there's anything you could buy right now (the altar's sigil glows).
-export const canBuyAnything = () => nodes.some(canBuy);
+export const canBuyAnything = () => NODES.some(canBuy);
 
 // Opens the tree over the current scene. `onClose` runs when it's closed.
 export function openTree(onClose) {
   C ??= Object.fromEntries(Object.entries(PALETTE).map(([name, [r, g, b]]) => [name, rgb(r, g, b)]));
   const VIEW_MIDDLE = vec2(GAME_WIDTH / 2, (TOP_BAR + PANEL_Y) / 2);
-  // How far the view can go: its middle stays within the outermost nodes,
-  // so there's always some of the web on screen.
-  const places = nodes.map((n) => placeOf(n.id));
-  const EDGES = {
-    left: Math.min(...places.map((p) => p.x)), right: Math.max(...places.map((p) => p.x)),
-    top: Math.min(...places.map((p) => p.y)), bottom: Math.max(...places.map((p) => p.y)),
-  };
   const save = getSave();
   const levels = save.levels;
+  // The nodes on show (owned, or touching one that is), worked out again
+  // whenever something's bought, and how far the view can go: its middle
+  // stays within them.
+  let visible = [];
+  let edges = null;
+  const look = () => {
+    visible = NODES.filter(shown);
+    const places = visible.map((n) => placeOf(n.id));
+    edges = {
+      left: Math.min(...places.map((p) => p.x)), right: Math.max(...places.map((p) => p.x)),
+      top: Math.min(...places.map((p) => p.y)), bottom: Math.max(...places.map((p) => p.y)),
+    };
+  };
+  look();
   let zoom = 1;
   let camera = vec2(0, 0);   // the web's point at the middle of the view
-  let selected = "descend";
+  let selected = CENTER;
   let hovered = null;         // the node under the mouse, until a key is pressed
   let message = null;        // { id, text, color, until }: a moment's note about a node, in the panel
   const born = time();
@@ -325,32 +280,39 @@ export function openTree(onClose) {
   // page's own E handler is added, so it would buy something straight away.
   // Nothing on the page reacts in the frame it opened.
   const justOpened = () => time() === born;
-  const flashes = {};        // node id -> when it was last bought (for its sparkle)
+  const flashes = {};        // node id -> when it was bought (for its sparkle)
+  const revealed = {};       // node id -> when it came into view (it pops in)
 
   const toScreen = (place) => VIEW_MIDDLE.add(place.sub(camera).scale(zoom));
-  const nodeAt = (point) => nodes.find((n) => toScreen(placeOf(n.id)).dist(point) < (FRAME + 2) * zoom && point.y > TOP_BAR && point.y < PANEL_Y)?.id ?? null;
+  const nodeAt = (point) => (point.y > TOP_BAR && point.y < PANEL_Y
+    ? visible.find((n) => toScreen(placeOf(n.id)).dist(point) < (frameOf(n) + 2) * zoom)?.id ?? null
+    : null);
 
   function buy(id) {
     const node = byId[id];
-    const level = levels[id] ?? 0;
     const say = (text, color = C.red) => (message = { id, text, color, until: time() + 1.6 });
-    if (!shown(node)) return say("BUY THE ONE BEFORE IT FIRST"), playSound("locked");
-    if (level >= node.levels) return say("ALREADY MAXED", C.muted), playSound("locked");
-    const price = nextPrice(node);
+    const blocker = blockerOf(levels, node);
+    if (blocker === "owned") return say("ALREADY YOURS", C.muted), playSound("locked");
+    if (blocker === "hidden") return say("BUY ONE NEXT TO IT FIRST"), playSound("locked");
+    if (blocker === "needs") return say(`NEEDS ${needsName(node.needs).toUpperCase()} FIRST`), playSound("locked");
+    const price = priceOf(node);
     if (save.gold < price) return say(`NEEDS ${shortGold(price)} GOLD`), playSound("locked");
+    const before = new Set(visible.map((n) => n.id));
     buyLevel(id, price);
+    look();
+    for (const n of visible) if (!before.has(n.id)) revealed[n.id] = time();
     flashes[id] = time();
     playSound("unlock");
     const at = toScreen(placeOf(id));
     puffDust(at.x, at.y + 4, 6, 10, 210);
-    say(`${node.name.toUpperCase()} ${levels[id]}/${node.levels}`, C.green);
+    say(`${node.name.toUpperCase()}: YOURS`, C.green);
   }
 
-  // Keyboard: the arrows move to the nearest node that way.
+  // Keyboard: the arrows move to the nearest node on show that way.
   function step(direction) {
     const from = placeOf(selected);
     let best = null;
-    for (const node of nodes) {
+    for (const node of visible) {
       if (node.id === selected) continue;
       const offset = placeOf(node.id).sub(from);
       const along = offset.dot(direction);
@@ -364,7 +326,7 @@ export function openTree(onClose) {
     playSound("letter");
     // Keep it in view: if it's too close to an edge, slide the view just
     // enough to bring it back in.
-    const margin = (FRAME + 3) * zoom; // its frame and pips
+    const margin = (frameOf(byId[selected]) + 3) * zoom;
     const at = toScreen(placeOf(selected));
     const dx = Math.min(0, at.x - margin) + Math.max(0, at.x - (GAME_WIDTH - margin));
     const dy = Math.min(0, at.y - (TOP_BAR + margin)) + Math.max(0, at.y - (PANEL_Y - margin));
@@ -380,7 +342,7 @@ export function openTree(onClose) {
     camera = world.sub(around.sub(VIEW_MIDDLE).scale(1 / zoom));
     keepCamera();
   }
-  const keepCamera = () => (camera = vec2(clamp(camera.x, EDGES.left, EDGES.right), clamp(camera.y, EDGES.top, EDGES.bottom)));
+  const keepCamera = () => (camera = vec2(clamp(camera.x, edges.left, edges.right), clamp(camera.y, edges.top, edges.bottom)));
 
   // ---- Input -----------------------------------------------------------------------
   // Kaplay gives the mouse in the page's pixels, but the game is drawn
@@ -467,15 +429,18 @@ export function openTree(onClose) {
     const appear = Math.min(1, (time() - born) / 0.15);
     drawRect({ pos: vec2(0, 0), width: GAME_WIDTH, height: GAME_HEIGHT, color: C.ink, opacity: 0.86 * appear });
 
-    // The links, then the nodes.
-    for (const node of nodes) {
-      if (!node.parent) continue;
-      const a = screenOf(node.parent);
-      const b = screenOf(node.id);
-      const color = owned(node.id) ? C.gold : shown(node) ? C.stoneLight : C.dark;
-      drawLine({ p1: a, p2: b, width: Math.max(1, zoom), color, opacity: appear });
+    // The links between neighbours on show (each once), then the nodes. A
+    // link is gold between two owned nodes.
+    const onShow = new Set(visible.map((n) => n.id));
+    for (const node of visible) {
+      for (const id of node.neighbours) {
+        if (id < node.id || !onShow.has(id)) continue;
+        const color = owned(node.id) && owned(id) ? C.gold : C.stoneLight;
+        const fade = Math.min(popOf(node.id), popOf(id));
+        drawLine({ p1: screenOf(node.id), p2: screenOf(id), width: Math.max(1, zoom), color, opacity: appear * fade });
+      }
     }
-    for (const node of nodes) drawNode(node, appear);
+    for (const node of visible) drawNode(node, appear);
     drawCursor(appear);
 
     // The title bar.
@@ -489,33 +454,26 @@ export function openTree(onClose) {
     drawPanel(hovered ?? selected);
   });
 
+  // How far a node that just came into view has popped in (0 to 1).
+  const popOf = (id) => Math.min(1, (time() - (revealed[id] ?? -9)) / 0.25);
+
   function drawNode(node, appear) {
     const at = screenOf(node.id);
-    const reach = (FRAME + 4) * zoom; // its frame and pips stick out this far
+    const reach = (frameOf(node) + 4) * zoom;
     if (at.x < -reach || at.x > GAME_WIDTH + reach || at.y < -reach || at.y > GAME_HEIGHT + reach) return;
-    const level = levels[node.id] ?? 0;
-    const isShown = shown(node);
-    const r = FRAME * zoom;
+    const pop = popOf(node.id);
+    const r = Math.max(1, Math.round(frameOf(node) * zoom * easings.easeOutBack(pop)));
     const spot = spotOf(node.id);
+    const blocker = blockerOf(levels, node);
 
-    // The frame's rim says where it stands: gold when maxed, green when you
-    // can afford the next level, light when some levels are bought, grey
-    // otherwise. (The pips show how many are bought.)
-    const rim = !isShown ? C.dark : level >= node.levels ? C.gold : canBuy(node) ? C.green : level > 0 ? C.light : C.stoneLight;
-    drawCircle({ pos: spot, radius: r + zoom, color: C.ink, opacity: appear });
-    drawCircle({ pos: spot, radius: r, color: rim, opacity: appear });
-    drawCircle({ pos: spot, radius: r - 2 * zoom, color: isShown ? C.stone : C.ink, opacity: appear });
-    if (isShown) drawIcon(node.id, spot, zoom, appear);
-
-    // Pips around the frame: one per level, lit for the levels bought. They
-    // go clockwise from the bottom left, over the top, to the bottom right.
-    if (node.levels > 1 && isShown) {
-      for (let i = 0; i < node.levels; i++) {
-        const angle = Math.PI * (0.75 + (1.5 * i) / (node.levels - 1));
-        const p = spot.add(vec2(Math.cos(angle), Math.sin(angle)).scale(r + 2.5 * zoom));
-        drawRect({ pos: p.sub(zoom, zoom), width: 2 * zoom, height: 2 * zoom, color: i < level ? C.gold : C.stoneLight, opacity: appear });
-      }
-    }
+    // The frame's rim says where it stands: gold when owned, green when you
+    // can afford it, dark when it needs something first, grey otherwise.
+    const rim = blocker === "owned" ? C.gold : canBuy(node) ? C.green : blocker === "needs" ? C.dark : C.stoneLight;
+    const opacity = appear * Math.min(1, pop * 2);
+    drawCircle({ pos: spot, radius: r + zoom, color: C.ink, opacity });
+    drawCircle({ pos: spot, radius: r, color: rim, opacity });
+    drawCircle({ pos: spot, radius: Math.max(1, r - 2 * zoom), color: C.stone, opacity });
+    if (pop >= 1) drawIcon(node, spot, zoom, appear * (blocker === "needs" ? 0.45 : 1));
     // A sparkle when it's just been bought.
     const since = time() - (flashes[node.id] ?? -9);
     if (since < 0.4) drawCircle({ pos: spot, radius: r + (4 + since * 30) * zoom * 0.3, outline: { width: zoom, color: C.gold }, fill: false, opacity: 1 - since / 0.4 });
@@ -537,7 +495,7 @@ export function openTree(onClose) {
   // show where they cross a neighbour's light rim.
   function drawCursor(appear) {
     const spot = spotOf(selected);
-    const out = (FRAME + 5) * zoom + Math.round(Math.sin(time() * 5)) * zoom;
+    const out = (frameOf(byId[selected]) + 4) * zoom + Math.round(Math.sin(time() * 5)) * zoom;
     const arm = 3 * zoom;
     const arms = [];
     for (const sx of [-1, 1]) {
@@ -557,35 +515,30 @@ export function openTree(onClose) {
 
   function drawPanel(id) {
     const node = byId[id];
-    const level = levels[id] ?? 0;
     drawRect({ pos: vec2(0, PANEL_Y), width: GAME_WIDTH, height: GAME_HEIGHT - PANEL_Y, color: C.ink });
     drawRect({ pos: vec2(0, PANEL_Y), width: GAME_WIDTH, height: 1, color: C.stoneLight });
     const text = (content, x, y, color = C.light, anchorName = "topleft") =>
       drawText({ text: content, pos: vec2(x, y), size: 8, font: "pixel", color, anchor: anchorName });
 
-    if (!shown(node)) {
-      text("???", 30, PANEL_Y + 5, C.muted);
-      text("BUY THE NODE BEFORE IT TO SEE IT", 30, PANEL_Y + 16, C.muted);
-      return;
-    }
-    drawIcon(id, vec2(15, PANEL_Y + 19), 1);
+    drawIcon(node, vec2(15, PANEL_Y + 19), 1);
     text(node.name.toUpperCase(), 30, PANEL_Y + 4, C.gold);
-    // Top right: its levels, and the depth it's for: "DEPTH 2 ONLY" for one
-    // that only works there, "DEPTH 2" for an early one.
-    const depthTag = node.perDepth ? `DEPTH ${node.depth ?? 1} ONLY` : early(node) ? `DEPTH ${node.depth}` : "";
-    const corner = [depthTag, node.levels > 1 ? `${level}/${node.levels}` : ""];
-    text(corner.filter(Boolean).join("  "), GAME_WIDTH - 6, PANEL_Y + 4, C.muted, "topright");
+    // Top right: the depth it's for: "DEPTH 2 ONLY" for one that only works
+    // there, "DEPTH 2" for an early one.
+    const depthTag = node.perDepth ? `DEPTH ${node.depth} ONLY` : early(node) ? `DEPTH ${node.depth}` : "";
+    text(depthTag, GAME_WIDTH - 6, PANEL_Y + 4, C.muted, "topright");
     text(effectText(node, levels), 30, PANEL_Y + 15);
 
     let status;
+    const blocker = blockerOf(levels, node);
     if (message?.id === id && time() < message.until) status = [message.text, message.color];
-    else if (!node.parent) status = ["OWNED", C.muted];
-    else if (level >= node.levels) status = ["MAXED", C.gold];
+    else if (id === CENTER) status = ["YOURS", C.gold];
+    else if (blocker === "owned") status = ["YOURS", C.gold];
+    else if (blocker === "needs") status = [`NEEDS ${needsName(node.needs).toUpperCase()} FIRST`, C.red];
     else {
       // The selected node is one click (or E) from bought; any other node the
       // mouse is on is a click from being selected. An early node says it
       // costs more for now.
-      const price = nextPrice(node);
+      const price = priceOf(node);
       const afford = save.gold >= price;
       const cost = shortGold(price);
       const tag = early(node) ? `EARLY ${BALANCE.earlyPrice}X: ` : "";

@@ -15,7 +15,7 @@
 //
 // And how each depth's start feels: in depth 1, with no upgrades, room 1
 // must be out of reach, even for a sharp player (with a margin: how much
-// more time he'd need); it should open after about 6-8 upgrades. Each deeper
+// more time he'd need); it should open after about 10-15 nodes. Each deeper
 // depth starts the climb over, so its first room should be a struggle with
 // only the earlier depths' upgrades.
 //
@@ -36,6 +36,7 @@ import { pathToFileURL } from "node:url";
 import { BALANCE } from "../src/balance.js";
 import { MODEL, PLAYERS, heroStats, costOf, simulateRun, makeDice } from "./model.mjs";
 import { isEarly } from "../src/stats.js";
+import { NODES, byId, blockerOf } from "../src/nodes.js";
 
 export const DEPTHS = BALANCE.depths.length;
 const TARGET_MINUTES = 40;  // DESIGN.md section 8: about 40 minutes per depth, typical player
@@ -48,46 +49,68 @@ const BARE_RUNS = 1000;     // dice rolls for the no-upgrades check
 // dodges better (nobody swings faster than the swing's timer).
 const SHARP = { clearTime: 0.8, gold: 1, danger: 0.8 };
 
-export const startingLevels = () => Object.fromEntries(BALANCE.tree.filter((n) => n.owned).map((n) => [n.id, 1]));
+export const startingLevels = () => Object.fromEntries(NODES.filter((n) => n.owned).map((n) => [n.id, 1]));
 
 // Whether a node does anything in `depth`: a per-depth node only works in
 // its own depth (stats.js), so nobody buys another depth's for itself.
-const useful = (node, depth) => !node.perDepth || (node.depth ?? 1) === depth;
-// Whether buying `node` leads to something that works in `depth` (and passes
-// `want`), through a chain of nodes that don't: an "opener".
-const opens = (node, depth, want = () => true) => BALANCE.tree.some((c) => c.parent === node.id
-  && ((useful(c, depth) && want(c)) || (!useful(c, depth) && opens(c, depth, want))));
+const useful = (node, depth) => !node.perDepth || node.depth === depth;
 
-// The nodes you could buy a level of right now, playing `depth` (their parent
-// is owned, they aren't maxed, and they do something here, or their first
-// level opens the way to something that does), each with its next level's
-// price. A deeper depth's nodes are on sale too, at the early price (this
-// depth's boss isn't beaten yet). `usefulOnly`: just the ones that work here.
+// For each node not owned yet that works here (and passes `want`), or leads
+// to one through nodes not owned yet: how many nodes away that is (0: it
+// works here itself). A node that only leads to nodes useless here isn't in
+// the map. (Its `needs` aside: those are checked when it's on sale.)
+function stepsTo(levels, depth, want) {
+  const steps = new Map();
+  const queue = [];
+  for (const node of NODES) {
+    if (!levels[node.id] && useful(node, depth) && want(node)) {
+      steps.set(node.id, 0);
+      queue.push(node.id);
+    }
+  }
+  for (let i = 0; i < queue.length; i++) {
+    for (const id of byId[queue[i]].neighbours) {
+      if (levels[id] || steps.has(id)) continue;
+      steps.set(id, steps.get(queue[i]) + 1);
+      queue.push(id);
+    }
+  }
+  return steps;
+}
+
+// The nodes you could buy right now, playing `depth` (one you own touches
+// them, and their `needs` is met), that do something here or lead to
+// something that does, each with its price and how many nodes away the
+// nearest useful one is (`steps`, 0 for itself). A deeper depth's nodes are
+// on sale too, at the early price (this depth's boss isn't beaten yet).
+// `usefulOnly`: just the ones that work here.
 function forSale(levels, depth, usefulOnly = false, want = () => true) {
-  return BALANCE.tree
-    .filter((node) => (levels[node.id] ?? 0) < node.levels)
-    .filter((node) => !node.parent || (levels[node.parent] ?? 0) > 0)
-    .filter((node) => (useful(node, depth) && want(node)) || (!usefulOnly && !(levels[node.id] ?? 0) && opens(node, depth, want)))
-    .map((node) => ({ node, price: costOf(node, levels[node.id] ?? 0, isEarly(node, depth - 1)) }));
+  const steps = stepsTo(levels, depth, want);
+  return NODES
+    .filter((node) => !blockerOf(levels, node) && steps.has(node.id) && (!usefulOnly || steps.get(node.id) === 0))
+    .map((node) => ({ node, price: costOf(node, 0, isEarly(node, depth - 1)), steps: steps.get(node.id) }));
 }
 
 // Plays the same upgrades `count` times in `depth`, with the dice seeded 1,
 // 2, 3... Using the same seeds everywhere means two sets of upgrades are
 // compared on the same luck.
 function rollRuns(levels, player, count, depth) {
-  const stats = heroStats(levels, depth);
-  return Array.from({ length: count }, (_, i) => simulateRun(stats, makeDice(i + 1), player, depth));
+  return rollHero(heroStats(levels, depth), player, count, depth);
 }
+const rollHero = (stats, player, count, depth) => Array.from({ length: count }, (_, i) => simulateRun(stats, makeDice(i + 1), player, depth));
 
 // How good a set of upgrades is in `depth`, on average: gold per real-world
 // second (runs that earn more per second fill the tree faster), with a big
-// bonus for the chance of beating the boss, since that's the goal.
+// bonus for the chance of beating the boss, since that's the goal. Two sets
+// that make the same hero (the same stats) are worth the same, so it's
+// remembered by the hero: the many look-alike nodes on sale share one try.
 const worthCache = new Map();
 export const forgetWorth = () => worthCache.clear(); // after changing BALANCE or MODEL (e.g. while tuning)
 function worth(levels, player, depth) {
-  const key = JSON.stringify([player, depth, Object.entries(levels).filter(([, l]) => l > 0).sort()]); // the same build, in any order
+  const stats = heroStats(levels, depth);
+  const key = JSON.stringify([player, depth, { ...stats, unlocked: [...stats.unlocked].sort() }]);
   if (!worthCache.has(key)) {
-    const runs = rollRuns(levels, player, WORTH_OF, depth);
+    const runs = rollHero(stats, player, WORTH_OF, depth);
     const mean = (f) => runs.reduce((sum, run) => sum + f(run), 0) / runs.length;
     // Gold per second, in the depth's own terms: a deeper depth pays its
     // `scale` times as much, and its prices are that much higher too.
@@ -97,27 +120,29 @@ function worth(levels, player, depth) {
   return worthCache.get(key);
 }
 
-// The cheapest level on sale that adds time to this depth's clock, if he can
-// afford it.
+// The nearest node on sale that adds time to this depth's clock, or the
+// first step toward one, if he can afford it (the cheapest of those).
 const TIME_STATS = new Set(["startTime", "timePerSubDepth"]);
+const nearest = (offers) => offers.sort((a, b) => a.steps - b.steps || a.price - b.price)[0] ?? null;
 function moreTime(levels, gold, depth) {
-  const offers = forSale(levels, depth, false, (n) => TIME_STATS.has(n.effect?.stat)).filter((o) => o.price <= gold);
-  return offers.sort((a, b) => a.price - b.price)[0] ?? null;
+  return nearest(forSale(levels, depth, false, (n) => TIME_STATS.has(n.effect?.stat)).filter((o) => o.price <= gold));
 }
 // The same for damage.
 function moreDamage(levels, gold, depth) {
-  const offers = forSale(levels, depth, false, (n) => n.effect?.stat === "damage").filter((o) => o.price <= gold);
-  return offers.sort((a, b) => a.price - b.price)[0] ?? null;
+  return nearest(forSale(levels, depth, false, (n) => n.effect?.stat === "damage").filter((o) => o.price <= gold));
 }
 
 const SHOPPERS = {
+  // The most gain for the gold; among nodes that gain nothing (on the way to
+  // one that does), the nearest to a useful one, then the cheapest.
   value(levels, gold, player, depth) {
     const now = worth(levels, player, depth);
     let best = null;
     for (const offer of forSale(levels, depth).filter((o) => o.price <= gold)) {
-      const gain = worth({ ...levels, [offer.node.id]: (levels[offer.node.id] ?? 0) + 1 }, player, depth) - now;
+      const gain = worth({ ...levels, [offer.node.id]: 1 }, player, depth) - now;
       const score = gain / Math.max(1, offer.price);
-      if (!best || score > best.score) best = { ...offer, score };
+      if (!best || score > best.score
+        || (score === best.score && (offer.steps < best.steps || (offer.steps === best.steps && offer.price < best.price)))) best = { ...offer, score };
     }
     return best;
   },
@@ -147,6 +172,7 @@ export const SHOPPER_NAMES = Object.keys(SHOPPERS);
 // depth's prices (its nodes aren't early any more): `opening` is what that
 // buys, before the first run, and `startLevels` the hero it starts with.
 const FARM_AFTER = 3;
+const SAVE_RUNS = 4; // a stuck player saves for what he needs if it's within this many runs' gold
 export function playDepth(shopperName, player, nextRun, depth, start = { levels: startingLevels(), bank: 0, minutes: 0 }) {
   const shop = SHOPPERS[shopperName];
   const levels = { ...start.levels };
@@ -157,8 +183,8 @@ export function playDepth(shopperName, player, nextRun, depth, start = { levels:
   if (bank > 0) {
     for (let pick = shop(levels, bank, player, depth); pick; pick = shop(levels, bank, player, depth)) {
       bank -= pick.price;
-      levels[pick.node.id] = (levels[pick.node.id] ?? 0) + 1;
-      opening.push(`${pick.node.name} ${levels[pick.node.id]}`);
+      levels[pick.node.id] = 1;
+      opening.push(pick.node.name);
     }
   }
   const startLevels = { ...levels };
@@ -192,10 +218,15 @@ export function playDepth(shopperName, player, nextRun, depth, start = { levels:
     // he can't afford any, the clock rule above still holds.
     const atDoor = depth > 1 && run.deepest < 1;
     const first = (atDoor ? moreDamage(levels, bank, depth) : null) ?? (stuck ? moreTime(levels, bank, depth) : null);
-    for (let pick = first ?? shop(levels, bank, player, depth); pick; pick = shop(levels, bank, player, depth)) {
+    // Stuck, and what he needs (damage at the door, or time) is on sale but
+    // not affordable yet: if it's within a few runs' gold, he saves up for
+    // it instead of spending on something else.
+    const needed = first ? null : (atDoor ? moreDamage(levels, Infinity, depth) : null) ?? (stuck ? moreTime(levels, Infinity, depth) : null);
+    const saving = needed && needed.price > bank && needed.price <= bank + SAVE_RUNS * run.gold;
+    for (let pick = saving ? null : first ?? shop(levels, bank, player, depth); pick; pick = shop(levels, bank, player, depth)) {
       bank -= pick.price;
-      levels[pick.node.id] = (levels[pick.node.id] ?? 0) + 1;
-      bought.push(`${pick.node.name} ${levels[pick.node.id]}`);
+      levels[pick.node.id] = 1;
+      bought.push(pick.node.name);
     }
     runs.push({ n, minutes, deepest: run.deepest, ending: run.ending, gold: run.gold, bank, cheapest, bought });
   }
@@ -369,14 +400,11 @@ function summarize(shopperName, depth, path, typical, efficient, before) {
   const last = path.runs.at(-1);
   const check = golden(path.runs);
   const ratio = (r) => fmt(r.gold / r.cheapest, 2);
-  // Levels of this depth's nodes, and of deeper ones bought early.
-  const levelsOf = (test) => Object.entries(path.levels).reduce((sum, [id, l]) => {
-    const node = BALANCE.tree.find((n) => n.id === id);
-    return sum + (!node.owned && test(node.depth ?? 1) ? l : 0);
-  }, 0);
-  const boughtLevels = levelsOf((d) => d === depth);
-  const earlyLevels = levelsOf((d) => d > depth);
-  const allLevels = BALANCE.tree.filter((n) => !n.owned && (n.depth ?? 1) === depth).reduce((sum, n) => sum + n.levels, 0);
+  // This depth's nodes bought, and deeper ones bought early.
+  const boughtOf = (test) => Object.keys(path.levels).filter((id) => !byId[id].owned && test(byId[id].depth)).length;
+  const boughtLevels = boughtOf((d) => d === depth);
+  const earlyLevels = boughtOf((d) => d > depth);
+  const allLevels = NODES.filter((n) => !n.owned && n.depth === depth).length;
   const span = (s) => (!s.reached ? "no playthrough got this far"
     : `${fmt(s.minutes.mean, 1)} min on average (10% of players faster than ${fmt(s.minutes.p10, 1)}, 10% slower than ${fmt(s.minutes.p90, 1)}), ${s.runs.median} runs`
       + (s.unfinished ? `, ${s.unfinished} NEVER beat the boss` : "") + (s.neverReached ? `, ${s.neverReached} never got here` : ""));
@@ -397,11 +425,11 @@ function summarize(shopperName, depth, path, typical, efficient, before) {
     + ` (5+ before the last stretch: ${fmt(100 * r.manyEarly)}%; biggest spree ${fmt(r.spree, 1)} on average, ${typical.maxBuys} at most)`;
   lines.push(`  upgrades bought per run (typical player): ${beat(typical.rhythm)}`);
   lines.push(`  room 1 first cleared (median): run ${typical.roomOne.run} after ${typical.roomOne.upgrades} upgrades (typical player), `
-    + `run ${efficient.roomOne.run} after ${efficient.roomOne.upgrades} (efficient)` + (depth === 1 ? "  [target 6-8 upgrades]" : ""));
+    + `run ${efficient.roomOne.run} after ${efficient.roomOne.upgrades} (efficient)` + (depth === 1 ? "  [target 10-15 nodes]" : ""));
   if (before !== null) lines.push(`  room 1 with only the depths before it: cleared in ${fmt(100 * before)}% of runs (efficient player, golden path)`);
   if (path.opening?.length) lines.push(`  bought before the first run (with the last boss's gold): ${path.opening.join(", ")}`);
   lines.push(`  first run: reached ${fmt(path.runs[0].deepest, 1)}, earned ${path.runs[0].gold} gold, bought ${path.runs[0].bought.join(", ") || "nothing"}`);
-  lines.push(`  ring bought when the boss fell: ${boughtLevels} of ${allLevels} levels`
+  lines.push(`  ring bought when the boss fell: ${boughtLevels} of ${allLevels} nodes`
     + (earlyLevels ? `, plus ${earlyLevels} of deeper depths', bought early` : ""));
   const stuck = walls(path.runs);
   const where = (w) => (w.at >= 9.99 ? "at the boss" : `at ${fmt(w.at, 1)}`); // (9.999: the boss room's bar is full)
@@ -413,8 +441,10 @@ function summarize(shopperName, depth, path, typical, efficient, before) {
   lines.push(`  minutes each room takes to first clear (typical player, median): ${took.map((m) => fmt(m, 1)).join(", ")}`
     + `  (the slowest before the boss: room ${slowest + 1}, ${fmt(took[slowest], 1)} min)`);
   lines.push(`  walls with real luck (typical player): in ${fmt(100 * typical.walls.share)}% of playthroughs, the longest ${typical.walls.longest} runs`);
-  const unbought = BALANCE.tree.filter((n) => (n.depth ?? 1) === depth && (path.levels[n.id] ?? 0) === 0).map((n) => n.name);
-  if (unbought.length) lines.push(`  never bought: ${unbought.join(", ")}`);
+  // What's left, by name: "3 Wisdom, 1 Great greed".
+  const left = {};
+  for (const n of NODES) if (n.depth === depth && !path.levels[n.id]) left[n.name] = (left[n.name] ?? 0) + 1;
+  if (Object.keys(left).length) lines.push(`  never bought: ${Object.entries(left).map(([name, count]) => `${count} ${name}`).join(", ")}`);
   return lines.join("\n");
 }
 
@@ -454,7 +484,7 @@ function main(args) {
     r.path.forEach((path, d) => {
       // Only the earlier depths' nodes: the opening can buy this depth's own ring.
       const earlier = Object.fromEntries(Object.entries(path.startLevels)
-        .map(([id, level]) => [id, (BALANCE.tree.find((n) => n.id === id).depth ?? 1) < d + 1 ? level : 0]));
+        .map(([id, level]) => [id, byId[id].depth < d + 1 ? level : 0]));
       const before = d > 0 ? freshRoomOne(earlier, d + 1) : null;
       console.log(summarize(r.shopper, d + 1, path, r.typical.depths[d], r.efficient.depths[d], before));
       if (args.includes("--runs")) console.log(`  the golden-rule path, run by run:\n${runTable(path.runs)}`);

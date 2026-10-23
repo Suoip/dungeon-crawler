@@ -274,6 +274,7 @@ export function simulateRun(stats, dice, player = PLAYERS.efficient, depth = 1) 
     // others, the door opens and he heads for it.
     const fill = () => {
       full = true;
+      if (hearts < stats.hearts && dice() < stats.healOnClear) hearts++; // heal on clear
       const crumbleCoins = (type) => coins(BALANCE.mobs[type].gold * scale.gold * (1 + stats.goldBonus));
       // Spawns still in their warning dust are cancelled; the rest are up.
       for (let i = rising.length - 1; i >= 0; i--) if (t - rising[i].born < MODEL.dustTime) rising.splice(i, 1);
@@ -296,7 +297,8 @@ export function simulateRun(stats, dice, player = PLAYERS.efficient, depth = 1) 
       const def = BALANCE.mobs[type];
       xp += def.xp * (1 + stats.xpBonus);
       if (!full && xp >= room.xp) fill();
-      roomGold += coins(def.gold * scale.gold * (1 + stats.goldBonus));
+      roomGold += coins((def.gold + stats.goldPerKill) * scale.gold * (1 + stats.goldBonus)); // flat gold per kill on top
+      if (!clockStopped) clock += stats.timePerKill; // seconds per kill
       // A splitter's children, right there (unless its kill just started the
       // boss's entrance, which cancels them; in the boss fight they come).
       if (boss || !(isBossRoom && full)) for (const child of def.splitsInto ?? []) comeClose(child);
