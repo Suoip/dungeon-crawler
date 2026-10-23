@@ -82,7 +82,7 @@ const SPIKES_PERIOD = SPIKES.down + SPIKES.warn + SPIKES.up + SPIKES.retract;
 function addSpikes(col, row) {
   const middle = middleOf(col, row);
   // z 0.5: on the floor, under everything else (the hearts are z 1).
-  const spikes = add([sprite("floor_spikes", { frame: 0 }), pos(middle), anchor("center"), z(0.5), "hazard", { up: false }]);
+  const spikes = add([sprite("floor_spikes", { frame: 0 }), pos(middle), anchor("center"), z(0.5), "hazard", { up: false, damage: 1 }]); // spikes cost one heart
   // His feet (a 10x6 box just above his position) on the tile.
   spikes.touches = (player) => spikes.up
     && Math.abs(player.pos.x - middle.x) < TILE / 2 + 3

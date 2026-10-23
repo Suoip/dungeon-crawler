@@ -21,7 +21,7 @@ const FRESH = {
   best: 0,                   // the deepest a run has got, in sub-depths from the top: 13.4 = depth 2, into room 4
   cleared: 0,                // the deepest depth whose boss has been beaten
   depth: 1,                  // the depth the next run goes to (picked in the underworld)
-  bones: 0,                  // the crypt's material: kept for later, nothing buys with it yet
+  materials: { bones: 0, teeth: 0, tusks: 0, slime: 0, embers: 0 }, // each depth's material, for its special upgrade
   seenUnderworld: false,     // the first visit puts the well in the title room
 };
 
@@ -30,6 +30,10 @@ try {
   const stored = JSON.parse(localStorage.getItem(KEY) ?? "{}");
   const sameTree = stored.tree === TREE;
   save = { ...save, ...stored, tree: TREE, levels: { ...FRESH.levels, ...(sameTree ? stored.levels : {}) } };
+  // Saves from before the depths had their own materials only had bones.
+  save.materials = { ...FRESH.materials, ...stored.materials };
+  if (stored.bones) save.materials.bones += stored.bones;
+  delete save.bones;
   // Saves from before the well existed: every run ends in the underworld,
   // so anyone who has played a run has been there.
   save.seenUnderworld ||= save.runs > 0;
@@ -47,13 +51,13 @@ function write() {
   }
 }
 
-// A run in `depth` is over: bank its gold and bones, and remember how deep
+// A run in `depth` is over: bank its gold and material, and remember how deep
 // it got (`cleared` is true when it beat the boss). Beating a depth's boss
 // for the first time unlocks the next depth, and the next run goes there.
 // Returns true when that happened.
-export function endRun({ gold, deepest, depth, cleared = false, bones = 0 }) {
+export function endRun({ gold, deepest, depth, cleared = false, material = 0 }) {
   save.gold += gold;
-  save.bones += bones;
+  save.materials[BALANCE.depths[depth - 1].material] += material;
   save.runs++;
   save.best = Math.max(save.best, (depth - 1) * 10 + deepest);
   const unlocked = cleared && depth > save.cleared && depth < BALANCE.depths.length;

@@ -166,6 +166,7 @@ function pick(spawns, dice) {
 //   wall     real-world seconds it took (with cutscenes, without the hub)
 export function simulateRun(stats, dice, player = PLAYERS.efficient, depth = 1) {
   const DEPTH = BALANCE.depths[depth - 1];
+  const SPECIAL = BALANCE.hits.special[depth - 1]; // hearts a special attack costs
   // A boss that favors raising raises every bossRaiseEvery s; the others pick
   // it half as often (boss.js pickMove).
   const bossRaiseEvery = MODEL.bossRaiseEvery * (MOB_TYPES[DEPTH.boss.type].favorite === "spawn" ? 1 : 2);
@@ -220,6 +221,7 @@ export function simulateRun(stats, dice, player = PLAYERS.efficient, depth = 1) 
     const mud = () => (t < mudUntil ? BEHAVIORS.muddy.slows : 1);
     // The danger right now: everything up close, plus the ones that throw
     // things from wherever they are.
+    const rangedNow = () => [...close, ...waiting].reduce((sum, m) => sum + (behavior(m.type).ranged ? BALANCE.mobs[m.type].threat : 0), 0);
     const threatNow = () => close.reduce((sum, m) => sum + (behavior(m.type).ranged ? 0 : BALANCE.mobs[m.type].threat), 0)
       + [...close, ...waiting].reduce((sum, m) => sum + (behavior(m.type).ranged ? BALANCE.mobs[m.type].threat : 0), 0);
     let walk2 = null;       // { from, need }: the walk to the next one, once he's on his way
@@ -257,7 +259,7 @@ export function simulateRun(stats, dice, player = PLAYERS.efficient, depth = 1) 
     // or he gets out of the way. Returns true if that was his last heart.
     const blast = (type) => {
       if (t < invincibleUntil || dice() >= Math.min(1, behavior(type).blast * danger)) return false;
-      hearts--;
+      hearts -= SPECIAL; // a special attack (balance.js hits)
       invincibleUntil = t + stats.invincibleFor;
       return hearts <= 0;
     };
@@ -376,7 +378,10 @@ export function simulateRun(stats, dice, player = PLAYERS.efficient, depth = 1) 
       const perSecond = (threatNow() + (boss ? DEPTH.boss.threat : 0) + (room.hazard ?? 0)) * danger;
       const exposed = Math.min(swing, t - invincibleUntil);
       if (exposed > 0 && perSecond > 0 && dice() < 1 - Math.exp(-perSecond * exposed)) {
-        hearts--;
+        // Shots and the boss's moves are special attacks: their share of the
+        // danger costs the depth's special hit; a touch (or spikes) costs one.
+        const special = (rangedNow() + (boss ? DEPTH.boss.threat : 0)) * danger / perSecond;
+        hearts -= dice() < special ? SPECIAL : 1;
         invincibleUntil = t + stats.invincibleFor;
         if (hearts <= 0) return end("died", t);
       }

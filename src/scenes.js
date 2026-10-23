@@ -12,7 +12,7 @@ import {
 import { sleep, animate, addFader, fadeIn, fadeOut, shakeScreen, flashScreen, puffDust } from "./effects.js";
 import { startSpawning, raiseMob, bossSpot, MOB_TYPES } from "./mobs.js";
 import { setupAutoSwing, setupHurt, addHearts, setupHeartDrops, setupOrbDrops } from "./combat.js";
-import { dropCoins, dropBone, collectFloor, sweepFloor, floorValue, floorBones } from "./coins.js";
+import { dropCoins, dropMaterial, collectFloor, sweepFloor, floorValue, floorMaterial } from "./coins.js";
 import { buildLayout } from "./crypt.js";
 import { addHud } from "./hud.js";
 import { addLadder, addWell } from "./props.js";
@@ -85,7 +85,7 @@ export function registerRoomScene() {
         run.kills++;
         maybeDropHeart(mob);
         maybeDropOrb(mob);
-        maybeDropBone(mob);
+        maybeDropMaterial(mob);
         // Flat gold per kill (a tree upgrade) comes on top of the monster's own,
         // in this room's gold, and Greed adds its share of both.
         const flat = mob.def.boss ? 0 : stats.goldPerKill * roomScale(run.depth, sub).gold;
@@ -112,12 +112,12 @@ export function registerRoomScene() {
     fight.solid = buildLayout(fight, run);
     setupAutoSwing(player, fight, stats);
     setupHurt(player, run, hearts, fight, defeated, stats);
-    // Bones (the crypt's material): from sub-depth 6 on, a kill may drop one,
-    // more often the deeper it is.
-    const bones = BALANCE.drops.bones;
-    const boneChance = !depth.bones || sub < bones.fromSubDepth ? 0 : bones.chance + bones.stepPerSubDepth * (sub - bones.fromSubDepth);
-    const maybeDropBone = (mob) => {
-      if (Math.random() < boneChance) dropBone(mob.pos.clone(), run, player, () => stats.magnetRange);
+    // The depth's material (bones in the crypt, teeth in the warrens...): from
+    // sub-depth 6 on, a kill may drop a piece, more often the deeper it is.
+    const drop = BALANCE.drops.material;
+    const materialChance = sub < drop.fromSubDepth ? 0 : drop.chance + drop.stepPerSubDepth * (sub - drop.fromSubDepth);
+    const maybeDropMaterial = (mob) => {
+      if (Math.random() < materialChance) dropMaterial(mob.pos.clone(), run, player, () => stats.magnetRange, depth.material);
     };
     const hud = addHud(() => ({ clock: run.clock, sand: run.sand, stopped: clockStopped, xp, xpNeeded: room.xp, gold: run.gold }));
     // Time orbs: while the clock runs, a kill may drop one, worth seconds.
@@ -283,11 +283,11 @@ export function registerRoomScene() {
       collectTheRest();
     }
 
-    // The run is over: its gold and bones go into the save right away,
+    // The run is over: its gold and material go into the save right away,
     // counting what's still on the floor (so closing the page during the
     // cutscene loses nothing), and then those fly to him, just to show it.
     function bankWithTheFloor() {
-      bank(floorValue(), floorBones());
+      bank(floorValue(), floorMaterial());
       sweepFloor();
     }
 
@@ -297,13 +297,13 @@ export function registerRoomScene() {
       collectFloor(run);
     }
 
-    // The run's gold and bones (plus `gold` and `boneCount` more) go into the
+    // The run's gold and material (plus `gold` and `pieces` more) go into the
     // save: once per run, however it ends. `run.unlocked`: this run beat the
     // depth's boss for the first time, and the next depth is open now.
-    function bank(gold = 0, boneCount = 0) {
+    function bank(gold = 0, pieces = 0) {
       if (run.banked) return;
       run.banked = true;
-      run.unlocked = endRun({ gold: run.gold + gold, deepest: run.deepest, depth: run.depth, cleared: bossDown, bones: run.bones + boneCount });
+      run.unlocked = endRun({ gold: run.gold + gold, deepest: run.deepest, depth: run.depth, cleared: bossDown, material: run.material + pieces });
     }
 
     // Through the door: on to the next room. Coins left on the floor stay
