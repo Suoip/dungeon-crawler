@@ -261,7 +261,13 @@ raising chorts.
 - **Grown through the tree.** For example:
   - flat extra time at the start of a run
   - extra time added each time you reach the next sub-depth in that run
-  - more of the same kind (to be designed in section 7)
+  - seconds for every kill (Sands of time), and time orbs
+- **The hourglass.** Beside the clock, at the top left, an hourglass shows
+  how much of all the time the run has had (its start, each room's and
+  every kill's seconds, and the orbs) is still left: the sand in its top
+  is the share still to come, the bottom the share that has run out. The
+  sand pours through while the clock runs, and a kill that adds seconds
+  makes the top shine, so a glance says how deep into the run you are.
 - **What this means for rooms:** the first rooms' XP bars have to be small
   enough that an early run fills one or two of them, mostly from the
   monsters that greet you and the one-at-a-time spawns, since a 15-20 s
@@ -393,55 +399,54 @@ to:
 
 ## 7. The skill tree
 
-- **A honeycomb from the middle.** Descend sits in the center and every
-  other node is a cell of a honeycomb around it. A node can be bought once
-  it touches one you own (any of its six neighbours), so the tree isn't a
-  set of separate lines: the six themes (weapon to the left, hearts and
-  money above, time to the right, the horde and the dash below) are wedges
-  of the honeycomb, and where two wedges meet their nodes touch, so a path
-  can turn from one theme into another.
-- **Every node is bought once.** What used to be one node with ten levels
-  is now a dozen or so nodes spread over its wedge. Most are small (a
-  lowercase letter in the map) and some are big (a capital): twice as
-  strong, for about twice the price. Each node's price is nudged a little
-  up or down (a big one more), so some big nodes are better value than
-  two small ones and some worse, and choosing what to buy next is a
-  question of what's worth the most for the gold.
+- **Branches you pick by what's holding you back.** Like the tree in Bills
+  Must Be Paid, the tree is built so that each purchase answers the run's
+  bottleneck at the moment (monsters survive too long, the clock runs out,
+  the room is empty, gold is short), rather than following one path. Six
+  themes leave Descend, in the middle: weapon (left), hearts and money
+  (above), time (right), the horde and the dash (below). Each starts as a
+  short trunk and forks into two branches, and from depth 2 most branches
+  fork again.
+- **Every branch alternates between two upgrades,** so the node after the
+  one you just bought is always something different: in money, one branch
+  alternates Greed (a share more gold) and Bounty (a flat amount more gold
+  per kill), the other Magnet and Smash. A big node now and then (a
+  capital in the map) is twice as strong for about twice the price, give
+  or take, so some are better value than others.
+- **Bridges** link a theme's outermost branch to its neighbour's here and
+  there (one between each pair of themes in each depth), so a path can
+  cross over when the bottleneck changes.
+- **Every node is bought once,** and a node can be bought once a node
+  linked to it is owned.
 - **Revealed as you buy.** You only see the nodes you own and the ones
-  touching them; nothing further out is drawn, not even an outline. Buying
-  a node pops its neighbours into view.
-- **Prices by distance.** Each depth has its own band of the honeycomb:
-  depth 1 is the seven rings around Descend, and each deeper depth the next
-  two rings. Within its band, a node further out costs more. Each kind also
-  has its own worth in each depth (balance.js `kinds`), so a Quicker swing
-  costs more than a Sharper blade beside it.
+  linked to them; nothing further out is drawn, not even an outline.
+  Buying a node pops its neighbours into view.
+- **Prices by distance.** Each depth has its own band of rings: depth 1 is
+  the seven rings around Descend, and each deeper depth the next three.
+  Within its band, a node further out costs more. Each kind also has its
+  own worth in each depth (balance.js `kinds`).
 - **Some nodes need another first:** Quick feet and Second charge need the
   Dash, the orb nodes need Time orbs, and Lucky hearts needs an Extra heart
   (a heart only drops while you're missing one). Until then the node is
   dimmed and says what it needs.
-- **The map is text.** The whole honeycomb is drawn as text in
-  `src/balance.js` (`skillTree.map`), one letter per node, like the room
-  layouts: changing a letter changes the node, and `.` leaves a gap. The
-  gaps make lanes through the outer bands. Depth 1 has 134 nodes and each
-  deeper depth 98, 527 in all with Descend.
+- **The map is text** (`src/treemap.js`): every letter or symbol is a node,
+  and the links are drawn between them ("---" across, "\" and "/" on the
+  diagonals). Changing a letter changes the node; drawing or erasing a
+  link changes the paths. 365 nodes with Descend: 84 in depth 1 and 64-76
+  in each deeper depth.
 - No quiz lifelines.
 
 ### The tree page
 
 - **Drawn in the game,** in pixel art, over the dimmed underworld, rather
   than as an HTML page: a round frame per node with an icon from the
-  tileset (weapons, flasks, the heart, a coin, monsters) or a few hand-drawn
-  pixels where it has none (an hourglass, an orb, dash marks, a magnet).
-  Icons are never shrunk, so they stay crisp at every zoom: the long
-  weapons show just the end you know them by (a head, or a hilt), and the
-  tiny coin and skull are doubled. A big node's frame is bigger. The rim
-  is gold once it's yours, green when you can afford it, dark when it needs
-  another node first, and grey otherwise. Links join neighbours on show,
-  gold between two you own.
-- **The layout:** Descend in the middle, the weapon wedge to the left and
-  time to the right, hearts and money above, the horde and the dash below.
-  At 1x the first rings fit on the screen; further out, the view is
-  dragged or follows the keys.
+  tileset (weapons, flasks, the heart, a coin, a chest, monsters) or a few
+  hand-drawn pixels where it has none (an hourglass, an orb, dash marks, a
+  magnet, a burst). Icons are never shrunk, so they stay crisp at every
+  zoom. A big node's frame is bigger. The rim is gold once it's yours,
+  green when you can afford it, dark when it needs another node first, and
+  grey otherwise. Lines join linked nodes on show, gold between two you
+  own.
 - **Mouse and keyboard.** Point at a node to read it; click to pick it and
   click again to buy. Hold and drag to look around; the wheel zooms between
   1x, 2x and 3x (whole sizes, so the pixels stay crisp) around the cursor.
@@ -451,27 +456,25 @@ to:
   open.
 - **The panel at the bottom** shows the node under the cursor, or the
   picked one once a key is pressed: its name ("Great ..." for a big one),
-  what buying it changes ("SWING EVERY 1.50S > 1.43S") and its price, or
-  why it can't be bought yet (it needs another node first). Distances a
-  player never sees as a number (the magnet's range and the swing's reach)
-  are shown as how much bigger it makes them: "MAGNET RANGE +12%", and once
-  it's yours, how much bigger they are in all.
+  what buying it changes ("SWING EVERY 1.50S > 1.29S", "BOUNTY +29 GOLD A
+  KILL MORE") and its price, or why it can't be bought yet (it needs
+  another node first). Distances a player never sees as a number (the
+  magnet's range and the swing's reach) are shown as how much bigger it
+  makes them.
 - **Buying early:** a deeper depth's node can be bought before the depth
   before it is beaten, at ten times the price (`earlyPrice` in
   `src/balance.js`); the panel says "EARLY 10X" and which depth it's for.
-  It's for players who want to save up and overpower a depth. Each band is
-  priced in its own depth's gold, which is much richer than the depth
-  before (depth 2 about 30 times the crypt, and each depth after it
-  hundreds of times the one before), so buying early is a big saving-up
-  goal rather than something a player falls into: the first Keen edge
-  nodes cost about 3,000 gold early instead of about 300.
+  Each band is priced in its own depth's gold, which is much richer than
+  the depth before (depth 2 about 30 times the crypt, and each depth after
+  it hundreds of times the one before), so buying early is a big
+  saving-up goal rather than something a player falls into.
 - **Each depth starts over.** Some nodes only work in their own depth (the
-  panel says "DEPTH 1 ONLY" or "DEPTH 2 ONLY"): the run's pacing, which is
-  More time, Second wind, Crowded rooms, Bigger hordes and Restless dead.
-  So depth 2 starts on a 15 s clock with the base spawns, and its band has
-  its own of them. Everything else carries over into every depth: damage,
-  the swing, hearts, the dash, money, time orbs, Death calls and Wisdom.
-- **Old saves:** saves from before the honeycomb have their tree wiped (the
+  panel says "DEPTH 1 ONLY" or "DEPTH 2 ONLY"): the run's pacing (More
+  time, Second wind, Sands of time, Crowded rooms, Bigger hordes, Restless
+  dead) and Bounty. So depth 2 starts on a 15 s clock with the base spawns,
+  and its band has its own of them. Everything else carries over into
+  every depth.
+- **Old saves:** saves from before this tree have their tree wiped (the
   gold, the depths beaten and everything else stay).
 - While the page is open, the hero waits at the altar and nothing else can
   be used.
@@ -479,45 +482,47 @@ to:
 ### The nodes
 
 What each letter in the map is. A big node (the capital) is twice as
-strong. A node only works in its own depth where it says so.
+strong. How strong a small one is depends on its depth (balance.js
+`kinds`): each depth's nodes add up to about what that depth's upgrades
+always gave.
 
-| Letter | Node | A small one | Where |
+| Letter | Node | What it does | Theme |
 |---|---|---|---|
-| d | Sharper blade (depth 1), Keen, Brutal, Savage and Demon edge (depths 2-5) | +1 damage in depth 1, +5 in depth 2, ten times more each depth after | Weapon, every depth |
-| s | Quicker swing | Swings come 5% faster | Weapon, depth 1 |
-| r | Longer reach | +5% reach | Weapon, depth 1 |
-| a | Wider arc | +10 degrees of swing | Weapon, depth 1 |
-| c | Critical hits | +2% chance that a hit does 3x damage | Weapon, depths 2-5 |
-| h | Extra heart (small only) | +1 heart | Hearts, every depth |
-| n | Steady nerves | +0.1 s safe after a hit | Hearts, depth 1 |
-| l | Lucky hearts (needs an Extra heart) | Hearts drop a little more often | Hearts, depth 1 |
-| t | More time (its own depth only) | +2 s at the start of a run | Time, every depth |
-| w | Second wind (its own depth only) | +0.75 s every time you reach the next room | Time, every depth |
-| o | Time orbs (one) | Unlocks time orbs: rare drops worth +1 s | Time, depth 1 |
+| d | Sharper blade (depth 1), Keen, Brutal, Savage and Demon edge (depths 2-5) | More damage | Weapon |
+| s | Quicker swing | Swings come faster | Weapon, depth 1 |
+| r | Longer reach | Longer reach | Weapon and dash, depth 1 |
+| a | Wider arc | The swing covers a wider angle | Dash, depth 1 |
+| c | Critical hits | More chance that a hit is critical (3x damage to start) | Weapon, depths 2-5 |
+| j | Critical damage | Critical hits do more (3x, then 3.25x...) | Weapon, depths 2-5 |
+| h | Extra heart (small only) | +1 heart | Hearts |
+| n | Steady nerves | Safe a little longer after a hit | Hearts and dash |
+| l | Lucky hearts (needs an Extra heart) | Hearts drop more often | Hearts |
+| q | Mending | A chance of a heart back when a room's bar fills | Hearts |
+| t | More time (its own depth only) | More seconds at the start of a run | Time |
+| w | Second wind (its own depth only) | Seconds every time you reach the next room | Time |
+| z | Sands of time (its own depth only) | Seconds on the clock for every kill | Time |
+| * | Time orbs (one) | Unlocks time orbs: rare drops worth +1 s | Time, depth 1 |
 | p | Orb finder (needs Time orbs) | Time orbs drop more often | Time, depths 2-5 |
-| b | Bigger orbs (needs Time orbs) | Time orbs are worth +0.25 s more | Time, depths 2-5 |
-| x | Dash (one) | Unlocks the dash | Dash, next to Descend |
-| f | Quick feet (needs the Dash) | Dash cooldown 5% shorter | Dash, every depth |
-| z | Second charge (one; needs the Dash) | A second dash charge (it refills at half speed, see section 5) | Dash, depth 1 |
-| g | Greed | +5% gold per kill | Money, every depth |
-| m | Magnet | Pickups are pulled in from 12% further | Money, depth 1 |
-| k | Smash | Breakables drop 12.5% more gold | Money, depth 1 |
-| e | Crowded rooms (its own depth only) | +1 monster when you enter a room (start: 5) | Horde, every depth |
-| u | Bigger hordes (its own depth only) | +1 monster per horde (start: 7) | Horde, depths 2-5 |
-| v | Restless dead (its own depth only) | Hordes come 1 s sooner (start: every 20 s) | Horde, depths 2-5 |
-| y | Death calls | +1.5% chance that a kill spawns another monster | Horde, depth 1 |
-| i | Wisdom | +5% XP per kill | Horde, depth 1 |
+| b | Bigger orbs (needs Time orbs) | Time orbs are worth more | Time, depths 2-5 |
+| > | Dash (one) | Unlocks the dash | Dash, next to Descend |
+| f | Quick feet (needs the Dash) | Dash cooldown shorter | Dash |
+| & | Second charge (one; needs the Dash) | A second dash charge (it refills at half speed, see section 5) | Dash, depth 1 |
+| g | Greed | A share more gold per kill | Money |
+| o | Bounty (its own depth only) | A flat amount more gold per kill, in the room's gold | Money |
+| m | Magnet | Pickups are pulled in from further away | Money and dash |
+| k | Smash | Breakables drop more gold | Money |
+| e | Crowded rooms (its own depth only) | More monsters when you enter a room (start: 5) | Horde |
+| u | Bigger hordes (its own depth only) | More monsters per horde (start: 7) | Horde, depths 2-5 |
+| v | Restless dead (its own depth only) | Hordes come sooner (start: every 20 s) | Horde, depths 2-5 |
+| y | Death calls | More chance that a kill spawns another monster | Horde |
+| i | Wisdom | More XP per kill | Horde |
 
-Each depth's band adds up to about what the old multi-level nodes gave:
-depth 1, +10 damage, a swing about 2.5 times as fast, +4 hearts, +40 s on
-the clock and so on; each deeper depth, ten times the damage of the one
-before, +20% critical hits, 2 more hearts, its own +40 s clock and spawn
-upgrades, more Greed, the orbs and Quick feet. Depth 1's rooms fill their
-bars before most hordes arrive, so Bigger hordes and Restless dead start in
-depth 2. The hearts at the bottom of the screen are drawn at 2x up to 7,
-and at 1x past that (mostly on the bottom wall), so the deeper depths'
-Extra hearts don't spread them over more of the floor. The tuned numbers
-(the map, each kind's worth, and the prices) live in `src/balance.js`.
+Depth 1's rooms fill their bars before most hordes arrive, so Bigger hordes
+and Restless dead start in depth 2. The hearts at the bottom of the screen
+are drawn at 2x up to 7, and at 1x past that (mostly on the bottom wall),
+so the deeper depths' Extra hearts don't spread them over more of the
+floor. The tuned numbers (each kind's amounts and worth, and the prices)
+live in `src/balance.js`.
 
 ## 8. Pacing
 
@@ -526,26 +531,29 @@ Extra hearts don't spread them over more of the floor. The tuned numbers
   typical player is a bit slower than perfect: about 20% slower clears, 10%
   of the gold missed, and more hits taken. A sharp player is faster (about
   30 minutes).
-- **Where it stands:** with the honeycomb tree, the pacing simulator
+- **Where it stands:** with the branching tree, the pacing simulator
   (playing the whole game 30 times per shopper, each depth starting with
   what the depths before left) has the typical player at:
 
   | Depth | Value shopper | Cheapest shopper |
   |---|---|---|
-  | 1, the crypt | 40 min | 50 min |
-  | 2, the goblin warrens | 42 min | 43 min |
-  | 3, the orc fort | 42 min | 47 min |
-  | 4, the sunken swamp | 37 min | 34 min |
-  | 5, the demon pit | 38 min | 33 min |
-  | The whole game | about 3.3 hours | about 3.4 hours |
+  | 1, the crypt | 41 min | 46 min |
+  | 2, the goblin warrens | 32 min | 40 min |
+  | 3, the orc fort | 35 min | 39 min |
+  | 4, the sunken swamp | 41 min | 52 min |
+  | 5, the demon pit | 25 min | 35 min |
+  | The whole game | about 2.9 hours | about 3.5 hours |
 
-  Rooms 1-9 each take about 1-7 minutes to get through the first time; the
-  boss rooms take longer (about 10-23 minutes, longest in depths 3-5). The
-  golden rule holds in every depth. The depths' numbers (monsters' hp and
-  gold, growth per room, room bars, bosses) were set with the simulator,
-  one depth at a time, for the old tree; the honeycomb's prices were then
-  set so each kind costs about what it did in each depth, and only roughly
-  tuned since (each depth's price spread, and depth 5's prices).
+  Rooms 1-9 each take about 0-10 minutes to get through the first time,
+  and the boss rooms up to about 15. The golden rule mostly holds; it slips
+  for a few runs early in depth 1 and in depth 4. These numbers are rough:
+  the depths' own numbers (monsters, rooms, bosses) were set for the old
+  tree, and the branching tree's prices were only roughly tuned to them
+  (each kind costs about what it did in each depth, plus the new kinds,
+  with each depth's price curve and total nudged by hand). A stuck player
+  (the clock keeps stopping him at the same spot, or he can't get through a
+  deeper depth's first room) saves up for the time or damage he needs if
+  it's within a few runs' gold, rather than spending on something else.
 - **The first run:** you die fast, but you earn enough for 1–2 cheap
   upgrades straight away. The whole loop makes sense within the first
   minute.

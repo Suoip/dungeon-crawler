@@ -29,6 +29,9 @@ export function heroStats(levels, depth = 1) {
     dashCooldown: hero.dash.cooldown,
     dashCharges: 1,
     goldBonus: 0,
+    goldPerKill: 0,      // flat gold on every kill, in the room's gold (scenes.js)
+    timePerKill: 0,      // seconds every kill adds to the clock
+    healOnClear: 0,      // the chance of a heart back when a room's bar fills
     breakableBonus: 0,
     onEnter: spawning.onEnter,
     horde: spawning.horde,

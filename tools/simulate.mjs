@@ -172,6 +172,7 @@ export const SHOPPER_NAMES = Object.keys(SHOPPERS);
 // depth's prices (its nodes aren't early any more): `opening` is what that
 // buys, before the first run, and `startLevels` the hero it starts with.
 const FARM_AFTER = 3;
+const SAVE_RUNS = 4; // a stuck player saves for what he needs if it's within this many runs' gold
 export function playDepth(shopperName, player, nextRun, depth, start = { levels: startingLevels(), bank: 0, minutes: 0 }) {
   const shop = SHOPPERS[shopperName];
   const levels = { ...start.levels };
@@ -217,7 +218,12 @@ export function playDepth(shopperName, player, nextRun, depth, start = { levels:
     // he can't afford any, the clock rule above still holds.
     const atDoor = depth > 1 && run.deepest < 1;
     const first = (atDoor ? moreDamage(levels, bank, depth) : null) ?? (stuck ? moreTime(levels, bank, depth) : null);
-    for (let pick = first ?? shop(levels, bank, player, depth); pick; pick = shop(levels, bank, player, depth)) {
+    // Stuck, and what he needs (damage at the door, or time) is on sale but
+    // not affordable yet: if it's within a few runs' gold, he saves up for
+    // it instead of spending on something else.
+    const needed = first ? null : (atDoor ? moreDamage(levels, Infinity, depth) : null) ?? (stuck ? moreTime(levels, Infinity, depth) : null);
+    const saving = needed && needed.price > bank && needed.price <= bank + SAVE_RUNS * run.gold;
+    for (let pick = saving ? null : first ?? shop(levels, bank, player, depth); pick; pick = shop(levels, bank, player, depth)) {
       bank -= pick.price;
       levels[pick.node.id] = 1;
       bought.push(pick.node.name);

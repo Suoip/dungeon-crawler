@@ -11,10 +11,11 @@ import { shortGold } from "./hud.js";
 
 // The skill tree page (DESIGN.md section 7), opened at the underworld's altar.
 // It's drawn in the game itself, over the dimmed room, like a stone tablet:
-// a honeycomb out from Descend in the middle (balance.js skillTree, built in
-// nodes.js), each node a round frame with an icon, a big node's frame bigger.
-// Each deeper depth's nodes sit further out. You only see the nodes you own
-// and the ones touching them; buying one brings its neighbours into view.
+// branches out from Descend in the middle (balance.js skillTree, built in
+// nodes.js), each node a round frame with an icon, a big node's frame bigger,
+// and lines for the links between them. Each deeper depth's nodes sit
+// further out. You only see the nodes you own and the ones linked to them;
+// buying one brings its neighbours into view.
 //
 // Mouse: point at a node to read it, click it to pick it, click it again to
 // buy it. Hold the button and drag to move around, and the wheel zooms
@@ -52,19 +53,23 @@ const ICONS = {
   r: { sprite: "weapon_spear", box: [0, 0, 6, 14] },
   a: { sprite: "weapon_double_axe", box: [0, 0, 16, 13] },
   c: { draw: "crit" },
+  j: { draw: "crit2" },
   h: { sprite: "heart_full" },
   n: { sprite: "flask_blue", box: [4, 3, 8, 11] },
   l: { sprite: "flask_red", box: [4, 3, 8, 11] },
+  q: { draw: "mend" },
   t: [{ draw: "hourglass" }, { draw: "hourglass2" }, { draw: "hourglass3" }, { draw: "hourglass4" }, { draw: "hourglass5" }],
   w: [{ sprite: "flask_big_yellow", box: [3, 3, 10, 11] }, { sprite: "flask_yellow", box: [4, 3, 8, 11] },
     { sprite: "flask_big_red", box: [3, 3, 10, 11] }, { sprite: "flask_blue", box: [4, 3, 8, 11] }, { sprite: "flask_red", box: [4, 3, 8, 11] }],
-  o: { draw: "orb" },
+  "*": { draw: "orb" },
+  z: { draw: "sands" },
   p: { sprite: "flask_big_blue", box: [3, 3, 10, 11] },
   b: { sprite: "flask_big_green", box: [3, 3, 10, 11] },
-  x: { draw: "dash" },
+  ">": { draw: "dash" },
   f: [{ sprite: "flask_green", box: [4, 3, 8, 11] }, { draw: "dash3" }],
-  z: { draw: "dash2" },
+  "&": { draw: "dash2" },
   g: [{ sprite: "coin", box: [0, 0, 6, 7], scale: 2 }, { draw: "gem" }, { draw: "gemBlue" }, { draw: "gemRed" }, { draw: "gemPurple" }],
+  o: { sprite: "chest", box: [2, 3, 12, 12] },
   m: { draw: "magnet" },
   k: { sprite: "weapon_big_hammer", box: [0, 0, 10, 14] },
   e: [{ sprite: "tiny_zombie", box: [4, 6, 9, 10] }, { sprite: "goblin", box: [3, 4, 10, 12] }, { sprite: "orc_warrior", box: [2, 6, 12, 15] },
@@ -77,7 +82,7 @@ const ICONS = {
 };
 // A node's icon: its kind's, for its depth (a list's last one past its end).
 function iconOf(node) {
-  const icon = ICONS[node.letter === "@" ? "@" : node.letter];
+  const icon = ICONS[node.letter];
   return Array.isArray(icon) ? icon[Math.min(node.depth, icon.length) - 1] : icon;
 }
 
@@ -90,6 +95,7 @@ const PALETTE = {
   blue: [120, 190, 255], pale: [220, 240, 255], // a time orb
   gem: [56, 183, 100], gemLight: [160, 236, 150], gemDark: [30, 120, 64], // a gem
   purple: [160, 90, 220], lilac: [220, 190, 250],
+  sand: [237, 201, 120], wood: [140, 92, 52],
 };
 let C = null;
 
@@ -134,6 +140,13 @@ const PIXELS = {
     [0, -4, 2, 2, "gold"], [2, -2, 2, 2, "gold"], [4, 0, 2, 2, "gold"], [2, 2, 2, 2, "gold"], [0, 4, 2, 2, "gold"]],
   gem: [[-3, -5, 6, 1, "gemLight"], [-5, -4, 10, 3, "gem"], [-4, -1, 8, 2, "gem"], [-2, 1, 4, 2, "gem"], [-1, 3, 2, 1, "gem"],
     [-4, -4, 3, 1, "gemLight"], [1, 0, 3, 1, "gemDark"]],
+  // A red burst for Critical damage, a heart with a plus for Mending, and
+  // a wooden hourglass full of sand for Sands of time.
+  crit2: [[-1, -6, 2, 12, "red"], [-6, -1, 12, 2, "red"], [-3, -3, 6, 6, "red"], [-1, -1, 2, 2, "light"]],
+  mend: [[-5, -4, 4, 3, "red"], [1, -4, 4, 3, "red"], [-5, -1, 10, 3, "red"], [-3, 2, 6, 2, "red"], [-1, 4, 2, 1, "red"],
+    [-1, -3, 2, 6, "light"], [-3, -1, 6, 2, "light"]],
+  sands: [[-4, -6, 8, 2, "wood"], [-4, 4, 8, 2, "wood"], [-3, -4, 6, 2, "sand"], [-2, -2, 4, 2, "sand"],
+    [-1, 0, 2, 1, "sand"], [-2, 1, 4, 1, "sand"], [-3, 2, 6, 2, "sand"]],
   // Depth 3's: a green hourglass and a blue gem.
   hourglass3: [[-4, -6, 8, 2, "gem"], [-4, 4, 8, 2, "gem"], [-3, -4, 6, 2, "light"], [-2, -2, 4, 2, "light"],
     [-1, 0, 2, 1, "light"], [-2, 1, 4, 1, "gem"], [-3, 2, 6, 2, "gem"]],
@@ -186,7 +199,11 @@ const STAT_TEXT = {
   hordeEvery: ["HORDE EVERY", (x) => `${x}S`],
   deathCall: ["DEATH CALLS", pct],
   xpBonus: ["XP PER KILL", (x) => `+${Math.round(x * 100)}%`],
-  critChance: ["3X HITS", pct],
+  critChance: ["CRITICAL HITS", pct],
+  critDamage: ["CRITS DO", (x) => `${Math.round(x * 100) / 100}X`],
+  goldPerKill: ["BOUNTY", null],
+  timePerKill: ["EACH KILL ADDS", (x) => `${Math.round(x * 100) / 100}S`],
+  healOnClear: ["HEART BACK ON A CLEAR", pct],
 };
 const UNLOCK_TEXT = { descend: "WHERE EVERYTHING GROWS FROM", dash: "UNLOCKS THE DASH (SHIFT)", timeOrbs: "UNLOCKS TIME ORBS" };
 
@@ -198,6 +215,13 @@ function effectText(node, levels) {
   if (node.effect.unlock) return UNLOCK_TEXT[node.effect.unlock] ?? "UNLOCKS SOMETHING NEW";
   const { stat } = node.effect;
   const [label, show] = STAT_TEXT[stat];
+  // Bounty: in gold as it is in the node's depth (its first room).
+  if (stat === "goldPerKill") {
+    const scale = BALANCE.depths[node.depth - 1].scale.gold;
+    const gold = (x) => `+${shortGold(Math.round(x * scale * 10) / 10)} GOLD A KILL`;
+    const owned = (levels[node.id] ?? 0) > 0;
+    return owned ? `${label} ${gold(heroStats(levels, node.depth)[stat])}` : `${label} ${gold(node.effect.add)} MORE`;
+  }
   const now = heroStats(levels, node.depth)[stat];
   const owned = (levels[node.id] ?? 0) > 0;
   const next = owned ? now : heroStats({ ...levels, [node.id]: 1 }, node.depth)[stat];

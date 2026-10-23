@@ -1,16 +1,19 @@
 import { BALANCE } from "./balance.js";
 
-// The skill tree's nodes, built from the honeycomb map in balance.js
-// (`skillTree`), and the rules for which ones you can see and buy. Shared by
+// The skill tree's nodes, built from its map (treemap.js, read by balance.js
+// `skillTree`), and the rules for which ones you can see and buy. Shared by
 // the game and the pacing simulator (tools/), like stats.js.
 //
-// The map's rows are the honeycomb's rows, with every other row shifted half
-// a node, so a node at column x, row y (counted from Descend's `@`) has its
-// six neighbours at x±2 on its own row and x±1 on the rows above and below.
-// Every node is bought once (save.js levels: { id: 1 }).
+// The map (treemap.js) is drawn on a grid of half nodes: a node at x, y
+// (counted from Descend's `@`, in half-node steps across and rows down) is
+// at column 2x, row 2y of the text, and its links are drawn between: "---"
+// to the node beside it (x + 2), "\\" to the one below right (x + 1, y + 1)
+// and "/" to the one below left. Only linked nodes are neighbours: a node
+// can be bought once one it's linked to is owned. Every node is bought once
+// (save.js levels: { id: 1 }).
 
 const { map, bands, prices, kinds } = BALANCE.skillTree;
-const NEIGHBOURS = [[2, 0], [-2, 0], [1, -1], [-1, -1], [1, 1], [-1, 1]];
+const isNode = (ch) => ch !== undefined && /[A-Za-z@*>&]/.test(ch);
 
 // How many rings out from Descend a spot is (ring 1: the six around it).
 export const ringOf = (x, y) => Math.abs(y) + Math.max(0, (Math.abs(x) - Math.abs(y)) / 2);
@@ -42,7 +45,7 @@ function effectOf(kind, depth, big) {
   const { stat, add, mul, unlock } = kind.effect;
   if (unlock) return { unlock };
   if (add !== undefined) return { stat, add: forDepth(add, depth) * (big ? 2 : 1) };
-  return { stat, mul: mul ** (big ? 2 : 1) };
+  return { stat, mul: forDepth(mul, depth) ** (big ? 2 : 1) };
 }
 
 // Its price: the depth's start, times spread^(how far out in its band),
@@ -67,12 +70,12 @@ const idOf = (x, y) => (x === 0 && y === 0 ? CENTER : `${x},${y}`);
 export const NODES = [];
 map.forEach((row, r) => {
   [...row].forEach((letter, c) => {
-    if (letter === " " || letter === ".") return;
-    const x = c - middleColumn, y = r - middleRow;
+    if (!isNode(letter)) return;
+    const x = (c - middleColumn) / 2, y = (r - middleRow) / 2;
     const kind = kinds[letter.toLowerCase()] ?? kinds[letter];
     if (!kind) throw new Error(`skill tree map: no kind for "${letter}" at ${x},${y}`);
     const center = letter === "@";
-    const big = !center && letter !== letter.toLowerCase();
+    const big = /[A-Z]/.test(letter);
     const ring = ringOf(x, y);
     const depth = depthOfRing(ring);
     const name = forDepth(kind.name, depth);
@@ -90,8 +93,18 @@ map.forEach((row, r) => {
   });
 });
 export const byId = Object.fromEntries(NODES.map((n) => [n.id, n]));
+// The links, both ways.
+for (const node of NODES) node.neighbours = [];
+const at = (x, y) => map[middleRow + 2 * y]?.[middleColumn + 2 * x];
 for (const node of NODES) {
-  node.neighbours = NEIGHBOURS.map(([dx, dy]) => idOf(node.x + dx, node.y + dy)).filter((id) => byId[id]);
+  const { x, y } = node;
+  for (const [char, dx, dy, mark] of [["-", 2, 0, at(x + 0.5, y)], ["\\", 1, 1, at(x + 0.5, y + 0.5)], ["/", -1, 1, at(x - 0.5, y + 0.5)]]) {
+    const other = byId[idOf(x + dx, y + dy)];
+    if (mark !== char) continue;
+    if (!other) throw new Error(`skill tree map: a link from ${x},${y} to nothing`);
+    node.neighbours.push(other.id);
+    other.neighbours.push(node.id);
+  }
 }
 
 // ---- What you can see and buy ----------------------------------------------------

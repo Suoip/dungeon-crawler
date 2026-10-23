@@ -24,6 +24,7 @@ export function newRun(depth = chosenDepth()) {
     stats,
     hearts: stats.hearts, maxHearts: stats.hearts,
     clock: stats.startTime,   // seconds left
+    sand: stats.startTime,    // every second the clock has been given this run (the hourglass, hud.js)
     gold: 0,                  // coins picked up this run
     bones: 0,                 // bones picked up this run (the crypt, from sub-depth 6)
     kills: 0,

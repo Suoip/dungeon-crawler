@@ -12,6 +12,8 @@
 // swamp and the demon pit. Times are in seconds, distances in game pixels,
 // chances from 0 (never) to 1 (always).
 
+import { TREE_MAP } from "./treemap.js";
+
 export const BALANCE = {
   // ---- The run ----------------------------------------------------------
   run: {
@@ -272,16 +274,17 @@ export const BALANCE = {
   },
 
   // ---- The skill tree -----------------------------------------------------
-  // A honeycomb out from Descend (`@`) in the middle: every letter in `map`
-  // is a node, and a node can be bought once it touches one you own (any of
-  // its six neighbours), so paths can cross from one branch into another.
-  // Each node is bought once. A lowercase letter is a small node and its
-  // capital a big one, twice as strong (an `add` twice over, a `mul` squared)
-  // for about twice the price. `.` is a gap (nothing there), which makes the
-  // lanes. Each line is a row of the honeycomb; every other row is shifted
-  // half a node, so a node's neighbours are the ones two characters to
-  // either side and one character to either side on the rows above and
-  // below. You only see the nodes you own and the ones touching them.
+  // Branches out from Descend (`@`) in the middle, drawn in `map`
+  // (treemap.js): every letter or symbol is a node and the lines between
+  // them are its links. A node can be bought once a node linked to it is
+  // owned, and you only see the nodes you own and the ones linked to them.
+  // Each of the six themes (weapon, hearts, money, time, the horde, the
+  // dash) leaves Descend as a short trunk and forks into branches, which fork
+  // again further out; each branch alternates between two kinds of upgrade,
+  // so the next node is always a choice, and here and there a bridge links
+  // one theme's branch to its neighbour's. Each node is bought once. A
+  // lowercase letter is a small node and its capital a big one, twice as
+  // strong (an `add` twice over, a `mul` squared) for about twice the price.
   //
   // Which depth a node belongs to depends on how far out it is: `bands` is
   // the last ring of each depth (ring 1 is the six around Descend). A
@@ -294,83 +297,56 @@ export const BALANCE = {
   // each node (`jitter`); a big node costs `big` times as much, give or take
   // `bigJitter`, so some big nodes are better value than others.
   //
-  // `kinds`: what each letter is. `name` and an `add` can be one per depth
-  // (lists, depth 1 first). `perDepth`: it only works in its own depth (the
-  // run's pacing: the clock and the monsters that come), so a new depth
+  // `kinds`: what each letter is. `name`, an `add` or a `mul` and `worth`
+  // can be one per depth (lists, depth 1 first; null where the kind isn't
+  // in that depth). `perDepth`: it only works in its own depth (the run's
+  // pacing: the clock, the monsters that come, and Bounty), so a new depth
   // starts on a 15 s clock with the base spawns; everything else carries
-  // over. `needs`: the letter of a kind you must own first (the orbs need
-  // Time orbs, Quick feet the Dash, Lucky hearts an extra heart).
+  // over. `needs`: the kind you must own first (the orbs need Time orbs,
+  // Quick feet and Second charge the Dash, Lucky hearts an Extra heart).
   earlyPrice: 10,
   skillTree: {
-    map: [
-      "               . . . . . . . . . g g . P b . .",
-      "              . g g G G G G G g g g g t W p p .",
-      "             . G g . . . . G . . g . W . . b w .",
-      "            . h g G g g G G G g g g t t w P . t w",
-      "           . h . G . . g g . G g G . . w B p . P .",
-      "          . D . h g G g G G G g g g p P w . P B p .",
-      "         d d . h . h g . G g g G G w B B w W p . t .",
-      "        . D . d d h g g G G G g g t p b p W . t . t .",
-      "       . d c d . c h g . l n . g m K k W . t t t . t t",
-      "      . d . d . D d h L l N L . m M G . w p t . t . t .",
-      "     . d d d c d D d A . n l L . . g k M t P t T T . T .",
-      "    d d . c . d d d s . h N l g m G M g m t T t . w t W .",
-      "   . D . C C d c d . R S s n h G . g . G K T W w b W . w .",
-      "  . C . d c D d d r a S S S h g g . G w w w T p T B w p b .",
-      " . C C C . D C d . S . . D . h g G t t W o w T P t p b . W .",
-      ". c c d . c c d a . d r s d d @ t . t t . W . P b p b w . B .",
-      " . c . d . d c c A r r d s d x e . T T t T . t w p . P B B .",
-      "  . d c d C d C D r s d d d . . . e T T t W t W t P T . P .",
-      "   . d . D d D D D . s . f . i e E e y T . t t T P T . T .",
-      "    . C . d . d C d r S f F i . I I I e t T t T . T . T .",
-      "     . c . D d d . d R f F . E i i Y . I T w T W t W t .",
-      "      . d D d C d d f z F I i I y e Y i U U T . T t T .",
-      "       c d . d d f F F f y i i . y Y . e u t . T p T .",
-      "        . d . D F F f v u E e e u u e e v U v u . T .",
-      "         . D . f f U v V e V u v E u . V u . e . w p",
-      "          . f f F v u V e E e e u u e v e . v . U .",
-      "           . F . F v . . . e E u . u V . V e . u .",
-      "            . F . V u E u U e e u E e u v u v V .",
-      "             f u v . . . . U . . V . e . . V v .",
-      "              . V u e u e E e e u u e v U e v .",
-      "               . . v V . . E . . . . . . . . .",
-    ],
-    bands: [7, 9, 11, 13, 15],
-    prices: { start: [1.43, 280, 1.9e5, 1.1e8, 9e10], spread: [120, 25, 25, 90, 90], jitter: 0.12, big: 2, bigJitter: 0.2 },
+    map: TREE_MAP, // treemap.js
+    bands: [7, 10, 13, 16, 19],
+    prices: { start: [0.76, 240, 1.8e5, 2.9e8, 1.8e11], spread: [400, 60, 60, 100, 400], jitter: 0.12, big: 2, bigJitter: 0.2 },
     kinds: {
       "@": { name: "Descend", effect: { unlock: "descend" } },
       // Weapon
-      d: { name: ["Sharper blade", "Keen edge", "Brutal edge", "Savage edge", "Demon edge"], effect: { stat: "damage", add: [1, 5, 50, 500, 5000] }, worth: [1, 1, 1, 1, 1] },
-      s: { name: "Quicker swing", effect: { stat: "swingEvery", mul: 0.95 }, worth: 2.86 },
-      r: { name: "Longer reach", effect: { stat: "reach", mul: 1.05 }, worth: 0.53 },
-      a: { name: "Wider arc", effect: { stat: "arc", add: 10 }, worth: 0.49 },
-      c: { name: "Critical hits", effect: { stat: "critChance", add: 0.02 }, worth: [null, 1.6, 2.2, 1.45, 2.41] },
+      d: { name: ["Sharper blade", "Keen edge", "Brutal edge", "Savage edge", "Demon edge"], effect: { stat: "damage", add: [1, 11, 130, 1400, 11000] }, worth: [0.35, 1.6, 1.26, 1.15, 0.58] },
+      s: { name: "Quicker swing", effect: { stat: "swingEvery", mul: 0.857 }, worth: 8.3 },
+      r: { name: "Longer reach", effect: { stat: "reach", mul: 1.072 }, worth: 1.45 },
+      a: { name: "Wider arc", effect: { stat: "arc", add: 30 }, worth: 5.93 },
+      c: { name: "Critical hits", effect: { stat: "critChance", add: [null, 0.029, 0.025, 0.029, 0.05] }, worth: [null, 5.8, 4.47, 4.94, 4.56] },
+      j: { name: "Critical damage", effect: { stat: "critDamage", add: [null, 0.17, 0.17, 0.25, 0.17] }, worth: [null, 13, 8.88, 16, 7.56] },
       // Hearts
-      h: { name: "Extra heart", effect: { stat: "hearts", add: 1 }, worth: [0.44, 0.86, 1.04, 1.2, 0.8] },
-      n: { name: "Steady nerves", effect: { stat: "invincibleFor", add: 0.1 }, worth: 0.97 },
-      l: { name: "Lucky hearts", effect: { stat: "heartChance", add: 0.002 }, needs: "h", worth: 1.7 }, // a heart only drops while you're missing one
+      h: { name: "Extra heart", effect: { stat: "hearts", add: 1 }, worth: [0.11, 0.69, 0.6, 0.38, 0.49] },
+      n: { name: "Steady nerves", effect: { stat: "invincibleFor", add: [0.23, 0.05, 0.063, 0.05, 0.063] }, worth: [4.9, 0.15, 0.17, 0.12, 0.11] },
+      l: { name: "Lucky hearts", effect: { stat: "heartChance", add: [0.004, 0.0033, 0.0025, 0.01, 0.01] }, needs: "h", worth: [4.59, 0.23, 0.14, 0.42, 0.44] }, // a heart only drops while you're missing one
+      q: { name: "Mending", effect: { stat: "healOnClear", add: [0.067, 0.05, 0.05, 0.05, 0.1] }, worth: [0.26, 1.06, 1.03, 0.69, 1.68] },
       // Time
-      t: { name: "More time", effect: { stat: "startTime", add: 2 }, perDepth: true, worth: [0.25, 1.21, 1.1, 1.07, 0.96] },
-      w: { name: "Second wind", effect: { stat: "timePerSubDepth", add: 0.75 }, perDepth: true, worth: [0.64, 2.54, 2.2, 2.82, 2.57] },
-      o: { name: "Time orbs", effect: { unlock: "timeOrbs" }, worth: 2.87 },
-      p: { name: "Orb finder", effect: { stat: "timeOrbChance", add: 0.002 }, needs: "o", worth: [null, 8.25, 8.14, 9.32, 8.33] },
-      b: { name: "Bigger orbs", effect: { stat: "timeOrbSeconds", add: 0.25 }, needs: "o", worth: [null, 3.46, 3.04, 3.77, 5.3] },
+      t: { name: "More time", effect: { stat: "startTime", add: [4, 6.7, 8, 8, 6.7] }, perDepth: true, worth: [0.35, 1.81, 1.55, 1.03, 0.51] },
+      w: { name: "Second wind", effect: { stat: "timePerSubDepth", add: [2.5, 1.9, 2.5, 1.3, 1.5] }, perDepth: true, worth: [7.86, 12, 18, 10, 12] },
+      z: { name: "Sands of time", effect: { stat: "timePerKill", add: [0.25, 0.13, 0.1, 0.17, 0.13] }, perDepth: true, worth: [1.21, 2.49, 1.04, 1.53, 1.16] },
+      "*": { name: "Time orbs", effect: { unlock: "timeOrbs" }, worth: 27 },
+      p: { name: "Orb finder", effect: { stat: "timeOrbChance", add: [null, 0.01, 0.0067, 0.0067, 0.01] }, needs: "*", worth: [null, 46, 33, 15, 23] },
+      b: { name: "Bigger orbs", effect: { stat: "timeOrbSeconds", add: [null, 0.75, 1.5, 1.5, 0.75] }, needs: "*", worth: [null, 52, 78, 78, 37] },
       // Dash
-      x: { name: "Dash", effect: { unlock: "dash" }, worth: 1 },
-      f: { name: "Quick feet", effect: { stat: "dashCooldown", mul: 0.95 }, needs: "x", worth: [1.46, 2.75, 3, 3.02, 2.49] },
-      z: { name: "Second charge", effect: { stat: "dashCharges", add: 1 }, needs: "x", worth: 3.32 },
+      ">": { name: "Dash", effect: { unlock: "dash" }, worth: 1 },
+      f: { name: "Quick feet", effect: { stat: "dashCooldown", mul: [0.938, 0.95, 0.94, 0.94, 0.95] }, needs: ">", worth: [3.29, 2.92, 2.34, 3.11, 2.29] },
+      "&": { name: "Second charge", effect: { stat: "dashCharges", add: 1 }, needs: ">", worth: 73 },
       // Money
-      g: { name: "Greed", effect: { stat: "goldBonus", add: 0.05 }, worth: [0.24, 0.48, 0.52, 0.39, 0.52] }, // on kills; Smash is for breakables
-      m: { name: "Magnet", effect: { stat: "magnetRange", mul: 1.12 }, worth: 0.3 },
-      k: { name: "Smash", effect: { stat: "breakableBonus", add: 0.125 }, worth: 0.23 },
+      g: { name: "Greed", effect: { stat: "goldBonus", add: [0.17, 0.13, 0.14, 0.13, 0.11] }, worth: [0.7, 1.52, 1.36, 1.66, 0.57] }, // a share more gold on kills; Smash is for breakables
+      o: { name: "Bounty", effect: { stat: "goldPerKill", add: [0.23, 0.17, 0.14, 0.14, 0.23] }, perDepth: true, worth: [2.05, 2.61, 2.15, 1.26, 1.53] }, // flat gold on every kill, in the room's gold (its own depth only)
+      m: { name: "Magnet", effect: { stat: "magnetRange", mul: [1.254, 1.046, 1.046, 1.118, 1.077] }, worth: [0.75, 1.33, 1.06, 2.41, 0.72] },
+      k: { name: "Smash", effect: { stat: "breakableBonus", add: [0.25, 0.063, 0.05, 0.083, 0.063] }, worth: [2.22, 1.54, 0.76, 1.63, 0.95] },
       // Horde: more monsters, sooner, and more XP from each, so rooms fill
       // their bars faster. Depth 1's rooms fill before most hordes arrive, so
       // Bigger hordes and Restless dead start in depth 2.
-      e: { name: "Crowded rooms", effect: { stat: "onEnter", add: 1 }, perDepth: true, worth: [0.71, 1.81, 1.77, 1.83, 1.6] },
-      u: { name: "Bigger hordes", effect: { stat: "horde", add: 1 }, perDepth: true, worth: [null, 31.2, 29.6, 32.7, 27.9] },
-      v: { name: "Restless dead", effect: { stat: "hordeEvery", add: -1 }, perDepth: true, worth: [null, 2.3, 2.04, 1.94, 2.99] },
-      y: { name: "Death calls", effect: { stat: "deathCall", add: 0.015 }, worth: 0.59 },
-      i: { name: "Wisdom", effect: { stat: "xpBonus", add: 0.05 }, worth: 1.17 },
+      e: { name: "Crowded rooms", effect: { stat: "onEnter", add: [2, 2, 3, 3, 2] }, perDepth: true, worth: [0.75, 3.67, 2.99, 3.39, 1.91] },
+      u: { name: "Bigger hordes", effect: { stat: "horde", add: [null, 2, 3, 2, 2] }, perDepth: true, worth: [null, 39, 64, 29, 19] },
+      v: { name: "Restless dead", effect: { stat: "hordeEvery", add: [null, -3, -2, -3, -3] }, perDepth: true, worth: [null, 20, 11, 10, 11] },
+      y: { name: "Death calls", effect: { stat: "deathCall", add: [0.03, 0.017, 0.017, 0.025, 0.05] }, worth: [1.93, 3.17, 2.67, 4.8, 6.95] },
+      i: { name: "Wisdom", effect: { stat: "xpBonus", add: [0.17, 0.17, 0.17, 0.25, 0.17] }, worth: [8.03, 3.7, 1.75, 2.93, 2.62] },
     },
   },
 };

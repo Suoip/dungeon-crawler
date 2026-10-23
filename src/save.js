@@ -9,9 +9,9 @@ import { CENTER } from "./nodes.js";
 
 const KEY = "dungeon-crawler-save";
 
-// The skill tree's version: saves from before the honeycomb (version 2) had
-// different nodes, so their tree starts over (the gold and depths stay).
-const TREE = 2;
+// The skill tree's version: saves from before the branching tree (version 3)
+// had different nodes, so their tree starts over (the gold and depths stay).
+const TREE = 3;
 
 const FRESH = {
   gold: 0,                   // banked gold, to spend in the skill tree

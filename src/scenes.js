@@ -1,6 +1,6 @@
 import { ROOMS } from "./config.js";
 import { BALANCE } from "./balance.js";
-import { coins } from "./stats.js";
+import { coins, roomScale } from "./stats.js";
 import { endRun } from "./save.js";
 import { buildRoom, tintRoom, addDecor } from "./room.js";
 import { addPlayer, setupPlayerMovement, setupDash } from "./player.js";
@@ -86,9 +86,19 @@ export function registerRoomScene() {
         maybeDropHeart(mob);
         maybeDropOrb(mob);
         maybeDropBone(mob);
-        dropCoins(mob.pos.clone(), coins(mob.gold * (1 + stats.goldBonus)), run, player, () => stats.magnetRange,
+        // Flat gold per kill (a tree upgrade) comes on top of the monster's own,
+        // in this room's gold, and Greed adds its share of both.
+        const flat = mob.def.boss ? 0 : stats.goldPerKill * roomScale(run.depth, sub).gold;
+        dropCoins(mob.pos.clone(), coins((mob.gold + flat) * (1 + stats.goldBonus)), run, player, () => stats.magnetRange,
           { spread: mob.def.boss ? 44 : 10 });
         if (mob.def.boss) return bossBeaten(mob);
+        // Seconds per kill (a tree upgrade): while the clock runs, every kill
+        // adds a little sand to the hourglass.
+        if (stats.timePerKill > 0 && clockRunning && !clockStopped) {
+          run.clock += stats.timePerKill;
+          run.sand += stats.timePerKill;
+          hud.addSand();
+        }
         if (fight.full) return;
         xp += mob.xp * (1 + stats.xpBonus);
         if (xp >= room.xp) return barFull();
@@ -109,10 +119,11 @@ export function registerRoomScene() {
     const maybeDropBone = (mob) => {
       if (Math.random() < boneChance) dropBone(mob.pos.clone(), run, player, () => stats.magnetRange);
     };
-    const hud = addHud(() => ({ clock: run.clock, stopped: clockStopped, xp, xpNeeded: room.xp, gold: run.gold }));
+    const hud = addHud(() => ({ clock: run.clock, sand: run.sand, stopped: clockStopped, xp, xpNeeded: room.xp, gold: run.gold }));
     // Time orbs: while the clock runs, a kill may drop one, worth seconds.
     const maybeDropOrb = setupOrbDrops(player, stats, () => clockRunning && !clockStopped, (seconds) => {
       run.clock += seconds;
+      run.sand += seconds;
       hud.addTime(seconds);
     });
 
@@ -162,6 +173,13 @@ export function registerRoomScene() {
     function barFull() {
       fight.full = true;
       playSound("unlock");
+      // Heal on clear (a tree upgrade): a chance of a heart back.
+      if (run.hearts < run.maxHearts && Math.random() < stats.healOnClear) {
+        run.hearts++;
+        hearts.update();
+        hearts.grow();
+        playSound("heal");
+      }
       flashScreen([255, 205, 70], 0.15, 0.4);
       if (isBossRoom) bossEntrance();
       else unchainDoor(door);
@@ -298,6 +316,7 @@ export function registerRoomScene() {
       await walkThroughDoor(player, door, fader);
       run.index++;
       run.clock += stats.timePerSubDepth;
+      run.sand += stats.timePerSubDepth;
       go("room", run);
       return true; // he left the room
     }
