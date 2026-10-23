@@ -1,12 +1,14 @@
 import { BALANCE } from "./balance.js";
+import { byId } from "./nodes.js";
 
 // The skill tree's rules, shared by the game and the pacing simulator
 // (tools/model.mjs), so the two can never disagree about what an upgrade
 // does or what it costs.
 
 // What the hero is like with these upgrades, in a run in `depth`. `levels`
-// is { nodeId: level } (see save.js). Every node's effect is applied once
-// per level bought, except a `perDepth` node's outside its own depth.
+// is { nodeId: level } (see save.js; every node has one level). Every node's
+// effect is applied once per level bought, except a `perDepth` node's
+// outside its own depth.
 export function heroStats(levels, depth = 1) {
   const { hero, run, drops, spawning } = BALANCE;
   const stats = {
@@ -35,9 +37,10 @@ export function heroStats(levels, depth = 1) {
     xpBonus: 0,
     unlocked: new Set(),
   };
-  for (const node of BALANCE.tree) {
-    if (node.perDepth && (node.depth ?? 1) !== depth) continue; // it only works in its own depth
-    const level = levels[node.id] ?? 0;
+  for (const [id, level] of Object.entries(levels)) {
+    const node = byId[id];
+    if (!node) continue; // a node the map doesn't have (any more)
+    if (node.perDepth && node.depth !== depth) continue; // it only works in its own depth
     for (let i = 0; i < level; i++) {
       const { stat, add, mul, unlock } = node.effect;
       if (unlock) stats.unlocked.add(unlock);
@@ -49,8 +52,9 @@ export function heroStats(levels, depth = 1) {
   return stats;
 }
 
-// What level `level` (counting from 0) of a node costs, rounded to a tidy
-// number: whole gold under 100, then two significant figures (130, 2100...).
+// What level `level` (counting from 0) of a node costs (nodes.js works out
+// each node's price), rounded to a tidy number: whole gold under 100, then
+// two significant figures (130, 2100...).
 // `early`: it's for a depth not reached yet, so it costs BALANCE.earlyPrice
 // times as much.
 export function costOf(node, level, early = false) {
@@ -62,7 +66,7 @@ export function costOf(node, level, early = false) {
 
 // Whether a node is for a depth not reached yet, with `cleared` depths
 // beaten so far (save.js): depth 2's nodes, until depth 1's boss falls.
-export const isEarly = (node, cleared) => (node.depth ?? 1) > cleared + 1;
+export const isEarly = (node, cleared) => node.depth > cleared + 1;
 
 // How much tougher and richer monsters and breakables are in sub-depth `sub`
 // (1 to 10) of `depth`: grown by the sub-depth (balance.js `growth`, or the

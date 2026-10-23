@@ -1,4 +1,5 @@
 import { BALANCE } from "./balance.js";
+import { CENTER } from "./nodes.js";
 
 // Your progress, remembered between visits in the browser's localStorage
 // (next to the settings, see settings.js): the gold you've banked and the
@@ -8,9 +9,14 @@ import { BALANCE } from "./balance.js";
 
 const KEY = "dungeon-crawler-save";
 
+// The skill tree's version: saves from before the honeycomb (version 2) had
+// different nodes, so their tree starts over (the gold and depths stay).
+const TREE = 2;
+
 const FRESH = {
   gold: 0,                   // banked gold, to spend in the skill tree
-  levels: { descend: 1 },    // the tree: node id -> level bought (see balance.js)
+  levels: { [CENTER]: 1 },   // the tree: node id -> 1 for each node bought (see nodes.js)
+  tree: TREE,
   runs: 0,                   // runs played
   best: 0,                   // the deepest a run has got, in sub-depths from the top: 13.4 = depth 2, into room 4
   cleared: 0,                // the deepest depth whose boss has been beaten
@@ -22,7 +28,8 @@ const FRESH = {
 let save = structuredClone(FRESH);
 try {
   const stored = JSON.parse(localStorage.getItem(KEY) ?? "{}");
-  save = { ...save, ...stored, levels: { ...FRESH.levels, ...stored.levels } };
+  const sameTree = stored.tree === TREE;
+  save = { ...save, ...stored, tree: TREE, levels: { ...FRESH.levels, ...(sameTree ? stored.levels : {}) } };
   // Saves from before the well existed: every run ends in the underworld,
   // so anyone who has played a run has been there.
   save.seenUnderworld ||= save.runs > 0;
@@ -62,7 +69,7 @@ export function chooseDepth(depth) {
   write();
 }
 
-// Buys the next level of a skill tree node for `price` gold.
+// Buys a skill tree node for `price` gold.
 export function buyLevel(id, price) {
   save.gold -= price;
   save.levels[id] = (save.levels[id] ?? 0) + 1;

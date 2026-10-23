@@ -272,107 +272,105 @@ export const BALANCE = {
   },
 
   // ---- The skill tree -----------------------------------------------------
-  // A web out from "descend" in the middle. A node can be bought once its
-  // `parent` has at least one level. Level n (counting from 0) costs
-  // cost × growth^n gold, rounded to a tidy number; `growth` stays between
-  // 1.4 and 1.6 (DESIGN.md section 8). Each level applies `effect` once:
-  //   add: x    adds x to the stat        mul: x   multiplies the stat by x
-  //   unlock    turns something on (one level only)
-  // `depth: 2` marks a node in depth 2's ring (the tree's second ring, out
-  // past depth 1's nodes), priced for depth 2's gold. It can be bought
-  // before depth 1's boss is beaten, but at `earlyPrice` times the price.
-  // `perDepth`: it only works in its own depth (depth 1 if no `depth`).
-  // Those are the run's pacing: the clock (More time, Second wind) and the
-  // monsters that come (Crowded rooms, Bigger hordes, Restless dead), so a
-  // new depth starts on a 15 s clock with the base spawns. Everything else
-  // carries over into every depth.
+  // A honeycomb out from Descend (`@`) in the middle: every letter in `map`
+  // is a node, and a node can be bought once it touches one you own (any of
+  // its six neighbours), so paths can cross from one branch into another.
+  // Each node is bought once. A lowercase letter is a small node and its
+  // capital a big one, twice as strong (an `add` twice over, a `mul` squared)
+  // for about twice the price. `.` is a gap (nothing there), which makes the
+  // lanes. Each line is a row of the honeycomb; every other row is shifted
+  // half a node, so a node's neighbours are the ones two characters to
+  // either side and one character to either side on the rows above and
+  // below. You only see the nodes you own and the ones touching them.
+  //
+  // Which depth a node belongs to depends on how far out it is: `bands` is
+  // the last ring of each depth (ring 1 is the six around Descend). A
+  // deeper depth's nodes are priced in its gold, and can be bought before
+  // the depth before it is beaten, at `earlyPrice` times the price.
+  //
+  // A node's price: the depth's `start`, times `spread` to the power of how
+  // far out it is in its band (0 at the band's inside, 1 at its outside),
+  // times its kind's `worth` in that depth, times a little up or down for
+  // each node (`jitter`); a big node costs `big` times as much, give or take
+  // `bigJitter`, so some big nodes are better value than others.
+  //
+  // `kinds`: what each letter is. `name` and an `add` can be one per depth
+  // (lists, depth 1 first). `perDepth`: it only works in its own depth (the
+  // run's pacing: the clock and the monsters that come), so a new depth
+  // starts on a 15 s clock with the base spawns; everything else carries
+  // over. `needs`: the letter of a kind you must own first (the orbs need
+  // Time orbs, Quick feet the Dash, Lucky hearts an extra heart).
   earlyPrice: 10,
-  tree: [
-    { id: "descend", name: "Descend", parent: null, levels: 1, cost: 0, growth: 1, effect: { unlock: "descend" }, owned: true },
-
-    // Weapon
-    { id: "sharper", name: "Sharper blade", parent: "descend", levels: 10, cost: 2, growth: 1.45, effect: { stat: "damage", add: 1 } },
-    { id: "quicker", name: "Quicker swing", parent: "sharper", levels: 10, cost: 18, growth: 1.47, effect: { stat: "swingEvery", mul: 0.91 } },
-    { id: "reach", name: "Longer reach", parent: "quicker", levels: 5, cost: 24, growth: 1.48, effect: { stat: "reach", mul: 1.1 } },
-    { id: "arc", name: "Wider arc", parent: "reach", levels: 3, cost: 48, growth: 1.55, effect: { stat: "arc", add: 20 } },
-    { id: "keen", name: "Keen edge", parent: "arc", levels: 10, cost: 190, growth: 1.45, effect: { stat: "damage", add: 10 }, depth: 2 },
-    { id: "crit", name: "Critical hits", parent: "keen", levels: 5, cost: 3000, growth: 1.5, effect: { stat: "critChance", add: 0.04 }, depth: 2 },
-    { id: "edge3", name: "Brutal edge", parent: "crit", levels: 10, cost: 100000, growth: 1.45, effect: { stat: "damage", add: 100 }, depth: 3 },
-    { id: "edge4", name: "Savage edge", parent: "edge3", levels: 10, cost: 110000000, growth: 1.45, effect: { stat: "damage", add: 1000 }, depth: 4 },
-    { id: "edge5", name: "Demon edge", parent: "edge4", levels: 10, cost: 48000000000, growth: 1.45, effect: { stat: "damage", add: 10000 }, depth: 5 },
-    // Depths 3-5's copies of depth 2's extras, one more of each per ring
-    { id: "crit3", name: "Critical hits II", parent: "edge3", levels: 5, cost: 1600000, growth: 1.5, effect: { stat: "critChance", add: 0.04 }, depth: 3 },
-    { id: "crit4", name: "Critical hits III", parent: "edge4", levels: 5, cost: 1800000000, growth: 1.5, effect: { stat: "critChance", add: 0.04 }, depth: 4 },
-    { id: "crit5", name: "Critical hits IV", parent: "edge5", levels: 5, cost: 800000000000, growth: 1.5, effect: { stat: "critChance", add: 0.04 }, depth: 5 },
-
-    // Hearts
-    { id: "heart", name: "Extra heart", parent: "descend", levels: 4, cost: 3, growth: 1.6, effect: { stat: "hearts", add: 1 } },
-    { id: "nerves", name: "Steady nerves", parent: "heart", levels: 3, cost: 59, growth: 1.55, effect: { stat: "invincibleFor", add: 0.25 } },
-    // After Extra heart, because a heart only drops while you're missing one.
-    { id: "lucky", name: "Lucky hearts", parent: "heart", levels: 5, cost: 72, growth: 1.5, effect: { stat: "heartChance", add: 0.004 } },
-    { id: "heart2", name: "Extra heart II", parent: "heart", levels: 2, cost: 790, growth: 1.6, effect: { stat: "hearts", add: 1 }, depth: 2 },
-    { id: "heart3", name: "Extra heart III", parent: "heart2", levels: 2, cost: 420000, growth: 1.6, effect: { stat: "hearts", add: 1 }, depth: 3 },
-    { id: "heart4", name: "Extra heart IV", parent: "heart3", levels: 2, cost: 460000000, growth: 1.6, effect: { stat: "hearts", add: 1 }, depth: 4 },
-    { id: "heart5", name: "Extra heart V", parent: "heart4", levels: 2, cost: 200000000000, growth: 1.6, effect: { stat: "hearts", add: 1 }, depth: 5 },
-
-    // Time
-    { id: "time", name: "More time", parent: "descend", levels: 10, cost: 2, growth: 1.42, effect: { stat: "startTime", add: 4 }, perDepth: true },
-    { id: "wind", name: "Second wind", parent: "time", levels: 5, cost: 29, growth: 1.52, effect: { stat: "timePerSubDepth", add: 1.5 }, perDepth: true },
-    { id: "orbs", name: "Time orbs", parent: "wind", levels: 1, cost: 160, growth: 1, effect: { unlock: "timeOrbs" } },
-    // Orbs come from kills, and depth 1 has too few kills for these to pay
-    // off, so they're an investment for depth 2.
-    { id: "orbFinder", name: "Orb finder", parent: "orbs", levels: 5, cost: 12000, growth: 1.5, effect: { stat: "timeOrbChance", add: 0.004 }, depth: 2 },
-    { id: "biggerOrbs", name: "Bigger orbs", parent: "orbFinder", levels: 3, cost: 19000, growth: 1.55, effect: { stat: "timeOrbSeconds", add: 0.5 }, depth: 2 },
-    { id: "orbFinder3", name: "Orb finder II", parent: "biggerOrbs", levels: 5, cost: 6500000, growth: 1.5, effect: { stat: "timeOrbChance", add: 0.004 }, depth: 3 },
-    { id: "biggerOrbs3", name: "Bigger orbs II", parent: "orbFinder3", levels: 3, cost: 10000000, growth: 1.55, effect: { stat: "timeOrbSeconds", add: 0.5 }, depth: 3 },
-    { id: "orbFinder4", name: "Orb finder III", parent: "biggerOrbs3", levels: 5, cost: 7100000000, growth: 1.5, effect: { stat: "timeOrbChance", add: 0.004 }, depth: 4 },
-    { id: "biggerOrbs4", name: "Bigger orbs III", parent: "orbFinder4", levels: 3, cost: 11000000000, growth: 1.55, effect: { stat: "timeOrbSeconds", add: 0.5 }, depth: 4 },
-    { id: "orbFinder5", name: "Orb finder IV", parent: "biggerOrbs4", levels: 5, cost: 3100000000000, growth: 1.5, effect: { stat: "timeOrbChance", add: 0.004 }, depth: 5 },
-    { id: "biggerOrbs5", name: "Bigger orbs IV", parent: "orbFinder5", levels: 3, cost: 4800000000000, growth: 1.55, effect: { stat: "timeOrbSeconds", add: 0.5 }, depth: 5 },
-    { id: "time2", name: "More time II", parent: "time", levels: 10, cost: 190, growth: 1.42, effect: { stat: "startTime", add: 4 }, depth: 2, perDepth: true },
-    { id: "wind2", name: "Second wind II", parent: "time2", levels: 5, cost: 2800, growth: 1.52, effect: { stat: "timePerSubDepth", add: 1.5 }, depth: 2, perDepth: true },
-    { id: "time3", name: "More time III", parent: "wind2", levels: 10, cost: 100000, growth: 1.42, effect: { stat: "startTime", add: 4 }, depth: 3, perDepth: true },
-    { id: "wind3", name: "Second wind III", parent: "time3", levels: 5, cost: 1500000, growth: 1.52, effect: { stat: "timePerSubDepth", add: 1.5 }, depth: 3, perDepth: true },
-    { id: "time4", name: "More time IV", parent: "wind3", levels: 10, cost: 110000000, growth: 1.42, effect: { stat: "startTime", add: 4 }, depth: 4, perDepth: true },
-    { id: "wind4", name: "Second wind IV", parent: "time4", levels: 5, cost: 1700000000, growth: 1.52, effect: { stat: "timePerSubDepth", add: 1.5 }, depth: 4, perDepth: true },
-    { id: "time5", name: "More time V", parent: "wind4", levels: 10, cost: 48000000000, growth: 1.42, effect: { stat: "startTime", add: 4 }, depth: 5, perDepth: true },
-    { id: "wind5", name: "Second wind V", parent: "time5", levels: 5, cost: 760000000000, growth: 1.52, effect: { stat: "timePerSubDepth", add: 1.5 }, depth: 5, perDepth: true },
-
-    // Dash
-    { id: "dash", name: "Dash", parent: "descend", levels: 1, cost: 6, growth: 1, effect: { unlock: "dash" } },
-    { id: "feet", name: "Quick feet", parent: "dash", levels: 5, cost: 59, growth: 1.46, effect: { stat: "dashCooldown", mul: 0.9 } },
-    { id: "charge", name: "Second charge", parent: "feet", levels: 1, cost: 300, growth: 1, effect: { stat: "dashCharges", add: 1 } },
-    { id: "feet2", name: "Quick feet II", parent: "charge", levels: 3, cost: 5500, growth: 1.46, effect: { stat: "dashCooldown", mul: 0.9 }, depth: 2 },
-    { id: "feet3", name: "Quick feet III", parent: "feet2", levels: 3, cost: 2900000, growth: 1.46, effect: { stat: "dashCooldown", mul: 0.9 }, depth: 3 },
-    { id: "feet4", name: "Quick feet IV", parent: "feet3", levels: 3, cost: 3100000000, growth: 1.46, effect: { stat: "dashCooldown", mul: 0.9 }, depth: 4 },
-    { id: "feet5", name: "Quick feet V", parent: "feet4", levels: 3, cost: 1400000000000, growth: 1.46, effect: { stat: "dashCooldown", mul: 0.9 }, depth: 5 },
-
-    // Money
-    { id: "greed", name: "Greed", parent: "descend", levels: 10, cost: 2, growth: 1.4, effect: { stat: "goldBonus", add: 0.1 } }, // on kills; Smash is for breakables
-    { id: "magnet", name: "Magnet", parent: "greed", levels: 5, cost: 14, growth: 1.44, effect: { stat: "magnetRange", mul: 1.25 } },
-    { id: "smash", name: "Smash", parent: "magnet", levels: 3, cost: 24, growth: 1.5, effect: { stat: "breakableBonus", add: 0.25 } },
-    { id: "greed2", name: "Greed II", parent: "smash", levels: 10, cost: 190, growth: 1.4, effect: { stat: "goldBonus", add: 0.1 }, depth: 2 },
-    { id: "greed3", name: "Greed III", parent: "greed2", levels: 10, cost: 100000, growth: 1.4, effect: { stat: "goldBonus", add: 0.1 }, depth: 3 },
-    { id: "greed4", name: "Greed IV", parent: "greed3", levels: 10, cost: 110000000, growth: 1.4, effect: { stat: "goldBonus", add: 0.1 }, depth: 4 },
-    { id: "greed5", name: "Greed V", parent: "greed4", levels: 10, cost: 48000000000, growth: 1.4, effect: { stat: "goldBonus", add: 0.1 }, depth: 5 },
-
-    // Horde: more monsters, sooner, and more XP from each, so rooms fill
-    // their bars faster. Depth 1's rooms fill before most hordes arrive, so
-    // the two horde nodes are depth 2's.
-    { id: "crowded", name: "Crowded rooms", parent: "descend", levels: 10, cost: 2, growth: 1.45, effect: { stat: "onEnter", add: 1 }, perDepth: true },
-    { id: "hordes", name: "Bigger hordes", parent: "crowded", levels: 10, cost: 3700, growth: 1.45, effect: { stat: "horde", add: 1 }, depth: 2, perDepth: true },
-    { id: "restless", name: "Restless dead", parent: "hordes", levels: 5, cost: 6000, growth: 1.5, effect: { stat: "hordeEvery", add: -2 }, depth: 2, perDepth: true },
-    { id: "crowded2", name: "Crowded rooms II", parent: "hordes", levels: 10, cost: 190, growth: 1.45, effect: { stat: "onEnter", add: 1 }, depth: 2, perDepth: true },
-    { id: "hordes3", name: "Bigger hordes II", parent: "restless", levels: 10, cost: 2000000, growth: 1.45, effect: { stat: "horde", add: 1 }, depth: 3, perDepth: true },
-    { id: "restless3", name: "Restless dead II", parent: "hordes3", levels: 5, cost: 3200000, growth: 1.5, effect: { stat: "hordeEvery", add: -2 }, depth: 3, perDepth: true },
-    { id: "crowded3", name: "Crowded rooms III", parent: "hordes3", levels: 10, cost: 100000, growth: 1.45, effect: { stat: "onEnter", add: 1 }, depth: 3, perDepth: true },
-    { id: "hordes4", name: "Bigger hordes III", parent: "restless3", levels: 10, cost: 2300000000, growth: 1.45, effect: { stat: "horde", add: 1 }, depth: 4, perDepth: true },
-    { id: "restless4", name: "Restless dead III", parent: "hordes4", levels: 5, cost: 3600000000, growth: 1.5, effect: { stat: "hordeEvery", add: -2 }, depth: 4, perDepth: true },
-    { id: "crowded4", name: "Crowded rooms IV", parent: "hordes4", levels: 10, cost: 110000000, growth: 1.45, effect: { stat: "onEnter", add: 1 }, depth: 4, perDepth: true },
-    { id: "hordes5", name: "Bigger hordes IV", parent: "restless4", levels: 10, cost: 1000000000000, growth: 1.45, effect: { stat: "horde", add: 1 }, depth: 5, perDepth: true },
-    { id: "restless5", name: "Restless dead IV", parent: "hordes5", levels: 5, cost: 1600000000000, growth: 1.5, effect: { stat: "hordeEvery", add: -2 }, depth: 5, perDepth: true },
-    { id: "crowded5", name: "Crowded rooms V", parent: "hordes5", levels: 10, cost: 48000000000, growth: 1.45, effect: { stat: "onEnter", add: 1 }, depth: 5, perDepth: true },
-    { id: "calls", name: "Death calls", parent: "crowded", levels: 5, cost: 29, growth: 1.5, effect: { stat: "deathCall", add: 0.03 } },
-    { id: "wisdom", name: "Wisdom", parent: "crowded", levels: 10, cost: 14, growth: 1.42, effect: { stat: "xpBonus", add: 0.1 } },
-  ],
+  skillTree: {
+    map: [
+      "               . . . . . . . . . g g . P b . .",
+      "              . g g G G G G G g g g g t W p p .",
+      "             . G g . . . . G . . g . W . . b w .",
+      "            . h g G g g G G G g g g t t w P . t w",
+      "           . h . G . . g g . G g G . . w B p . P .",
+      "          . D . h g G g G G G g g g p P w . P B p .",
+      "         d d . h . h g . G g g G G w B B w W p . t .",
+      "        . D . d d h g g G G G g g t p b p W . t . t .",
+      "       . d c d . c h g . l n . g m K k W . t t t . t t",
+      "      . d . d . D d h L l N L . m M G . w p t . t . t .",
+      "     . d d d c d D d A . n l L . . g k M t P t T T . T .",
+      "    d d . c . d d d s . h N l g m G M g m t T t . w t W .",
+      "   . D . C C d c d . R S s n h G . g . G K T W w b W . w .",
+      "  . C . d c D d d r a S S S h g g . G w w w T p T B w p b .",
+      " . C C C . D C d . S . . D . h g G t t W o w T P t p b . W .",
+      ". c c d . c c d a . d r s d d @ t . t t . W . P b p b w . B .",
+      " . c . d . d c c A r r d s d x e . T T t T . t w p . P B B .",
+      "  . d c d C d C D r s d d d . . . e T T t W t W t P T . P .",
+      "   . d . D d D D D . s . f . i e E e y T . t t T P T . T .",
+      "    . C . d . d C d r S f F i . I I I e t T t T . T . T .",
+      "     . c . D d d . d R f F . E i i Y . I T w T W t W t .",
+      "      . d D d C d d f z F I i I y e Y i U U T . T t T .",
+      "       c d . d d f F F f y i i . y Y . e u t . T p T .",
+      "        . d . D F F f v u E e e u u e e v U v u . T .",
+      "         . D . f f U v V e V u v E u . V u . e . w p",
+      "          . f f F v u V e E e e u u e v e . v . U .",
+      "           . F . F v . . . e E u . u V . V e . u .",
+      "            . F . V u E u U e e u E e u v u v V .",
+      "             f u v . . . . U . . V . e . . V v .",
+      "              . V u e u e E e e u u e v U e v .",
+      "               . . v V . . E . . . . . . . . .",
+    ],
+    bands: [7, 9, 11, 13, 15],
+    prices: { start: [1.43, 280, 1.9e5, 1.1e8, 9e10], spread: [120, 25, 25, 90, 90], jitter: 0.12, big: 2, bigJitter: 0.2 },
+    kinds: {
+      "@": { name: "Descend", effect: { unlock: "descend" } },
+      // Weapon
+      d: { name: ["Sharper blade", "Keen edge", "Brutal edge", "Savage edge", "Demon edge"], effect: { stat: "damage", add: [1, 5, 50, 500, 5000] }, worth: [1, 1, 1, 1, 1] },
+      s: { name: "Quicker swing", effect: { stat: "swingEvery", mul: 0.95 }, worth: 2.86 },
+      r: { name: "Longer reach", effect: { stat: "reach", mul: 1.05 }, worth: 0.53 },
+      a: { name: "Wider arc", effect: { stat: "arc", add: 10 }, worth: 0.49 },
+      c: { name: "Critical hits", effect: { stat: "critChance", add: 0.02 }, worth: [null, 1.6, 2.2, 1.45, 2.41] },
+      // Hearts
+      h: { name: "Extra heart", effect: { stat: "hearts", add: 1 }, worth: [0.44, 0.86, 1.04, 1.2, 0.8] },
+      n: { name: "Steady nerves", effect: { stat: "invincibleFor", add: 0.1 }, worth: 0.97 },
+      l: { name: "Lucky hearts", effect: { stat: "heartChance", add: 0.002 }, needs: "h", worth: 1.7 }, // a heart only drops while you're missing one
+      // Time
+      t: { name: "More time", effect: { stat: "startTime", add: 2 }, perDepth: true, worth: [0.25, 1.21, 1.1, 1.07, 0.96] },
+      w: { name: "Second wind", effect: { stat: "timePerSubDepth", add: 0.75 }, perDepth: true, worth: [0.64, 2.54, 2.2, 2.82, 2.57] },
+      o: { name: "Time orbs", effect: { unlock: "timeOrbs" }, worth: 2.87 },
+      p: { name: "Orb finder", effect: { stat: "timeOrbChance", add: 0.002 }, needs: "o", worth: [null, 8.25, 8.14, 9.32, 8.33] },
+      b: { name: "Bigger orbs", effect: { stat: "timeOrbSeconds", add: 0.25 }, needs: "o", worth: [null, 3.46, 3.04, 3.77, 5.3] },
+      // Dash
+      x: { name: "Dash", effect: { unlock: "dash" }, worth: 1 },
+      f: { name: "Quick feet", effect: { stat: "dashCooldown", mul: 0.95 }, needs: "x", worth: [1.46, 2.75, 3, 3.02, 2.49] },
+      z: { name: "Second charge", effect: { stat: "dashCharges", add: 1 }, needs: "x", worth: 3.32 },
+      // Money
+      g: { name: "Greed", effect: { stat: "goldBonus", add: 0.05 }, worth: [0.24, 0.48, 0.52, 0.39, 0.52] }, // on kills; Smash is for breakables
+      m: { name: "Magnet", effect: { stat: "magnetRange", mul: 1.12 }, worth: 0.3 },
+      k: { name: "Smash", effect: { stat: "breakableBonus", add: 0.125 }, worth: 0.23 },
+      // Horde: more monsters, sooner, and more XP from each, so rooms fill
+      // their bars faster. Depth 1's rooms fill before most hordes arrive, so
+      // Bigger hordes and Restless dead start in depth 2.
+      e: { name: "Crowded rooms", effect: { stat: "onEnter", add: 1 }, perDepth: true, worth: [0.71, 1.81, 1.77, 1.83, 1.6] },
+      u: { name: "Bigger hordes", effect: { stat: "horde", add: 1 }, perDepth: true, worth: [null, 31.2, 29.6, 32.7, 27.9] },
+      v: { name: "Restless dead", effect: { stat: "hordeEvery", add: -1 }, perDepth: true, worth: [null, 2.3, 2.04, 1.94, 2.99] },
+      y: { name: "Death calls", effect: { stat: "deathCall", add: 0.015 }, worth: 0.59 },
+      i: { name: "Wisdom", effect: { stat: "xpBonus", add: 0.05 }, worth: 1.17 },
+    },
+  },
 };
