@@ -208,6 +208,16 @@ export const BALANCE = {
       tint: [148, 164, 204],
       decor: "banners",
       material: "tusks",
+      // War drums (fort.js): every `every` seconds or so (at random), a boom,
+      // then `warning` s later the drums beat for `lasts` s. While they
+      // beat, these monsters rage: nothing hurts them, they move `speed`
+      // times faster, and a touch costs the depth's special hit.
+      drums: { every: [12, 30], warning: 1, lasts: 4, speed: 1.5, types: ["orc_warrior", "orc_shaman", "masked_orc"] },
+      // Pressure plates (fort.js): `count` of them in each room. Stepped on,
+      // one fires an arrow from the wall `delay` s later, at `arrowSpeed`
+      // px/s; it costs him the special hit, or takes `mobDamage` of a
+      // monster's health. A plate comes back up `rearm` s after.
+      plates: { count: [2, 3], delay: 0.4, arrowSpeed: 220, mobDamage: 0.5, rearm: 1.5 },
       rooms: [
         { xp: 7, spawns: { orc_warrior: 100 }, breakables: ["pot", "pot"] },
         { xp: 7, spawns: { orc_warrior: 100 }, breakables: ["pot", "pot"] },
@@ -294,6 +304,9 @@ export const BALANCE = {
     { id: "gravedigger", name: "Gravedigger", depth: 1, costs: [5, 15, 40], effect: { graveGold: 0.5, graveTime: 0.5 } },
     // A caught thief drops one more time what it carried, a level.
     { id: "sticky_fingers", name: "Sticky fingers", depth: 2, costs: [5, 15, 40], effect: { thiefBonus: 1 } },
+    // One block that stops a hit from a shot (an arrow, a fireball) or a
+    // raging orc, and is ready again `recharge[level - 1]` seconds later.
+    { id: "shield", name: "Shield", depth: 3, costs: [5, 15, 40], effect: { shield: 1 }, recharge: [20, 12, 6] },
   ],
 
   // ---- Hits ---------------------------------------------------------------

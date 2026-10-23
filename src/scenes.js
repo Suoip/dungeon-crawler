@@ -16,6 +16,7 @@ import { dropCoins, dropMaterial, collectFloor, sweepFloor, floorValue, floorMat
 import { buildLayout } from "./crypt.js";
 import { setupGraves } from "./graves.js";
 import { setupThieves } from "./thieves.js";
+import { setupDrums, setupPlates } from "./fort.js";
 import { addHud } from "./hud.js";
 import { addLadder, addWell } from "./props.js";
 import { playSound } from "./sound.js";
@@ -131,7 +132,7 @@ export function registerRoomScene() {
       hud.addTime(seconds);
     });
     // The depth's gimmick, if it has one: the crypt's restless graves, the
-    // warrens' coin thieves.
+    // warrens' coin thieves, the fort's war drums and pressure plates.
     const graves = setupGraves(fight, run, stats, (seconds) => {
       if (!clockRunning || clockStopped) return;
       run.clock += seconds;
@@ -139,6 +140,8 @@ export function registerRoomScene() {
       hud.addTime(seconds);
     });
     const thieves = setupThieves(fight, run, stats);
+    setupDrums(fight, run);                 // the fort's war drums...
+    setupPlates(fight, run, fight.solid);   // ...and its pressure plates (fort.js)
 
     const things = [doorInteraction(door, () => (door.locked ? null : ["Go deeper"]), () => {
       if (fight.over) return false; // the run is over

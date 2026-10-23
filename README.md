@@ -29,6 +29,7 @@ The game needs a keyboard. On phones and tablets, a notice says so.
 - **The crypt's monsters:** slugs crawl about without hunting you, so the first rooms are calm practice; from room 3, tiny zombies chase you; from room 5, skeletons rattle as a warning and then charge in a straight line. Each kind gets more common after it first shows up, until the next one arrives, so room 10 is about a third of each. Deeper rooms bring more monsters, with more health. Every hit's damage pops up as a number.
 - **Restless graves in the crypt:** a tiny zombie or skeleton that falls may leave a grave, and climbs back out of it a few seconds later unless you walk over it and stamp it flat. Gravedigger, bought with bones in its own row at the top of the skill tree, makes each stamp pay some of the monster's gold again and a little time.
 - **Coin thieves in the warrens:** some goblins carry a sack and go for coins left on the floor, scoop them up and run for a burrow in the side walls. One that gets away takes the coins for good and climbs back out later to steal again; one caught on the way drops double what it carried. Sticky fingers, bought with teeth at the altar, makes a caught thief drop even more.
+- **War drums and arrow traps in the fort:** now and then a boom warns of the war drums, and while they beat the orcs rage: they glow red, move faster, hit for two hearts, and nothing hurts them, so you run. Pressure plates on the floor fire an arrow across the room from a slit in the wall, which hurts you and monsters alike. The Shield, bought with tusks at the altar, blocks one arrow, fireball or raging orc, and recharges faster with each level.
 - **Depth 5, the demon pit:** deep red with lava pouring down the walls, and the Big Demon at the bottom. Chorts mark a spot next to you with smoke and teleport onto it, pumpkin dudes leap at you and land with a shockwave, and plague doctors lob flasks over the pillars that burst into fire.
 - **Depth 4, the sunken swamp:** murky green with goo on the walls. Swampies split in two when they fall, muddies leave trails of mud that slow you down, and necromancers keep their distance and raise ice zombies.
 - **Depth 3, the orc fort:** cold stone with red banners. Orc warriors shove you across the room, orc shamans keep their distance and heal the monsters around them, and masked orcs block hits from the front with a shield, so you circle round them.
@@ -81,6 +82,7 @@ src/
   crypt.js            the rooms' pillars, floor spikes, breakables and chests
   graves.js           the crypt's restless graves: left by fallen undead, stamped flat or risen from
   thieves.js          the warrens' coin thieves and the burrows they run for
+  fort.js             the fort's war drums, and its pressure plates and arrows
   layouts.js          each depth's designed room layouts, as small text grids
   coins.js            coins, stones and the depths' materials on the floor, and the magnet
   hud.js              the clock (and the seconds time orbs add), the XP bar, the gold, and damage numbers

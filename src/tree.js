@@ -153,6 +153,9 @@ const PIXELS = {
     [-1, 0, 2, 1, "sand"], [-2, 1, 4, 1, "sand"], [-3, 2, 6, 2, "sand"]],
   // Gravedigger's shovel.
   shovel: [[-1, -7, 2, 8, "wood"], [-3, -7, 6, 1, "wood"], [-3, 1, 6, 3, "muted"], [-2, 4, 4, 1, "muted"], [-1, 5, 2, 1, "muted"]],
+  // The Shield's: steel with a gold boss.
+  shield: [[-5, -6, 10, 7, "pale"], [-4, 1, 8, 2, "pale"], [-3, 3, 6, 2, "pale"], [-1, 5, 2, 1, "pale"], [-5, -6, 10, 1, "light"],
+    [-1, -3, 2, 3, "gold"]],
   // Sticky fingers' sack of loot.
   sack: [[-2, -7, 4, 1, "wood"], [-1, -6, 2, 1, "gold"], [-4, -5, 8, 2, "wood"], [-5, -3, 10, 7, "wood"], [-4, 4, 8, 1, "wood"],
     [-1, -1, 3, 3, "gold"], [0, 0, 1, 1, "light"]],
@@ -262,7 +265,7 @@ const canBuy = (node) => !blockerOf(getSave().levels, node) && getSave().gold >=
 // material. A slot shows once that material has been found (or a level
 // bought). Their ids are "special:<id>", like the save's (stats.js).
 const SPECIAL_ROW = 20; // the row's height, under the title bar
-const SPECIAL_ICONS = { gravedigger: { draw: "shovel" }, sticky_fingers: { draw: "sack" } };
+const SPECIAL_ICONS = { gravedigger: { draw: "shovel" }, sticky_fingers: { draw: "sack" }, shield: { draw: "shield" } };
 const specialOf = (id) => (id?.startsWith("special:") ? BALANCE.specials.find((sp) => `special:${sp.id}` === id) : null);
 const materialOf = (special) => BALANCE.depths[special.depth - 1].material;
 const specialLevel = (special) => getSave().levels[`special:${special.id}`] ?? 0;
@@ -278,6 +281,7 @@ const SPECIAL_TEXT = {
     return level ? `${Math.round(graveGold * level * 100)}% GOLD +${graveTime * level}S` : "NOTHING";
   }],
   sticky_fingers: ["A CAUGHT THIEF'S LOOT", (level) => `${2 + effectOf("sticky_fingers").thiefBonus * level}X`],
+  shield: ["BLOCKS A HIT", (level) => (level ? `EVERY ${BALANCE.specials.find((sp) => sp.id === "shield").recharge[level - 1]}S` : "NEVER")],
 };
 
 // Whether there's anything you could buy right now (the altar's sigil glows).

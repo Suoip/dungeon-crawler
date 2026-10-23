@@ -38,6 +38,11 @@ const SOUNDS = {
   heal:     [0.35, 0, 600, 0.01, 0.08, 0.25, 0, 1, 0, 0, 300, 0.07],
   snatch:   [0.25, 0.05, 900, 0, 0.02, 0.1, 1, 1, 6, 0, -300, 0.02],        // a thief scoops up coins: a quick, sly jingle
   burrow:   [0.3, 0.05, 140, 0.02, 0.05, 0.2, 4, 1, -2, 0, 0, 0, 0, 0.6],    // a thief dives into its burrow: a scrabble of dirt
+  drumWarn: [0.6, 0.05, 55, 0.01, 0.1, 0.5, 0, 1, -1, 0, 0, 0, 0, 0.5],      // the war drums are coming: one deep boom
+  drum:     [0.45, 0.05, 70, 0, 0.04, 0.2, 0, 1, -3, 0, 0, 0, 0, 0.3],       // a beat of the war drums
+  plate:    [0.3, 0.05, 400, 0, 0.01, 0.04, 3, 1, 0, 0, 0, 0, 0, 0.3],       // a pressure plate clicks down
+  arrow:    [0.3, 0.05, 900, 0, 0.02, 0.12, 0, 1, -40, 0, 0, 0, 0, 0.2],     // an arrow shoots from the wall: a twang
+  shieldReady: [0.15, 0.02, 1200, 0.01, 0.03, 0.1, 1, 1, 0, 0, 400, 0.05], // the Shield is ready again: a soft ting
   coin:     [0.2, 0.05, 1600, 0, 0.02, 0.12, 1, 1, 0, 0, 600, 0.03],         // a little jingle
   gem:      [0.2, 0.02, 2100, 0, 0.03, 0.2, 0, 1, 0, 0, 700, 0.04],          // a gem: a brighter, ringing chime
   orb:      [0.3, 0, 784, 0.01, 0.06, 0.25, 0, 1, 0, 0, 392, 0.06],          // a time orb: a bright two-note chime

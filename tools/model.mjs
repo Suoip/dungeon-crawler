@@ -35,6 +35,8 @@ export const MODEL = {
   stamp: 0.5,           // s to walk over and stamp a grave flat (the crypt, graves.js)
   chase: 1.0,           // s spent chasing a coin thief (the warrens, thieves.js)...
   caught: 0.6,          // ...and the share of them he catches before they reach a burrow
+  drumDanger: 0.5,      // while the fort's drums beat he keeps away from the orcs: this share of their danger is left...
+  arrowThreat: 0.004,   // ...and the fort's arrows (stepping on a plate in the fight) add this danger, a special hit
   hubPerRun: 12,        // after a run: dragged down, the underworld, the tree, the ladder, the fall
   dodgeTime: 1.3,       // only 1 in this many swings lands on the boss: the rest of the time you're dodging
   bossRaiseEvery: 6.5,  // seconds between the boss's raises when raising is its favorite move (boss.js: a cast every 1.5-3 s, raising half the time); other bosses raise half as often
@@ -343,6 +345,10 @@ export function simulateRun(stats, dice, player = PLAYERS.efficient, depth = 1) 
       else breakables.push({ name: "chest", left: null });
     }
     spawn(stats.onEnter);
+    const drums = DEPTH.drums;
+    const nextDrums = (from) => (drums ? from + drums.every[0] + dice() * (drums.every[1] - drums.every[0]) : Infinity);
+    let drumsAt = nextDrums(t);
+    const arrows = DEPTH.plates ? MODEL.arrowThreat : 0;
     while (true) {
       t += swing;
       if (t >= leaveAt && leaveAt <= clock) {
@@ -390,15 +396,30 @@ export function simulateRun(stats, dice, player = PLAYERS.efficient, depth = 1) 
         if (blast(m.type)) return end("died", t);
       }
 
+      // The fort's war drums: while they beat, nothing hurts the orcs, so
+      // he keeps away from them until they stop, and may still get caught.
+      if (t >= drumsAt) {
+        if (!full && !boss) {
+          t += drums.warning + drums.lasts;
+          const caught = threatNow() * danger * MODEL.drumDanger * drums.lasts;
+          if (t > invincibleUntil && dice() < 1 - Math.exp(-caught)) {
+            hearts -= SPECIAL;
+            invincibleUntil = t + stats.invincibleFor;
+            if (hearts <= 0) return end("died", t);
+          }
+        }
+        drumsAt = nextDrums(t);
+      }
+
       // The danger since the last swing: everything up close (and spikes)
       // can land a hit, but not while he's still invincible from the last
       // one, so only the part of the swing after that counts.
-      const perSecond = (threatNow() + (boss ? DEPTH.boss.threat : 0) + (room.hazard ?? 0)) * danger;
+      const perSecond = (threatNow() + (boss ? DEPTH.boss.threat : 0) + (room.hazard ?? 0) + arrows) * danger;
       const exposed = Math.min(swing, t - invincibleUntil);
       if (exposed > 0 && perSecond > 0 && dice() < 1 - Math.exp(-perSecond * exposed)) {
         // Shots and the boss's moves are special attacks: their share of the
         // danger costs the depth's special hit; a touch (or spikes) costs one.
-        const special = (rangedNow() + (boss ? DEPTH.boss.threat : 0)) * danger / perSecond;
+        const special = (rangedNow() + (boss ? DEPTH.boss.threat : 0) + arrows) * danger / perSecond;
         hearts -= dice() < special ? SPECIAL : 1;
         invincibleUntil = t + stats.invincibleFor;
         if (hearts <= 0) return end("died", t);
