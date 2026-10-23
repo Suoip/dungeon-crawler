@@ -15,6 +15,7 @@ import { setupAutoSwing, setupHurt, addHearts, setupHeartDrops, setupOrbDrops } 
 import { dropCoins, dropMaterial, collectFloor, sweepFloor, floorValue, floorMaterial } from "./coins.js";
 import { buildLayout } from "./crypt.js";
 import { setupGraves } from "./graves.js";
+import { setupThieves } from "./thieves.js";
 import { addHud } from "./hud.js";
 import { addLadder, addWell } from "./props.js";
 import { playSound } from "./sound.js";
@@ -94,6 +95,7 @@ export function registerRoomScene() {
           { spread: mob.def.boss ? 44 : 10 });
         if (mob.def.boss) return bossBeaten(mob);
         graves.onKill(mob); // the crypt's restless graves (graves.js)
+        thieves.onKill(mob); // the warrens' coin thieves (thieves.js)
         // Seconds per kill (a tree upgrade): while the clock runs, every kill
         // adds a little sand to the hourglass.
         if (stats.timePerKill > 0 && clockRunning && !clockStopped) {
@@ -128,13 +130,15 @@ export function registerRoomScene() {
       run.sand += seconds;
       hud.addTime(seconds);
     });
-    // The depth's gimmick, if it has one: the crypt's restless graves.
+    // The depth's gimmick, if it has one: the crypt's restless graves, the
+    // warrens' coin thieves.
     const graves = setupGraves(fight, run, stats, (seconds) => {
       if (!clockRunning || clockStopped) return;
       run.clock += seconds;
       run.sand += seconds;
       hud.addTime(seconds);
     });
+    const thieves = setupThieves(fight, run, stats);
 
     const things = [doorInteraction(door, () => (door.locked ? null : ["Go deeper"]), () => {
       if (fight.over) return false; // the run is over

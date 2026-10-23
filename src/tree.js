@@ -153,6 +153,9 @@ const PIXELS = {
     [-1, 0, 2, 1, "sand"], [-2, 1, 4, 1, "sand"], [-3, 2, 6, 2, "sand"]],
   // Gravedigger's shovel.
   shovel: [[-1, -7, 2, 8, "wood"], [-3, -7, 6, 1, "wood"], [-3, 1, 6, 3, "muted"], [-2, 4, 4, 1, "muted"], [-1, 5, 2, 1, "muted"]],
+  // Sticky fingers' sack of loot.
+  sack: [[-2, -7, 4, 1, "wood"], [-1, -6, 2, 1, "gold"], [-4, -5, 8, 2, "wood"], [-5, -3, 10, 7, "wood"], [-4, 4, 8, 1, "wood"],
+    [-1, -1, 3, 3, "gold"], [0, 0, 1, 1, "light"]],
   // Depth 3's: a green hourglass and a blue gem.
   hourglass3: [[-4, -6, 8, 2, "gem"], [-4, 4, 8, 2, "gem"], [-3, -4, 6, 2, "light"], [-2, -2, 4, 2, "light"],
     [-1, 0, 2, 1, "light"], [-2, 1, 4, 1, "gem"], [-3, 2, 6, 2, "gem"]],
@@ -259,19 +262,22 @@ const canBuy = (node) => !blockerOf(getSave().levels, node) && getSave().gold >=
 // material. A slot shows once that material has been found (or a level
 // bought). Their ids are "special:<id>", like the save's (stats.js).
 const SPECIAL_ROW = 20; // the row's height, under the title bar
-const SPECIAL_ICONS = { gravedigger: { draw: "shovel" } };
+const SPECIAL_ICONS = { gravedigger: { draw: "shovel" }, sticky_fingers: { draw: "sack" } };
 const specialOf = (id) => (id?.startsWith("special:") ? BALANCE.specials.find((sp) => `special:${sp.id}` === id) : null);
 const materialOf = (special) => BALANCE.depths[special.depth - 1].material;
 const specialLevel = (special) => getSave().levels[`special:${special.id}`] ?? 0;
 const specialCost = (special) => special.costs[specialLevel(special)] ?? null; // null once it's maxed
 const specialsOnShow = () => BALANCE.specials.filter((sp) => specialLevel(sp) > 0 || (getSave().materials[materialOf(sp)] ?? 0) > 0);
 const canBuySpecial = (special) => specialCost(special) !== null && getSave().materials[materialOf(special)] >= specialCost(special);
-// What a special upgrade does at a level, as the panel says it.
+// What a special upgrade does at a level, as the panel says it: what it's
+// about, then what it does at that level.
+const effectOf = (id) => BALANCE.specials.find((sp) => sp.id === id).effect;
 const SPECIAL_TEXT = {
-  gravedigger: (level) => {
-    const { graveGold, graveTime } = BALANCE.specials.find((sp) => sp.id === "gravedigger").effect;
+  gravedigger: ["STAMPS", (level) => {
+    const { graveGold, graveTime } = effectOf("gravedigger");
     return level ? `${Math.round(graveGold * level * 100)}% GOLD +${graveTime * level}S` : "NOTHING";
-  },
+  }],
+  sticky_fingers: ["A CAUGHT THIEF'S LOOT", (level) => `${2 + effectOf("sticky_fingers").thiefBonus * level}X`],
 };
 
 // Whether there's anything you could buy right now (the altar's sigil glows).
@@ -607,8 +613,8 @@ export function openTree(onClose) {
       drawIcon({ icon: SPECIAL_ICONS[special.id] }, vec2(15, PANEL_Y + 19), 1);
       text(special.name.toUpperCase(), 30, PANEL_Y + 4, C.gold);
       text(`${level}/${special.costs.length}`, GAME_WIDTH - 6, PANEL_Y + 4, C.muted, "topright");
-      const say = SPECIAL_TEXT[special.id];
-      text(cost === null ? `STAMPS: ${say(level)}` : `STAMPS: ${say(level)} > ${say(level + 1)}`, 30, PANEL_Y + 15);
+      const [about, say] = SPECIAL_TEXT[special.id];
+      text(cost === null ? `${about}: ${say(level)}` : `${about}: ${say(level)} > ${say(level + 1)}`, 30, PANEL_Y + 15);
       let status;
       if (message?.id === id && time() < message.until) status = [message.text, message.color];
       else if (cost === null) status = ["MAXED", C.gold];

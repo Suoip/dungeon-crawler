@@ -34,6 +34,7 @@ export function heroStats(levels, depth = 1) {
     healOnClear: 0,      // the chance of a heart back when a room's bar fills
     graveGold: 0,        // stamping a grave pays this share of its monster's gold (Gravedigger)
     graveTime: 0,        // ...and these seconds
+    thiefBonus: 0,       // a caught thief drops this many times its loot more than double (Sticky fingers)
     breakableBonus: 0,
     onEnter: spawning.onEnter,
     horde: spawning.horde,
