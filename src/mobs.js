@@ -49,11 +49,12 @@ export const MOB_TYPES = {
 // has a fixed hp.
 function numbersFor(type, room) {
   const depth = BALANCE.depths[room.depth - 1];
-  if (type === depth.boss.type) return { hp: depth.boss.hp, gold: depth.boss.gold, xp: 0 };
+  const tougher = room.hpScale ?? 1; // the pit's pacts (pacts.js)
+  if (type === depth.boss.type) return { hp: Math.ceil(depth.boss.hp * tougher), gold: depth.boss.gold, xp: 0 };
   const data = BALANCE.mobs[type];
   if (!data) return { hp: MOB_TYPES[type].hp, gold: 1, xp: 1 };
   const scale = roomScale(room.depth, room.sub);
-  return { hp: Math.ceil(data.hp * scale.hp), gold: data.gold * scale.gold, xp: data.xp };
+  return { hp: Math.ceil(data.hp * scale.hp * tougher), gold: data.gold * scale.gold, xp: data.xp };
 }
 
 // ---- Spawning ------------------------------------------------------------------

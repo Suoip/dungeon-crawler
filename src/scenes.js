@@ -18,6 +18,7 @@ import { setupGraves } from "./graves.js";
 import { setupThieves } from "./thieves.js";
 import { setupDrums, setupPlates } from "./fort.js";
 import { setupWater } from "./water.js";
+import { offerPact, pactOf } from "./pacts.js";
 import { addHud } from "./hud.js";
 import { addLadder, addWell } from "./props.js";
 import { playSound } from "./sound.js";
@@ -93,7 +94,9 @@ export function registerRoomScene() {
         // Flat gold per kill (a tree upgrade) comes on top of the monster's own,
         // in this room's gold, and Greed adds its share of both.
         const flat = mob.def.boss ? 0 : stats.goldPerKill * roomScale(run.depth, sub).gold;
-        dropCoins(mob.pos.clone(), coins((mob.gold + flat) * (1 + stats.goldBonus)), run, player, () => stats.magnetRange,
+        // The pit's pacts make it worth more.
+        const pactGold = run.pact?.gold ?? 1;
+        dropCoins(mob.pos.clone(), coins((mob.gold + flat) * (1 + stats.goldBonus) * pactGold), run, player, () => stats.magnetRange,
           { spread: mob.def.boss ? 44 : 10 });
         if (mob.def.boss) return bossBeaten(mob);
         graves.onKill(mob); // the crypt's restless graves (graves.js)
@@ -125,7 +128,7 @@ export function registerRoomScene() {
     const maybeDropMaterial = (mob) => {
       if (Math.random() < materialChance) dropMaterial(mob.pos.clone(), run, player, () => stats.magnetRange, depth.material);
     };
-    const hud = addHud(() => ({ clock: run.clock, sand: run.sand, stopped: clockStopped, xp, xpNeeded: room.xp, gold: run.gold }));
+    const hud = addHud(() => ({ clock: run.clock, sand: run.sand, stopped: clockStopped, xp, xpNeeded: room.xp, gold: run.gold, goldTimes: run.pact?.gold }));
     // Time orbs: while the clock runs, a kill may drop one, worth seconds.
     const maybeDropOrb = setupOrbDrops(player, stats, () => clockRunning && !clockStopped, (seconds) => {
       run.clock += seconds;
@@ -178,6 +181,14 @@ export function registerRoomScene() {
     (async () => {
       fadeIn(fader, 0.3);
       await fallIn(player);
+      // The pit's pacts: a card to pick before the fight (pacts.js), and
+      // what the cards so far do to him and the monsters.
+      if (depth.pacts) {
+        await offerPact(run, stats);
+        const pact = pactOf(run);
+        player.pace = pact.speed;
+        fight.hpScale = pact.hp;
+      }
       giveControl(player);
       interactions.enable();
       clockRunning = true;

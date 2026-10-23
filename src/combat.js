@@ -331,7 +331,10 @@ export function setupHurt(player, run, heartsHud, room, onDeath, stats) {
     }
 
     const special = BALANCE.hits.special[run.depth - 1];
-    const lost = attacker.is("mob") ? (attacker.raging ? special : 1) : attacker.damage ?? special;
+    // The pit's pacts (pacts.js) can make every touch, or every hit, cost more.
+    const pact = run.pact ?? { touch: 0, special: 0 };
+    const touch = attacker.is("mob") && !attacker.raging;
+    const lost = (attacker.is("mob") ? (attacker.raging ? special : 1) : attacker.damage ?? special) + (touch ? pact.touch : pact.special);
     for (let i = 0; i < lost && run.hearts > 0; i++) {
       run.hearts--;
       heartsHud.pop();

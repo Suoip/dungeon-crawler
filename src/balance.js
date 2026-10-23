@@ -273,6 +273,21 @@ export const BALANCE = {
       tint: [196, 112, 148],
       decor: "lava",
       material: "embers",
+      // Pacts (pacts.js): as he lands in each room he picks one of three
+      // curses, each mild, harsh or brutal (picked at random by
+      // `tierWeights`). They stack for the run, and each adds its `gold` to
+      // what the gold monsters drop is multiplied by, from then on. How
+      // much each curse takes, by strength: his damage (`weaker`) and speed
+      // (`slower`) lose that share, monsters' health (`tougher`) gains it,
+      // and `harder` adds [hearts to a touch, hearts to a special attack].
+      pacts: {
+        tierWeights: { mild: 45, harsh: 35, brutal: 20 },
+        gold: { mild: 0.2, harsh: 0.5, brutal: 1.2 },
+        weaker: { mild: 0.15, harsh: 0.3, brutal: 0.5 },
+        slower: { mild: 0.15, harsh: 0.3, brutal: 0.5 },
+        tougher: { mild: 0.2, harsh: 0.5, brutal: 1 },
+        harder: { mild: [1, 0], harsh: [1, 1], brutal: [2, 2] },
+      },
       rooms: [
         { xp: 7, spawns: { chort: 100 }, breakables: ["pot", "pot"] },
         { xp: 6, spawns: { chort: 100 }, breakables: ["pot", "pot"] },
@@ -285,7 +300,8 @@ export const BALANCE = {
         { xp: 60, spawns: { chort: 33, pumpkin_dude: 34, doc: 33 }, breakables: ["crate", "crate", "urn"], hazard: 0.01, chest: { chance: 0.7, mimic: 0.6 } },
         { xp: 79, spawns: { chort: 30, pumpkin_dude: 35, doc: 35 }, breakables: ["crate", "crate"] }, // then the boss
       ],
-      boss: { type: "big_demon", hp: 44000000, gold: 120000000000, threat: 0.15, minion: "chort" },
+      // (44M before the pacts; 21M with the curses a typical player takes)
+      boss: { type: "big_demon", hp: 21000000, gold: 120000000000, threat: 0.15, minion: "chort" },
     },
   ],
 
@@ -315,6 +331,9 @@ export const BALANCE = {
     { id: "shield", name: "Shield", depth: 3, costs: [5, 15, 40], effect: { shield: 1 }, recharge: [20, 12, 6] },
     // He wades through water and mud this much more of his speed, a level.
     { id: "waders", name: "Waders", depth: 4, costs: [5, 15, 40], effect: { waders: 0.1 } },
+    // More choice in the pit's pacts: a 4th card, then a reroll in every
+    // room, then one card in every room that's always mild.
+    { id: "silver_tongue", name: "Silver tongue", depth: 5, costs: [5, 15, 40], effect: { silverTongue: 1 } },
   ],
 
   // ---- Hits ---------------------------------------------------------------

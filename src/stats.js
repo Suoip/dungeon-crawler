@@ -37,6 +37,7 @@ export function heroStats(levels, depth = 1) {
     thiefBonus: 0,       // a caught thief drops this many times its loot more than double (Sticky fingers)
     shield: 0,           // the Shield's level (its block's recharge is in balance.js specials)
     waders: 0,           // this much more of his speed in water and mud (Waders)
+    silverTongue: 0,     // Silver tongue's level: more choice in the pit's pacts
     breakableBonus: 0,
     onEnter: spawning.onEnter,
     horde: spawning.horde,

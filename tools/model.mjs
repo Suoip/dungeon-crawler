@@ -177,14 +177,16 @@ export function simulateRun(stats, dice, player = PLAYERS.efficient, depth = 1) 
   // it half as often (boss.js pickMove).
   const bossRaiseEvery = MODEL.bossRaiseEvery * (MOB_TYPES[DEPTH.boss.type].favorite === "spawn" ? 1 : 2);
   const { step } = BALANCE.drops.heart;
-  const walk = walking(stats);
+  let walk = walking(stats);
   const danger = safety(stats) * player.danger;
   // The swing is on a timer (combat.js): nobody swings faster, a slower
   // player just wastes some.
   const swing = stats.swingEvery * Math.max(1, player.clearTime); // seconds between swings that count
   // The average hit on a monster: a critical hit does critDamage times as
   // much (combat.js). Breakables and chests never take critical hits.
-  const hit = stats.damage * (1 + stats.critChance * (stats.critDamage - 1));
+  let hit = stats.damage * (1 + stats.critChance * (stats.critDamage - 1));
+  // The pit's pacts (pacts.js): what his hits cost on top, and what dropped gold is multiplied by.
+  let pactTouch = 0, pactSpecial = 0, pactGold = 1;
   const orbs = stats.unlocked.has("timeOrbs");
   let clock = stats.startTime; // seconds left on the run's clock
   let hearts = stats.hearts;
@@ -193,6 +195,25 @@ export function simulateRun(stats, dice, player = PLAYERS.efficient, depth = 1) 
   let gold = 0;
 
   for (let sub = 1; sub <= 10; sub++) {
+    // The pit offers its cards: he takes the mildest, and of those, the
+    // curse that hurts least (slower, then harder hits, tougher, weaker).
+    if (DEPTH.pacts) {
+      const P = DEPTH.pacts;
+      const tiers = Object.keys(P.tierWeights);
+      const total = tiers.reduce((sum, k) => sum + P.tierWeights[k], 0);
+      const tierOf = () => { let r = dice() * total; for (const k of tiers) if ((r -= P.tierWeights[k]) <= 0) return k; return tiers.at(-1); };
+      const kinds = ["weaker", "slower", "tougher", "harder"].sort(() => dice() - 0.5).slice(0, 3);
+      const offered = kinds.map((kind) => ({ kind, tier: tierOf() }));
+      const order = ["slower", "harder", "tougher", "weaker"];
+      offered.sort((a, b) => tiers.indexOf(a.tier) - tiers.indexOf(b.tier) || order.indexOf(a.kind) - order.indexOf(b.kind));
+      const { kind, tier } = offered[0];
+      const x = P[kind][tier];
+      if (kind === "weaker") hit *= 1 - x;
+      if (kind === "tougher") hit /= 1 + x;
+      if (kind === "slower") walk /= 1 - x;
+      if (kind === "harder") { pactTouch += x[0]; pactSpecial += x[1]; }
+      pactGold += P.gold[tier];
+    }
     const room = DEPTH.rooms[sub - 1];
     const scale = roomScale(depth, sub);
     const isBossRoom = sub === 10;
@@ -267,7 +288,7 @@ export function simulateRun(stats, dice, player = PLAYERS.efficient, depth = 1) 
     // or he gets out of the way. Returns true if that was his last heart.
     const blast = (type) => {
       if (t < invincibleUntil || dice() >= Math.min(1, behavior(type).blast * danger)) return false;
-      hearts -= SPECIAL; // a special attack (balance.js hits)
+      hearts -= SPECIAL + pactSpecial; // a special attack (balance.js hits)
       invincibleUntil = t + stats.invincibleFor;
       return hearts <= 0;
     };
@@ -307,7 +328,7 @@ export function simulateRun(stats, dice, player = PLAYERS.efficient, depth = 1) 
       const def = BALANCE.mobs[type];
       xp += def.xp * (1 + stats.xpBonus);
       if (!full && xp >= room.xp) fill();
-      roomGold += coins((def.gold + stats.goldPerKill) * scale.gold * (1 + stats.goldBonus)); // flat gold per kill on top
+      roomGold += coins((def.gold + stats.goldPerKill) * scale.gold * (1 + stats.goldBonus) * pactGold); // flat gold per kill on top
       if (!clockStopped) clock += stats.timePerKill; // seconds per kill
       // The crypt's restless graves: he stamps each one flat (a short walk),
       // and Gravedigger pays for it.
@@ -423,7 +444,7 @@ export function simulateRun(stats, dice, player = PLAYERS.efficient, depth = 1) 
         // Shots and the boss's moves are special attacks: their share of the
         // danger costs the depth's special hit; a touch (or spikes) costs one.
         const special = (rangedNow() + (boss ? DEPTH.boss.threat : 0) + arrows) * danger / perSecond;
-        hearts -= dice() < special ? SPECIAL : 1;
+        hearts -= dice() < special ? SPECIAL + pactSpecial : 1 + pactTouch;
         invincibleUntil = t + stats.invincibleFor;
         if (hearts <= 0) return end("died", t);
       }
