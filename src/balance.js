@@ -173,7 +173,7 @@ export const BALANCE = {
       // explode. The ogre stands in for the depth's boss until it has its
       // own.
       name: "WARRENS",
-      scale: { hp: 42, gold: 29 },
+      scale: { hp: 32, gold: 29 },
       growth: { hp: 1.080 }, // each room's monsters are this much tougher than the last's
       tint: [196, 168, 120],
       material: "teeth",
@@ -185,16 +185,16 @@ export const BALANCE = {
       // double what it carried. With no coins about, it fights like a goblin.
       thieves: { type: "goblin", chance: 0.25, grab: 24, comeBack: 5 },
       rooms: [
-        { xp: 8, spawns: { goblin: 100 }, breakables: ["pot", "pot"] },
         { xp: 7, spawns: { goblin: 100 }, breakables: ["pot", "pot"] },
-        { xp: 12, spawns: { goblin: 75, imp: 25 }, breakables: ["pot", "pot"] },
-        { xp: 14, spawns: { goblin: 60, imp: 40 }, breakables: ["pot", "pot"], hazard: 0.005 },
-        { xp: 17, spawns: { goblin: 50, imp: 40, wogol: 10 }, breakables: ["pot", "pot"], hazard: 0.005 },
-        { xp: 18, spawns: { goblin: 45, imp: 38, wogol: 17 }, breakables: ["pot", "crate", "crate"], hazard: 0.005, chest: { chance: 0.6, mimic: 0 } },
-        { xp: 21, spawns: { goblin: 40, imp: 37, wogol: 23 }, breakables: ["pot", "crate", "crate"], hazard: 0.005, chest: { chance: 0.7, mimic: 0.5 } },
-        { xp: 23, spawns: { goblin: 36, imp: 35, wogol: 29 }, breakables: ["pot", "crate", "crate"], hazard: 0.01, chest: { chance: 0.7, mimic: 0.5 } },
-        { xp: 28, spawns: { goblin: 33, imp: 34, wogol: 33 }, breakables: ["crate", "crate", "urn"], hazard: 0.01, chest: { chance: 0.7, mimic: 0.6 } },
-        { xp: 32, spawns: { goblin: 30, imp: 35, wogol: 35 }, breakables: ["crate", "crate"] }, // then the boss
+        { xp: 6, spawns: { goblin: 100 }, breakables: ["pot", "pot"] },
+        { xp: 10, spawns: { goblin: 75, imp: 25 }, breakables: ["pot", "pot"] },
+        { xp: 12, spawns: { goblin: 60, imp: 40 }, breakables: ["pot", "pot"], hazard: 0.005 },
+        { xp: 14, spawns: { goblin: 50, imp: 40, wogol: 10 }, breakables: ["pot", "pot"], hazard: 0.005 },
+        { xp: 15, spawns: { goblin: 45, imp: 38, wogol: 17 }, breakables: ["pot", "crate", "crate"], hazard: 0.005, chest: { chance: 0.6, mimic: 0 } },
+        { xp: 18, spawns: { goblin: 40, imp: 37, wogol: 23 }, breakables: ["pot", "crate", "crate"], hazard: 0.005, chest: { chance: 0.7, mimic: 0.5 } },
+        { xp: 20, spawns: { goblin: 36, imp: 35, wogol: 29 }, breakables: ["pot", "crate", "crate"], hazard: 0.01, chest: { chance: 0.7, mimic: 0.5 } },
+        { xp: 24, spawns: { goblin: 33, imp: 34, wogol: 33 }, breakables: ["crate", "crate", "urn"], hazard: 0.01, chest: { chance: 0.7, mimic: 0.6 } },
+        { xp: 27, spawns: { goblin: 30, imp: 35, wogol: 35 }, breakables: ["crate", "crate"] }, // then the boss
       ],
       boss: { type: "ogre", hp: 2400, gold: 1700, threat: 0.1, minion: "goblin" },
     },
