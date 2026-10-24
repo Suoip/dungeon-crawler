@@ -415,6 +415,18 @@ to:
   depth's special hit (2 hearts in the fort) instead of one. Its upgrades
   (Thunder, Forked lightning, Storm, Long arcs) need it, and Thunder nodes
   run on into the swamp's and the pit's rings so its damage keeps up.
+- **The boomerang**, the swamp's weapon (`src/boomerang.js`,
+  `hero.boomerang` in balance.js), once the Boomerang node is bought (its
+  own branch, on from the hammer's gap left of Descend, off a Critical hits
+  node of the swamp's ring): when a monster is within 70 px, he throws it
+  at the nearest one. It whirls out 70 px (curving a little), then turns
+  and comes back to wherever he is, faster and faster. It cuts through
+  everything it passes, once going out and once coming back (breakables
+  too), for its own damage (4000 to start: about a third of a swampy), and
+  never hurts him. Once it reaches him he's caught it, and 1.5 s later it's
+  thrown again, so walking toward it as it comes back means the next throw
+  comes sooner. Its upgrades (Heavy boomerang, Quick catch, Long flight,
+  Twin boomerang) need it, and Heavy boomerangs run on into the pit's ring.
 - **A hit knocks a monster back about 14 px**, so it stays inside his reach
   for the next swing (bosses, brutes and shields budge less).
 - **No swinging at nothing:** once the timer is up and nothing is in reach,
@@ -567,7 +579,7 @@ to:
 - **The map is text** (`src/treemap.js`): every letter or symbol is a node,
   and the links are drawn between them ("---" across, "\" and "/" on the
   diagonals). Changing a letter changes the node; drawing or erasing a
-  link changes the paths. 385 nodes with Descend: 84 in depth 1 and 64-81
+  link changes the paths. 392 nodes with Descend: 84 in depth 1 and 64-81
   in each deeper depth.
 - No quiz lifelines.
 
@@ -638,6 +650,11 @@ always gave.
 | + | Forked lightning (needs Chain lightning) | One more jump | Weapon, depth 3 |
 | ! | Storm (needs Chain lightning) | 5% more of the monsters rise charged | Weapon, depth 3 |
 | = | Long arcs (needs Chain lightning) | The lightning jumps 25% further | Weapon, depth 3 |
+| ) | Boomerang (one) | Unlocks the boomerang (section 5) | Weapon, depth 4 |
+| ( | Heavy boomerang (needs the Boomerang) | It does more damage (+3000 in depth 4, +25000 in depth 5) | Weapon, depths 4-5 |
+| : | Quick catch (needs the Boomerang) | 20% shorter rest before it's thrown again | Weapon, depth 4 |
+| ; | Long flight (needs the Boomerang) | It flies 20% further | Weapon, depth 4 |
+| ? | Twin boomerang (one; needs the Boomerang) | Two are thrown at once, a little apart | Weapon, depth 4 |
 | h | Extra heart (small only) | +1 heart | Hearts |
 | n | Steady nerves | Safe a little longer after a hit | Hearts and dash |
 | l | Lucky hearts (needs an Extra heart) | Hearts drop more often | Hearts |
@@ -684,8 +701,8 @@ live in `src/balance.js`.
   | 1, the crypt | 38 min | 48 min |
   | 2, the goblin warrens | 42 min | 42 min |
   | 3, the orc fort | 43 min | 49 min |
-  | 4, the sunken swamp | 40 min | 56 min |
-  | 5, the demon pit | 42 min | 40 min |
+  | 4, the sunken swamp | 41 min | 56 min |
+  | 5, the demon pit | 38 min | 39 min |
   | The whole game | about 3.4 hours | about 3.8 hours |
 
   Rooms 1-9 each take about 0-10 minutes to get through the first time,

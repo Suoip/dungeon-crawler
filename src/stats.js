@@ -27,6 +27,10 @@ export function heroStats(levels, depth = 1) {
     lightningJumps: hero.lightning.jumps,
     lightningRange: hero.lightning.range,
     chargedChance: hero.lightning.charged,
+    boomerangDamage: hero.boomerang.damage, // the boomerang, once it's bought (boomerang.js)
+    boomerangRest: hero.boomerang.rest,
+    boomerangRange: hero.boomerang.range,
+    boomerangCount: hero.boomerang.count,
     magnetRange: hero.magnetRange,
     startTime: run.startTime,
     timePerSubDepth: 0,
