@@ -19,6 +19,7 @@ import { setupThieves } from "./thieves.js";
 import { setupDrums, setupPlates } from "./fort.js";
 import { setupWater } from "./water.js";
 import { offerPact, pactOf } from "./pacts.js";
+import { setupHammer } from "./hammer.js";
 import { addHud } from "./hud.js";
 import { addLadder, addWell } from "./props.js";
 import { playSound } from "./sound.js";
@@ -120,6 +121,7 @@ export function registerRoomScene() {
     // The room's layout (crypt.js): pillars, spikes, breakables, maybe a chest.
     fight.solid = buildLayout(fight, run);
     setupAutoSwing(player, fight, stats);
+    setupHammer(fight, stats); // once the Hammer is bought (hammer.js)
     setupHurt(player, run, hearts, fight, defeated, stats);
     // The depth's material (bones in the crypt, teeth in the warrens...): from
     // sub-depth 6 on, a kill may drop a piece, more often the deeper it is.
