@@ -235,10 +235,11 @@ export function hurtMob(mob, from, room, damage = 1, crit = false) {
 
   // Pushed away from whoever hit it. Bosses barely budge, and not at all in
   // the middle of a move; a charging skeleton isn't stopped either, nor a
-  // leaping pumpkin. A brute or a shield only gives a little.
+  // leaping pumpkin. A brute or a shield only gives a little. (A normal one
+  // only goes about 14 px, so it stays inside his reach for the next swing.)
   if (!(mob.def.boss && mob.busy) && !mob.charging && !mob.airborne) {
     const away = mob.pos.sub(from).unit();
-    mob.knockVel = away.scale(mob.def.boss ? 60 : mob.def.heavy || blocked ? 70 : 220);
+    mob.knockVel = away.scale(mob.def.boss ? 60 : mob.def.heavy || blocked ? 70 : 120);
     mob.knockTime = 0.12;
   }
 
@@ -314,12 +315,29 @@ function setupBrain(mob, room) {
     if (rush && rush()) return;                 // winding up or charging
     const toPlayer = room.player.pos.sub(mob.pos);
     if (toPlayer.len() > 2) {
-      mob.move(toPlayer.unit().scale(mob.speed));
+      mob.move(toPlayer.unit().add(apart(mob)).unit().scale(mob.speed));
       keepInRoom(mob, mob.def.feet);
       mob.flipX = toPlayer.x < 0;
       if (mob.getCurAnim()?.name !== "run") mob.play("run");
     }
   });
+}
+
+// Chasers keep a little room between each other (SPREAD px), so a pack
+// fans out round the hero instead of piling into one lump that a single
+// swing could cut through. Returns a push away from the others close by,
+// to add to the way it's heading (stronger the closer they are).
+const SPREAD = 22;
+function apart(mob) {
+  let push = vec2(0);
+  for (const other of get("mob")) {
+    if (other === mob || !other.active) continue;
+    const away = mob.pos.sub(other.pos);
+    const distance = away.len();
+    if (distance >= SPREAD) continue;
+    push = push.add(distance < 0.5 ? vec2(rand(-1, 1), rand(-1, 1)) : away.scale((SPREAD - distance) / SPREAD / distance));
+  }
+  return push.scale(2);
 }
 
 // A wanderer (a slug) never comes after the hero. It crawls off one way for
