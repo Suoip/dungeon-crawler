@@ -21,6 +21,7 @@ import { setupWater } from "./water.js";
 import { offerPact, pactOf } from "./pacts.js";
 import { setupHammer } from "./hammer.js";
 import { setupLightning } from "./lightning.js";
+import { setupBoomerang } from "./boomerang.js";
 import { addHud } from "./hud.js";
 import { addLadder, addWell } from "./props.js";
 import { playSound } from "./sound.js";
@@ -125,6 +126,7 @@ export function registerRoomScene() {
     setupAutoSwing(player, fight, stats);
     setupHammer(fight, stats); // once the Hammer is bought (hammer.js)
     const lightning = setupLightning(fight, stats); // once Chain lightning is bought
+    setupBoomerang(fight, stats); // once the Boomerang is bought (boomerang.js)
     setupHurt(player, run, hearts, fight, defeated, stats);
     // The depth's material (bones in the crypt, teeth in the warrens...): from
     // sub-depth 6 on, a kill may drop a piece, more often the deeper it is.

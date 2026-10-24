@@ -44,6 +44,11 @@ export const BALANCE = {
     // `jumps` times, each to the nearest monster within `range` px of the
     // last, for `damage` each.
     lightning: { damage: 900, jumps: 3, range: 40, charged: 0.15 },
+    // The boomerang (boomerang.js), once it's bought in the swamp's ring:
+    // thrown at the nearest monster within `range` px, it flies out
+    // `range` px and comes back to him, hitting everything it passes both
+    // ways for `damage`; `rest` s after he catches it, it's thrown again.
+    boomerang: { damage: 4000, rest: 1.5, range: 70, count: 1 },
     magnetRange: 20,     // px: dropped things closer than this fly to him
     dash: {
       cooldown: 2.5,     // seconds for a charge to fill (once the dash is unlocked)
@@ -312,8 +317,8 @@ export const BALANCE = {
         { xp: 79, spawns: { chort: 30, pumpkin_dude: 35, doc: 35 }, breakables: ["crate", "crate"] }, // then the boss
       ],
       // (44M before the pacts; 21M with the curses a typical player takes;
-      // 19M once the swing became narrow)
-      boss: { type: "big_demon", hp: 19000000, gold: 120000000000, threat: 0.15, minion: "chort" },
+      // 19M once the swing became narrow; 22M once the boomerang came)
+      boss: { type: "big_demon", hp: 22000000, gold: 120000000000, threat: 0.15, minion: "chort" },
     },
   ],
 
@@ -427,6 +432,12 @@ export const BALANCE = {
       "+": { name: "Forked lightning", effect: { stat: "lightningJumps", add: 1 }, needs: "~", worth: 5 },
       "!": { name: "Storm", effect: { stat: "chargedChance", add: 0.05 }, needs: "~", worth: 4 },
       "=": { name: "Long arcs", effect: { stat: "lightningRange", mul: 1.25 }, needs: "~", worth: 2 },
+      // The boomerang (the swamp's weapon) and its own upgrades
+      ")": { name: "Boomerang", effect: { unlock: "boomerang" }, worth: 3 },
+      "(": { name: "Heavy boomerang", effect: { stat: "boomerangDamage", add: [null, null, null, 3000, 25000] }, needs: ")", worth: [null, null, null, 1.5, 0.6] },
+      ":": { name: "Quick catch", effect: { stat: "boomerangRest", mul: 0.8 }, needs: ")", worth: 4 },
+      ";": { name: "Long flight", effect: { stat: "boomerangRange", mul: 1.2 }, needs: ")", worth: 2 },
+      "?": { name: "Twin boomerang", effect: { stat: "boomerangCount", add: 1 }, needs: ")", worth: 20 },
       // Money
       g: { name: "Greed", effect: { stat: "goldBonus", add: [0.17, 0.13, 0.14, 0.13, 0.11] }, worth: [0.7, 1.52, 1.36, 1.66, 0.57] }, // a share more gold on kills; Smash is for breakables
       o: { name: "Bounty", effect: { stat: "goldPerKill", add: [0.23, 0.17, 0.14, 0.14, 0.23] }, perDepth: true, worth: [2.05, 2.61, 2.15, 1.26, 1.53] }, // flat gold on every kill, in the room's gold (its own depth only)

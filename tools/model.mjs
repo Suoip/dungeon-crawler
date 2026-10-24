@@ -58,6 +58,11 @@ export const MODEL = {
   // often, and it catches this many of them (more with Bigger head, and in a crowd).
   hammerLands: 0.6,
   hammerHits: 1.5,
+  // The boomerang (boomerang.js): a throw's flight there and back takes
+  // about this long, and it passes through this many of the ones up close
+  // (each twice: out and back).
+  rangFlight: 1.0,
+  rangHits: 1.5,
   dashSafety: 0.8,      // having a dash at all leaves this share of the danger...
   dashOverhead: 0.85,   // ...and this share of the walking time
   chargeSafety: 0.9,    // a second dash charge leaves this share of the danger
@@ -245,6 +250,8 @@ export function simulateRun(stats, dice, player = PLAYERS.efficient, depth = 1) 
     let nextHorde = stats.hordeEvery;
     const hammer = stats.unlocked.has("hammer");
     const lightning = stats.unlocked.has("lightning");
+    const boomerang = stats.unlocked.has("boomerang");
+    let nextThrow = 0;
     // A charged one is beaten: lightning jumps through the ones up close
     // (and a charged one it beats sets off its own).
     const zap = () => {
@@ -530,6 +537,23 @@ export function simulateRun(stats, dice, player = PLAYERS.efficient, depth = 1) 
             for (const { type } of beaten) if (behavior(type).blast && blast(type)) return end("died", t);
           }
         } else if (boss && dice() < MODEL.hammerLands) boss.left -= blow;
+      }
+
+      // The boomerang, once it's bought: thrown when there's one up close, it
+      // cuts through some of them twice; then the flight and the rest.
+      if (boomerang && t >= nextThrow && (close.length || boss)) {
+        nextThrow = t + MODEL.rangFlight + stats.boomerangRest;
+        const blow = (2 * stats.boomerangDamage) / hit; // in swings, out and back
+        if (close.length) {
+          const caught = Math.min(close.length, Math.max(1, Math.round(MODEL.rangHits * stats.boomerangCount * (stats.boomerangRange / BALANCE.hero.boomerang.range))));
+          const beaten = [];
+          for (let i = 0; i < caught; i++) if ((close[i].left -= blow) <= 0) beaten.push(close[i]);
+          if (beaten.length) {
+            close = close.filter((mob) => mob.left > 0);
+            for (const { type } of beaten) kill(type);
+            for (const { type } of beaten) if (behavior(type).blast && blast(type)) return end("died", t);
+          }
+        } else boss.left -= blow * stats.boomerangCount;
       }
 
       // The swing: it hits the monsters up close, oldest first (if one was

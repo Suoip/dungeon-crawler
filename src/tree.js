@@ -92,6 +92,11 @@ const ICONS = {
   "+": { draw: "bolt3" },
   "!": { draw: "storm" },
   "=": { draw: "arc" },
+  ")": { draw: "rang" },
+  "(": { draw: "rangHeavy" },
+  ":": { draw: "rangQuick" },
+  ";": { draw: "rangFar" },
+  "?": { draw: "rangTwin" },
 };
 // A node's icon: its kind's, for its depth (a list's last one past its end).
 function iconOf(node) {
@@ -174,6 +179,14 @@ const PIXELS = {
   bolt3: [[0, -7, 3, 2, "gold"], [-1, -5, 3, 2, "gold"], [-2, -3, 3, 2, "gold"], [-5, -1, 3, 2, "gold"], [1, -1, 3, 2, "gold"], [-6, 1, 2, 3, "gold"], [3, 1, 2, 3, "gold"]],
   storm: [[-5, -6, 10, 4, "muted"], [-3, -7, 6, 1, "light"], [-4, -1, 1, 2, "blue"], [-1, 0, 1, 2, "gold"], [2, -1, 1, 2, "blue"], [-2, 3, 1, 2, "blue"], [1, 3, 1, 2, "gold"]],
   arc: [[-7, 0, 3, 1, "blue"], [-4, -1, 3, 1, "blue"], [-1, 0, 3, 1, "blue"], [2, -1, 3, 1, "blue"], [5, 0, 2, 1, "blue"], [-7, 2, 14, 1, "pale"]],
+  // The boomerang: a wooden V; Heavy boomerang's, iron-tipped; Quick catch's,
+  // with speed lines; Long flight's, with a long dotted path; Twin
+  // boomerang's, two of them.
+  rang: [[-6, -5, 3, 3, "wood"], [-4, -3, 3, 3, "wood"], [-2, -1, 4, 3, "wood"], [1, -3, 3, 3, "wood"], [3, -5, 3, 3, "wood"], [-6, -5, 2, 1, "sand"], [4, -5, 2, 1, "sand"]],
+  rangHeavy: [[-6, -5, 3, 3, "muted"], [-4, -3, 3, 3, "wood"], [-2, -1, 4, 3, "wood"], [1, -3, 3, 3, "wood"], [3, -5, 3, 3, "muted"], [-6, -5, 2, 1, "light"], [4, -5, 2, 1, "light"]],
+  rangQuick: [[-3, -5, 3, 3, "wood"], [-1, -3, 3, 3, "wood"], [1, -1, 4, 3, "wood"], [4, -3, 3, 3, "wood"], [-7, -2, 3, 1, "blue"], [-7, 0, 3, 1, "blue"], [-6, 2, 3, 1, "blue"]],
+  rangFar: [[-2, -6, 2, 2, "wood"], [-1, -4, 2, 2, "wood"], [0, -2, 3, 2, "wood"], [2, -4, 2, 2, "wood"], [3, -6, 2, 2, "wood"], [-7, 3, 1, 1, "light"], [-4, 3, 1, 1, "light"], [-1, 3, 1, 1, "light"], [2, 3, 1, 1, "light"], [5, 3, 1, 1, "light"]],
+  rangTwin: [[-7, -6, 2, 2, "wood"], [-6, -4, 2, 2, "wood"], [-5, -2, 3, 2, "wood"], [-3, -4, 2, 2, "wood"], [-2, -6, 2, 2, "wood"], [2, -1, 2, 2, "sand"], [3, 1, 2, 2, "sand"], [4, 3, 3, 2, "sand"], [6, 1, 2, 2, "sand"], [7, -1, 1, 2, "sand"]],
   // Gravedigger's shovel.
   shovel: [[-1, -7, 2, 8, "wood"], [-3, -7, 6, 1, "wood"], [-3, 1, 6, 3, "muted"], [-2, 4, 4, 1, "muted"], [-1, 5, 2, 1, "muted"]],
   // The Shield's: steel with a gold boss.
@@ -252,8 +265,12 @@ const STAT_TEXT = {
   lightningJumps: ["LIGHTNING JUMPS", (x) => `${x}`],
   lightningRange: ["JUMP RANGE", null],
   chargedChance: ["CHARGED MONSTERS", pct],
+  boomerangDamage: ["BOOMERANG DAMAGE", (x) => `${x}`],
+  boomerangRest: ["THROWN AGAIN AFTER", secs],
+  boomerangRange: ["BOOMERANG RANGE", null],
+  boomerangCount: ["BOOMERANGS", (x) => `${x}`],
 };
-const UNLOCK_TEXT = { descend: "WHERE EVERYTHING GROWS FROM", dash: "UNLOCKS THE DASH (SHIFT)", timeOrbs: "UNLOCKS TIME ORBS", hammer: "UNLOCKS THE HAMMER", lightning: "UNLOCKS CHAIN LIGHTNING" };
+const UNLOCK_TEXT = { descend: "WHERE EVERYTHING GROWS FROM", dash: "UNLOCKS THE DASH (SHIFT)", timeOrbs: "UNLOCKS TIME ORBS", hammer: "UNLOCKS THE HAMMER", lightning: "UNLOCKS CHAIN LIGHTNING", boomerang: "UNLOCKS THE BOOMERANG" };
 
 // "DAMAGE 3 > 4": what buying the node changes, now and after. Or, for a
 // stat shown as a percentage, "MAGNET RANGE +25%": how much bigger it makes
