@@ -20,11 +20,11 @@ export const MODEL = {
   riseTime: 1.05,       // seconds a spawned monster spends rising (dust 0.8 s, then 0.25 s popping up)
   dustTime: 0.8,        // the warning dust part of that: a full bar cancels a spawn that's still in it
   bossEntrance: 2.7,    // from the full bar to the hero moving again: the crumble, the rise, the roar (3.0 s with the shove)
-  approach: 1.0,        // seconds until a risen monster is up close, at the starting reach
+  approach: 1.2,        // seconds until a risen monster is up close, at the starting reach
   // Wanderers (balance.js `wanders`), measured against a bot playing room 1
   // in the game (seconds per slug with 1-hit and 3-hit slugs, at three swing
   // speeds and a longer reach, all within about 5%):
-  wanderWalk: 0.9,      // seconds walking over to one, on average (reach hardly matters)...
+  wanderWalk: 1.0,      // seconds walking over to one, on average (reach hardly matters)...
   wanderSpread: 0.5,    // ...give or take this share (where it rose, which way it crawled)
   wanderNearest: 0,     // ...times (how many are about)^-this: with more about, the nearest is closer (the fit didn't need it)
   wanderDrift: 0.15,    // while he's fighting, the chance per swing, for each one about, that it crawls into his swing too
@@ -42,9 +42,18 @@ export const MODEL = {
   dodgeTime: 1.3,       // only 1 in this many swings lands on the boss: the rest of the time you're dodging
   bossRaiseEvery: 6.5,  // seconds between the boss's raises when raising is its favorite move (boss.js: a cast every 1.5-3 s, raising half the time); other bosses raise half as often
   bossFightLimit: 600,  // a boss fight that lasts longer than this counts as one you can't win yet
-  hitsPerSwing: 1.15,   // monsters one swing hits, on average, with one or two up close
-  crowd: 0.15,          // each more monster up close adds this share to the monsters a swing hits...
+  // The swing aims at the nearest one and is narrow, and chasers spread out
+  // round him (measured in the game, 60° and 22 px: about 1, 1.1, 1.3 and
+  // 1.5 hits a swing with 1, 2, 4 and 6 on him):
+  hitsPerSwing: 1.0,    // monsters one swing hits, on average, with one or two up close
+  crowd: 0.1,           // each more monster up close adds this share to the monsters a swing hits...
   crowdCap: 4,          // ...up to this many, at the starting reach and arc
+  // A swing only comes when one is in reach, and a hit knocks it back a
+  // little, so with only one or two on him some swings never come (measured:
+  // 66% of the timer's swings with one, 83% with two, 93-97% with more).
+  landAlone: 0.66,      // the share of swings that come with one up close...
+  landStep: 0.17,       // ...this much more for each more one...
+  landMost: 0.95,       // ...up to this
   dashSafety: 0.8,      // having a dash at all leaves this share of the danger...
   dashOverhead: 0.85,   // ...and this share of the walking time
   chargeSafety: 0.9,    // a second dash charge leaves this share of the danger
@@ -485,8 +494,10 @@ export function simulateRun(stats, dice, player = PLAYERS.efficient, depth = 1) 
         }
       }
 
-      // The swing: it hits the monsters up close, oldest first.
-      if (close.length) {
+      // The swing: it hits the monsters up close, oldest first (if one was
+      // in reach when it came round).
+      const lands = Math.min(MODEL.landMost, MODEL.landAlone + MODEL.landStep * (close.length - 1));
+      if (close.length && dice() < lands) {
         const share = hitsPerSwing(stats, close.length);
         const hits = Math.floor(share) + (dice() < share % 1 ? 1 : 0);
         const beaten = [];

@@ -28,8 +28,8 @@ export const BALANCE = {
     hearts: 1,           // one hit and the run is over
     damage: 1,           // per swing, per monster hit
     swingEvery: 1.5,     // seconds between automatic swings: slow at first, Quicker swing brings it to about 0.6
-    reach: 30,           // px from the chest to the end of the swing
-    arc: 150,            // degrees the swing covers (75 to each side)
+    reach: 22,           // px from the chest to the end of the swing
+    arc: 60,             // degrees the swing covers (30 to each side of what it aims at)
     invincibleFor: 1,    // seconds he can't be hit again after a hit
     critChance: 0,       // the chance a hit is a critical hit (Critical hits raises it)...
     critDamage: 3,       // ...which does this many times the damage
@@ -146,7 +146,7 @@ export const BALANCE = {
   depths: [
     {
       name: "CRYPT",
-      scale: { hp: 1, gold: 1 },
+      scale: { hp: 1, gold: 1.25 }, // (gold 1 before the swing became narrow: fewer kills a swing, so more gold a kill)
       tint: null,
       material: "bones",
       // Restless graves (graves.js): a tiny zombie or skeleton that falls may
@@ -154,7 +154,7 @@ export const BALANCE = {
       // unless he stamps it down first (walks over it).
       graves: { chance: 0.3, types: ["tiny_zombie", "skeleton"], riseAfter: 4 },
       rooms: [
-        { xp: 6, spawns: { slug: 100 }, breakables: ["pot", "pot"] },
+        { xp: 5, spawns: { slug: 100 }, breakables: ["pot", "pot"] },
         { xp: 4, spawns: { slug: 100 }, breakables: ["pot", "pot"] },
         { xp: 8, spawns: { slug: 75, tiny_zombie: 25 }, breakables: ["pot", "pot"] },
         { xp: 8, spawns: { slug: 60, tiny_zombie: 40 }, breakables: ["pot", "pot"], hazard: 0.005 },
@@ -173,7 +173,7 @@ export const BALANCE = {
       // explode. The ogre stands in for the depth's boss until it has its
       // own.
       name: "WARRENS",
-      scale: { hp: 32, gold: 29 },
+      scale: { hp: 32, gold: 31 },
       growth: { hp: 1.080 }, // each room's monsters are this much tougher than the last's
       tint: [196, 168, 120],
       material: "teeth",
@@ -238,7 +238,7 @@ export const BALANCE = {
       // from a distance. A swamp-green Big Zombie stands in for the depth's
       // boss, raising swampies.
       name: "SWAMP",
-      scale: { hp: 11000, gold: 6500000 },
+      scale: { hp: 11000, gold: 7800000 },
       growth: { hp: 1.100 }, // each room's monsters are this much tougher than the last's
       tint: [140, 180, 140],
       decor: "goo",
@@ -268,7 +268,7 @@ export const BALANCE = {
       // 3) leap at you, and plague doctors (from room 5) lob flasks that
       // burst into fire. The Big Demon waits at the bottom, raising chorts.
       name: "PIT",
-      scale: { hp: 93000, gold: 2800000000 },
+      scale: { hp: 93000, gold: 3360000000 },
       growth: { hp: 1.046 }, // each room's monsters are this much tougher than the last's
       tint: [196, 112, 148],
       decor: "lava",
@@ -300,8 +300,9 @@ export const BALANCE = {
         { xp: 60, spawns: { chort: 33, pumpkin_dude: 34, doc: 33 }, breakables: ["crate", "crate", "urn"], hazard: 0.01, chest: { chance: 0.7, mimic: 0.6 } },
         { xp: 79, spawns: { chort: 30, pumpkin_dude: 35, doc: 35 }, breakables: ["crate", "crate"] }, // then the boss
       ],
-      // (44M before the pacts; 21M with the curses a typical player takes)
-      boss: { type: "big_demon", hp: 21000000, gold: 120000000000, threat: 0.15, minion: "chort" },
+      // (44M before the pacts; 21M with the curses a typical player takes;
+      // 19M once the swing became narrow)
+      boss: { type: "big_demon", hp: 19000000, gold: 120000000000, threat: 0.15, minion: "chort" },
     },
   ],
 

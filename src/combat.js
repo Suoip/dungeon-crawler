@@ -9,10 +9,12 @@ import { flashScreen, shakeScreen, sparks } from "./effects.js";
 import { playSound } from "./sound.js";
 
 const SWING_TIME = 0.15;     // seconds the weapon takes to sweep across
+const MARGIN = 12;           // degrees at most that a target's size widens the swing by
+const POINT_BLANK = 3;       // px from his chest: this close, it's hit whatever the angle
 
 // Every hero's swing covers the same area: everything in front of them out to
 // their reach (stats.reach, px from the chest), across their arc (stats.arc,
-// in degrees, half to each side of the way they're facing). Both come from
+// in degrees, half to each side of what it's aimed at). Both come from
 // balance.js and the upgrades (stats.js). It's a real swing: the weapon
 // sweeps across that area, and hits whatever it passes through as it goes.
 // Its tip leaves a trail along the outer edge, so the hit area is everything
@@ -42,36 +44,54 @@ const directionOf = (angle) => vec2(Math.sin((angle * Math.PI) / 180), -Math.cos
 // The difference between two angles, from -180° to 180°.
 const turnBetween = (from, to) => ((to - from + 540) % 360) - 180;
 
-// The hero swings on his own, every stats.swingEvery seconds, in the
-// direction he's facing (the way he last walked), so the player only moves.
-// Only in the dungeon: the menu rooms are calm. The timer doesn't run while
-// he's frozen in a cutscene. When there's nothing to hit (no monster up, and
-// nothing to smash within reach), he lets the swing go by; the timer keeps
-// its rhythm, so the next swing comes exactly when it would have.
+// The hero swings on his own, every stats.swingEvery seconds, at the
+// nearest monster within his reach (or, with none there, the nearest thing
+// to smash), so the player only moves. The swing is narrow, so a pack on him
+// loses one or two to it, not all of them, until Wider arc and Longer reach
+// have grown it. Only in the dungeon: the menu rooms are calm. The timer
+// doesn't run while he's frozen in a cutscene. Once it's up and there's
+// nothing in reach, the swing waits, ready, and comes the moment something is.
 export function setupAutoSwing(player, room, stats) {
   let side = 1; // swings alternate: one way, then back the other way
   let next = stats.swingEvery;
   player.onUpdate(() => {
     if (player.frozen || room.over) return;
-    next -= dt();
+    if (next > 0) next -= dt();
     if (next > 0) return;
-    next += stats.swingEvery;
-    // Something to smash counts only if this swing could reach it: close
-    // enough to his chest and in front of him, as the swing itself tests a hit.
-    const inReach = (thing) => {
-      const offset = thing.pos.sub(0, thing.hitHeight).sub(chestOf(player));
-      return offset.len() <= stats.reach + thing.hitSize
-        && Math.abs(turnBetween(angleOf(player.facing), angleOf(offset))) <= stats.arc / 2 + 15;
-    };
-    if (!get("mob").some((mob) => mob.active) && !get("strikeable").some(inReach)) return; // nothing to swing at
-    swing(player, room, side, stats);
+    const target = targetOf(player, stats);
+    if (!target) return; // nothing in reach yet: ready, waiting
+    next = stats.swingEvery;
+    swing(player, room, side, stats, angleOf(target));
     side = -side;
   });
 }
 
-function swing(player, room, side, stats) {
+// Where the swing aims, from his chest: at the nearest monster up whose edge
+// is within his reach, or failing that the nearest thing to smash; null if
+// there's nothing in reach.
+function targetOf(player, stats) {
+  const chest = chestOf(player);
+  let best = null;
+  let bestGap = Infinity;
+  for (const mob of get("mob")) {
+    if (!mob.active) continue;
+    const offset = mob.pos.sub(0, mob.def.size / 2).sub(chest);
+    const gap = offset.len() - (mob.def.boss ? 14 : 6); // to its edge, as hitSwept measures
+    if (gap <= stats.reach && gap < bestGap) [best, bestGap] = [offset, gap];
+  }
+  if (best) return best;
+  for (const thing of get("strikeable")) {
+    const offset = thing.pos.sub(0, thing.hitHeight).sub(chest);
+    const gap = offset.len() - thing.hitSize;
+    if (gap <= stats.reach && gap < bestGap) [best, bestGap] = [offset, gap];
+  }
+  return best;
+}
+
+// One swing, centered on `aim` (an angle: 0° = up, 90° = right).
+function swing(player, room, side, stats, aim) {
   playSound("swing");
-  const facing = angleOf(player.facing);
+  const facing = aim;
   const from = facing - (stats.arc / 2) * side;
   const to = facing + (stats.arc / 2) * side;
 
@@ -111,11 +131,13 @@ function hitSwept(player, fromAngle, toAngle, alreadyHit, room, stats) {
     const distance = offset.len();
     if (distance > stats.reach + extra) return false;
     // How many degrees the target's size covers at that distance, so the
-    // weapon only has to reach its edge, not its middle.
-    const margin = (Math.atan2(extra, Math.max(distance, 1)) * 180) / Math.PI;
+    // weapon only has to reach its edge, not its middle. At most MARGIN: up
+    // close a monster would cover most of the circle, and a narrow swing
+    // would catch the whole pack on him.
+    const margin = Math.min(MARGIN, (Math.atan2(extra, Math.max(distance, 1)) * 180) / Math.PI);
     const where = turnBetween(fromAngle, angleOf(offset)); // its angle, measured from fromAngle
     const swept = toAngle - fromAngle;
-    return distance < 8 || (where >= Math.min(0, swept) - margin && where <= Math.max(0, swept) + margin);
+    return distance < POINT_BLANK || (where >= Math.min(0, swept) - margin && where <= Math.max(0, swept) + margin);
   };
 
   // Things that react to being hit (tagged "strikeable", with a struck()

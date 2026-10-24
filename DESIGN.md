@@ -378,11 +378,21 @@ to:
 - **The hero attacks automatically** all game. You move (and dash). The
   swings happen on their own, survivor-style, so the game is about
   positioning and dodging.
-- **Swings go where you're facing.** You aim by moving, which takes some
-  skill. A retreat means turning back to fight.
-- **No swinging at nothing:** when no monster is up (the room is empty, or
-  the next ones are still rising), the swing is skipped, but its timer
-  keeps the rhythm, so the next one comes exactly when it would have.
+- **The swing aims itself, and it's narrow.** It goes at the nearest
+  monster in reach (or, with none, the nearest thing to smash), across a
+  60° arc out to 22 px from his chest. So a pack on him loses one or two
+  to a swing, not all of them; hitting crowds is something Wider arc and
+  Longer reach earn later. The skill is in where you stand: close enough to
+  be in reach, with as few as possible on you at once. (It used to swing
+  where he faced, across 150° and 30 px, which cut through whole packs from
+  the start.)
+- **Chasers spread out.** Monsters chasing him keep about 18 px from each
+  other, so a pack fans out round him instead of piling into one lump that
+  a single swing could cut through.
+- **A hit knocks a monster back about 14 px**, so it stays inside his reach
+  for the next swing (bosses, brutes and shields budge less).
+- **No swinging at nothing:** once the timer is up and nothing is in reach,
+  the swing waits, ready, and comes the moment something is.
 - **Hits:** a monster's touch costs one heart, and so do the crypt's floor
   spikes. A special attack costs more: two hearts in depths 1-3 and three
   in depths 4-5 (balance.js `hits`), for the boss's moves, fireballs and
@@ -636,11 +646,11 @@ live in `src/balance.js`.
 
   | Depth | Value shopper | Cheapest shopper |
   |---|---|---|
-  | 1, the crypt | 40 min | 49 min |
-  | 2, the goblin warrens | 40 min | 44 min |
-  | 3, the orc fort | 39 min | 42 min |
-  | 4, the sunken swamp | 43 min | 52 min |
-  | 5, the demon pit | 40 min | 41 min |
+  | 1, the crypt | 38 min | 48 min |
+  | 2, the goblin warrens | 41 min | 44 min |
+  | 3, the orc fort | 40 min | 47 min |
+  | 4, the sunken swamp | 40 min | 51 min |
+  | 5, the demon pit | 44 min | 40 min |
   | The whole game | about 3.4 hours | about 3.8 hours |
 
   Rooms 1-9 each take about 0-10 minutes to get through the first time,
