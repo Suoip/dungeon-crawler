@@ -87,6 +87,11 @@ const ICONS = {
   x: { draw: "hammerHeavy" },
   "#": { draw: "hammerQuick" },
   $: { draw: "hammerBig" },
+  "~": { draw: "bolt" },
+  "^": { draw: "bolt2" },
+  "+": { draw: "bolt3" },
+  "!": { draw: "storm" },
+  "=": { draw: "arc" },
 };
 // A node's icon: its kind's, for its depth (a list's last one past its end).
 function iconOf(node) {
@@ -161,6 +166,14 @@ const PIXELS = {
   hammerHeavy: [[-1, -2, 2, 9, "wood"], [-5, -7, 10, 5, "red"], [-5, -7, 10, 1, "gold"]],
   hammerQuick: [[1, -2, 2, 9, "wood"], [-2, -7, 9, 5, "muted"], [-2, -7, 9, 1, "light"], [-7, -6, 3, 1, "blue"], [-6, -4, 3, 1, "blue"], [-7, -2, 3, 1, "blue"]],
   hammerBig: [[-1, -1, 2, 8, "wood"], [-7, -7, 14, 6, "muted"], [-7, -7, 14, 1, "light"]],
+  // Chain lightning: a yellow bolt; Thunder's, a bigger one in white;
+  // Forked lightning's, splitting in two; Storm's, a cloud raining sparks;
+  // Long arcs', a long low bolt.
+  bolt: [[1, -7, 3, 2, "gold"], [-1, -5, 3, 2, "gold"], [-3, -3, 7, 2, "gold"], [0, -1, 3, 2, "gold"], [-2, 1, 3, 2, "gold"], [-4, 3, 3, 2, "gold"]],
+  bolt2: [[1, -7, 4, 2, "pale"], [-1, -5, 4, 2, "pale"], [-4, -3, 9, 2, "pale"], [0, -1, 4, 2, "pale"], [-2, 1, 4, 2, "pale"], [-5, 3, 4, 3, "pale"]],
+  bolt3: [[0, -7, 3, 2, "gold"], [-1, -5, 3, 2, "gold"], [-2, -3, 3, 2, "gold"], [-5, -1, 3, 2, "gold"], [1, -1, 3, 2, "gold"], [-6, 1, 2, 3, "gold"], [3, 1, 2, 3, "gold"]],
+  storm: [[-5, -6, 10, 4, "muted"], [-3, -7, 6, 1, "light"], [-4, -1, 1, 2, "blue"], [-1, 0, 1, 2, "gold"], [2, -1, 1, 2, "blue"], [-2, 3, 1, 2, "blue"], [1, 3, 1, 2, "gold"]],
+  arc: [[-7, 0, 3, 1, "blue"], [-4, -1, 3, 1, "blue"], [-1, 0, 3, 1, "blue"], [2, -1, 3, 1, "blue"], [5, 0, 2, 1, "blue"], [-7, 2, 14, 1, "pale"]],
   // Gravedigger's shovel.
   shovel: [[-1, -7, 2, 8, "wood"], [-3, -7, 6, 1, "wood"], [-3, 1, 6, 3, "muted"], [-2, 4, 4, 1, "muted"], [-1, 5, 2, 1, "muted"]],
   // The Shield's: steel with a gold boss.
@@ -235,8 +248,12 @@ const STAT_TEXT = {
   hammerDamage: ["HAMMER DAMAGE", (x) => `${x}`],
   hammerEvery: ["HAMMER EVERY", secs],
   hammerSize: ["HAMMER SIZE", null],
+  lightningDamage: ["LIGHTNING DAMAGE", (x) => `${x}`],
+  lightningJumps: ["LIGHTNING JUMPS", (x) => `${x}`],
+  lightningRange: ["JUMP RANGE", null],
+  chargedChance: ["CHARGED MONSTERS", pct],
 };
-const UNLOCK_TEXT = { descend: "WHERE EVERYTHING GROWS FROM", dash: "UNLOCKS THE DASH (SHIFT)", timeOrbs: "UNLOCKS TIME ORBS", hammer: "UNLOCKS THE HAMMER" };
+const UNLOCK_TEXT = { descend: "WHERE EVERYTHING GROWS FROM", dash: "UNLOCKS THE DASH (SHIFT)", timeOrbs: "UNLOCKS TIME ORBS", hammer: "UNLOCKS THE HAMMER", lightning: "UNLOCKS CHAIN LIGHTNING" };
 
 // "DAMAGE 3 > 4": what buying the node changes, now and after. Or, for a
 // stat shown as a percentage, "MAGNET RANGE +25%": how much bigger it makes

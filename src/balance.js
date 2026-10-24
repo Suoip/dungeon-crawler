@@ -39,6 +39,11 @@ export const BALANCE = {
     // way and moving with him; `warning` s later it crashes down for
     // `damage` on everything in the zone, stunned for `stun` s.
     hammer: { damage: 80, every: 6, warning: 1, size: 14, out: 26, stun: 1 },
+    // Chain lightning (lightning.js), once it's bought in the fort's ring:
+    // `charged` of the monsters rise charged; killing one sends lightning
+    // `jumps` times, each to the nearest monster within `range` px of the
+    // last, for `damage` each.
+    lightning: { damage: 900, jumps: 3, range: 40, charged: 0.15 },
     magnetRange: 20,     // px: dropped things closer than this fly to him
     dash: {
       cooldown: 2.5,     // seconds for a charge to fill (once the dash is unlocked)
@@ -416,6 +421,12 @@ export const BALANCE = {
       x: { name: "Heavier hammer", effect: { stat: "hammerDamage", add: [null, 60, 500, 5000, 40000] }, needs: "%", worth: [null, 2, 1.3, 1.2, 0.6] },
       "#": { name: "Hammer time", effect: { stat: "hammerEvery", mul: 0.85 }, needs: "%", worth: 4 },
       $: { name: "Bigger head", effect: { stat: "hammerSize", mul: 1.2 }, needs: "%", worth: 3 },
+      // Chain lightning (the fort's weapon) and its own upgrades
+      "~": { name: "Chain lightning", effect: { unlock: "lightning" }, worth: 3 },
+      "^": { name: "Thunder", effect: { stat: "lightningDamage", add: [null, null, 600, 6000, 50000] }, needs: "~", worth: [null, null, 1.5, 1.2, 0.6] },
+      "+": { name: "Forked lightning", effect: { stat: "lightningJumps", add: 1 }, needs: "~", worth: 5 },
+      "!": { name: "Storm", effect: { stat: "chargedChance", add: 0.05 }, needs: "~", worth: 4 },
+      "=": { name: "Long arcs", effect: { stat: "lightningRange", mul: 1.25 }, needs: "~", worth: 2 },
       // Money
       g: { name: "Greed", effect: { stat: "goldBonus", add: [0.17, 0.13, 0.14, 0.13, 0.11] }, worth: [0.7, 1.52, 1.36, 1.66, 0.57] }, // a share more gold on kills; Smash is for breakables
       o: { name: "Bounty", effect: { stat: "goldPerKill", add: [0.23, 0.17, 0.14, 0.14, 0.23] }, perDepth: true, worth: [2.05, 2.61, 2.15, 1.26, 1.53] }, // flat gold on every kill, in the room's gold (its own depth only)

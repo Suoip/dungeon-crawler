@@ -13,7 +13,7 @@ import { BALANCE } from "./balance.js";
 // (save.js levels: { id: 1 }).
 
 const { map, bands, prices, kinds } = BALANCE.skillTree;
-const isNode = (ch) => ch !== undefined && /[A-Za-z@*>&%#$]/.test(ch);
+const isNode = (ch) => ch !== undefined && /[A-Za-z@*>&%#$~^+!=]/.test(ch);
 
 // How many rings out from Descend a spot is (ring 1: the six around it).
 export const ringOf = (x, y) => Math.abs(y) + Math.max(0, (Math.abs(x) - Math.abs(y)) / 2);

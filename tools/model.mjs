@@ -244,6 +244,18 @@ export function simulateRun(stats, dice, player = PLAYERS.efficient, depth = 1) 
     const breakables = (room.breakables ?? []).map((name) => ({ name, left: null }));
     let nextHorde = stats.hordeEvery;
     const hammer = stats.unlocked.has("hammer");
+    const lightning = stats.unlocked.has("lightning");
+    // A charged one is beaten: lightning jumps through the ones up close
+    // (and a charged one it beats sets off its own).
+    const zap = () => {
+      const blow = stats.lightningDamage / hit; // in swings
+      const reached = Math.min(close.length, stats.lightningJumps);
+      const beaten = [];
+      for (let i = 0; i < reached; i++) if ((close[i].left -= blow) <= 0) beaten.push(close[i]);
+      if (!beaten.length) return;
+      close = close.filter((mob) => mob.left > 0);
+      for (const { type } of beaten) kill(type);
+    };
     let nextHammer = stats.hammerEvery;
 
     // The rise is the game's own animation; only getting to the monster takes a typical player longer.
@@ -371,6 +383,7 @@ export function simulateRun(stats, dice, player = PLAYERS.efficient, depth = 1) 
       }
       if (orbs && !clockStopped && dice() < stats.timeOrbChance) clock += stats.timeOrbSeconds;
       if (!full && stats.deathCall > 0 && dice() < stats.deathCall) spawn(1);
+      if (lightning && dice() < stats.chargedChance) zap();
     };
     // A necromancer has come up: it starts raising soon.
     const arrive = (type) => {
@@ -459,7 +472,8 @@ export function simulateRun(stats, dice, player = PLAYERS.efficient, depth = 1) 
         // Shots and the boss's moves are special attacks: their share of the
         // danger costs the depth's special hit; a touch (or spikes) costs one.
         const special = (rangedNow() + (boss ? DEPTH.boss.threat : 0) + arrows) * danger / perSecond;
-        hearts -= dice() < special ? SPECIAL + pactSpecial : 1 + pactTouch;
+        const shock = lightning && dice() < stats.chargedChance; // a charged one's touch
+        hearts -= dice() < special || shock ? SPECIAL + pactSpecial : 1 + pactTouch;
         invincibleUntil = t + stats.invincibleFor;
         if (hearts <= 0) return end("died", t);
       }
