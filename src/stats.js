@@ -23,6 +23,10 @@ export function heroStats(levels, depth = 1) {
     hammerDamage: hero.hammer.damage, // the hammer, once it's bought (hammer.js)
     hammerEvery: hero.hammer.every,
     hammerSize: hero.hammer.size,
+    lightningDamage: hero.lightning.damage, // chain lightning, once it's bought (lightning.js)
+    lightningJumps: hero.lightning.jumps,
+    lightningRange: hero.lightning.range,
+    chargedChance: hero.lightning.charged,
     magnetRange: hero.magnetRange,
     startTime: run.startTime,
     timePerSubDepth: 0,

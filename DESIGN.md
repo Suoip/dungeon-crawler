@@ -402,6 +402,19 @@ to:
   are struck too. It never hurts him. Its upgrades (Heavier hammer, Hammer
   time, Bigger head) need it, and the branch runs on into the fort's ring
   (more Heavier hammers) so its damage keeps up there.
+- **Chain lightning**, the fort's weapon (`src/lightning.js`,
+  `hero.lightning` in balance.js), once the Chain lightning node is bought
+  (its own branch, in the gap right of Descend, off a More time node of the
+  fort's ring): 15% of the monsters rise charged (never a boss), with a
+  flickering blue glow under them and sparks crackling round them. Killing
+  one sends lightning jumping to the nearest monster within 40 px, then on
+  from that one, 3 jumps, each doing the lightning's own damage (900 to
+  start: about half a fort orc). If it beats another charged one,
+  that one sets off its own chain, so a charged pack can go up in a chain
+  reaction. The catch: a charged monster's touch shocks, costing the
+  depth's special hit (2 hearts in the fort) instead of one. Its upgrades
+  (Thunder, Forked lightning, Storm, Long arcs) need it, and Thunder nodes
+  run on into the swamp's and the pit's rings so its damage keeps up.
 - **A hit knocks a monster back about 14 px**, so it stays inside his reach
   for the next swing (bosses, brutes and shields budge less).
 - **No swinging at nothing:** once the timer is up and nothing is in reach,
@@ -554,7 +567,7 @@ to:
 - **The map is text** (`src/treemap.js`): every letter or symbol is a node,
   and the links are drawn between them ("---" across, "\" and "/" on the
   diagonals). Changing a letter changes the node; drawing or erasing a
-  link changes the paths. 373 nodes with Descend: 84 in depth 1 and 64-81
+  link changes the paths. 385 nodes with Descend: 84 in depth 1 and 64-81
   in each deeper depth.
 - No quiz lifelines.
 
@@ -620,6 +633,11 @@ always gave.
 | x | Heavier hammer (needs the Hammer) | The hammer does more damage (+60 in depth 2, +500 in depth 3...) | Weapon, depths 2-3 |
 | # | Hammer time (needs the Hammer) | The hammer comes 15% more often | Weapon, depth 2 |
 | $ | Bigger head (needs the Hammer) | The hammer's landing zone is 20% wider | Weapon, depth 2 |
+| ~ | Chain lightning (one) | Unlocks chain lightning (section 5) | Weapon, depth 3 |
+| ^ | Thunder (needs Chain lightning) | Each jump does more damage (+600 in depth 3, +6000 in depth 4, +50000 in depth 5) | Weapon, depths 3-5 |
+| + | Forked lightning (needs Chain lightning) | One more jump | Weapon, depth 3 |
+| ! | Storm (needs Chain lightning) | 5% more of the monsters rise charged | Weapon, depth 3 |
+| = | Long arcs (needs Chain lightning) | The lightning jumps 25% further | Weapon, depth 3 |
 | h | Extra heart (small only) | +1 heart | Hearts |
 | n | Steady nerves | Safe a little longer after a hit | Hearts and dash |
 | l | Lucky hearts (needs an Extra heart) | Hearts drop more often | Hearts |
@@ -665,9 +683,9 @@ live in `src/balance.js`.
   |---|---|---|
   | 1, the crypt | 38 min | 48 min |
   | 2, the goblin warrens | 42 min | 42 min |
-  | 3, the orc fort | 43 min | 45 min |
-  | 4, the sunken swamp | 38 min | 53 min |
-  | 5, the demon pit | 36 min | 39 min |
+  | 3, the orc fort | 43 min | 49 min |
+  | 4, the sunken swamp | 40 min | 56 min |
+  | 5, the demon pit | 42 min | 40 min |
   | The whole game | about 3.4 hours | about 3.8 hours |
 
   Rooms 1-9 each take about 0-10 minutes to get through the first time,

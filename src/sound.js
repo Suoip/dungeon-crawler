@@ -48,6 +48,7 @@ const SOUNDS = {
   pactTake: [0.35, 0.05, 160, 0.01, 0.1, 0.5, 2, 1, -2, 0, 0, 0, 0, 0.3],     // a pact is sealed: a deep, burning thud
   hammerRise: [0.2, 0.05, 180, 0.15, 0.2, 0.3, 0, 1, 4, 0, 0, 0, 0, 0.2],   // the hammer rises over him: a rising whoosh
   hammer:   [0.7, 0.05, 60, 0, 0.08, 0.4, 4, 1, -2, 0, 0, 0, 0, 1.2],      // it crashes down: a heavy, crunching thud
+  zap:      [0.3, 0.1, 1400, 0, 0.02, 0.12, 3, 1, -30, 0, 0, 0, 0.02, 1, 0, 0.2], // chain lightning jumps: a sharp electric crack
   coin:     [0.2, 0.05, 1600, 0, 0.02, 0.12, 1, 1, 0, 0, 600, 0.03],         // a little jingle
   gem:      [0.2, 0.02, 2100, 0, 0.03, 0.2, 0, 1, 0, 0, 700, 0.04],          // a gem: a brighter, ringing chime
   orb:      [0.3, 0, 784, 0.01, 0.06, 0.25, 0, 1, 0, 0, 392, 0.06],          // a time orb: a bright two-note chime
