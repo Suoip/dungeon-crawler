@@ -636,12 +636,12 @@ live in `src/balance.js`.
 
   | Depth | Value shopper | Cheapest shopper |
   |---|---|---|
-  | 1, the crypt | 43 min | 55 min |
-  | 2, the goblin warrens | 37 min | 40 min |
-  | 3, the orc fort | 39 min | 44 min |
-  | 4, the sunken swamp | 43 min | 53 min |
-  | 5, the demon pit | 39 min | 41 min |
-  | The whole game | about 3.4 hours | about 3.9 hours |
+  | 1, the crypt | 40 min | 49 min |
+  | 2, the goblin warrens | 40 min | 44 min |
+  | 3, the orc fort | 39 min | 42 min |
+  | 4, the sunken swamp | 43 min | 52 min |
+  | 5, the demon pit | 40 min | 41 min |
+  | The whole game | about 3.4 hours | about 3.8 hours |
 
   Rooms 1-9 each take about 0-10 minutes to get through the first time,
   and the boss rooms up to about 15. The golden rule mostly holds; it slips

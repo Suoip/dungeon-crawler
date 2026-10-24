@@ -155,9 +155,9 @@ export const BALANCE = {
       graves: { chance: 0.3, types: ["tiny_zombie", "skeleton"], riseAfter: 4 },
       rooms: [
         { xp: 6, spawns: { slug: 100 }, breakables: ["pot", "pot"] },
-        { xp: 5, spawns: { slug: 100 }, breakables: ["pot", "pot"] },
-        { xp: 9, spawns: { slug: 75, tiny_zombie: 25 }, breakables: ["pot", "pot"] },
-        { xp: 10, spawns: { slug: 60, tiny_zombie: 40 }, breakables: ["pot", "pot"], hazard: 0.005 },
+        { xp: 4, spawns: { slug: 100 }, breakables: ["pot", "pot"] },
+        { xp: 8, spawns: { slug: 75, tiny_zombie: 25 }, breakables: ["pot", "pot"] },
+        { xp: 8, spawns: { slug: 60, tiny_zombie: 40 }, breakables: ["pot", "pot"], hazard: 0.005 },
         { xp: 12, spawns: { slug: 50, tiny_zombie: 40, skeleton: 10 }, breakables: ["pot", "pot"], hazard: 0.005 },
         { xp: 13, spawns: { slug: 45, tiny_zombie: 38, skeleton: 17 }, breakables: ["pot", "crate", "crate"], hazard: 0.005, chest: { chance: 0.6, mimic: 0 } },
         { xp: 15, spawns: { slug: 40, tiny_zombie: 37, skeleton: 23 }, breakables: ["pot", "crate", "crate"], hazard: 0.005, chest: { chance: 0.7, mimic: 0.5 } },
@@ -165,7 +165,7 @@ export const BALANCE = {
         { xp: 20, spawns: { slug: 33, tiny_zombie: 34, skeleton: 33 }, breakables: ["crate", "crate", "urn"], hazard: 0.01, chest: { chance: 0.7, mimic: 0.6 } },
         { xp: 23, spawns: { slug: 30, tiny_zombie: 35, skeleton: 35 }, breakables: ["crate", "crate"] }, // then the boss
       ],
-      boss: { type: "big_zombie", hp: 300, gold: 33, threat: 0.08, minion: "tiny_zombie" },
+      boss: { type: "big_zombie", hp: 180, gold: 33, threat: 0.08, minion: "tiny_zombie" },
     },
     {
       // The goblin warrens: goblins chase, imps (from room 3) keep their
