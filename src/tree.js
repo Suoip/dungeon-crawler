@@ -83,6 +83,10 @@ const ICONS = {
   v: SKULL,
   y: { sprite: "necromancer", box: [1, 8, 13, 15] },
   i: { sprite: "weapon_green_magic_staff", box: [0, 0, 8, 14] },
+  "%": { draw: "hammer" },
+  x: { draw: "hammerHeavy" },
+  "#": { draw: "hammerQuick" },
+  $: { draw: "hammerBig" },
 };
 // A node's icon: its kind's, for its depth (a list's last one past its end).
 function iconOf(node) {
@@ -151,6 +155,12 @@ const PIXELS = {
     [-1, -3, 2, 6, "light"], [-3, -1, 6, 2, "light"]],
   sands: [[-4, -6, 8, 2, "wood"], [-4, 4, 8, 2, "wood"], [-3, -4, 6, 2, "sand"], [-2, -2, 4, 2, "sand"],
     [-1, 0, 2, 1, "sand"], [-2, 1, 4, 1, "sand"], [-3, 2, 6, 2, "sand"]],
+  // The hammer: its grey head on a wooden handle; Heavier hammer's red-hot
+  // head; Hammer time's, with speed lines; Bigger head's, a wide head.
+  hammer: [[-1, -2, 2, 9, "wood"], [-5, -7, 10, 5, "muted"], [-5, -7, 10, 1, "light"]],
+  hammerHeavy: [[-1, -2, 2, 9, "wood"], [-5, -7, 10, 5, "red"], [-5, -7, 10, 1, "gold"]],
+  hammerQuick: [[1, -2, 2, 9, "wood"], [-2, -7, 9, 5, "muted"], [-2, -7, 9, 1, "light"], [-7, -6, 3, 1, "blue"], [-6, -4, 3, 1, "blue"], [-7, -2, 3, 1, "blue"]],
+  hammerBig: [[-1, -1, 2, 8, "wood"], [-7, -7, 14, 6, "muted"], [-7, -7, 14, 1, "light"]],
   // Gravedigger's shovel.
   shovel: [[-1, -7, 2, 8, "wood"], [-3, -7, 6, 1, "wood"], [-3, 1, 6, 3, "muted"], [-2, 4, 4, 1, "muted"], [-1, 5, 2, 1, "muted"]],
   // The Shield's: steel with a gold boss.
@@ -222,8 +232,11 @@ const STAT_TEXT = {
   goldPerKill: ["BOUNTY", null],
   timePerKill: ["EACH KILL ADDS", (x) => `${Math.round(x * 100) / 100}S`],
   healOnClear: ["HEART BACK ON A CLEAR", pct],
+  hammerDamage: ["HAMMER DAMAGE", (x) => `${x}`],
+  hammerEvery: ["HAMMER EVERY", secs],
+  hammerSize: ["HAMMER SIZE", null],
 };
-const UNLOCK_TEXT = { descend: "WHERE EVERYTHING GROWS FROM", dash: "UNLOCKS THE DASH (SHIFT)", timeOrbs: "UNLOCKS TIME ORBS" };
+const UNLOCK_TEXT = { descend: "WHERE EVERYTHING GROWS FROM", dash: "UNLOCKS THE DASH (SHIFT)", timeOrbs: "UNLOCKS TIME ORBS", hammer: "UNLOCKS THE HAMMER" };
 
 // "DAMAGE 3 > 4": what buying the node changes, now and after. Or, for a
 // stat shown as a percentage, "MAGNET RANGE +25%": how much bigger it makes

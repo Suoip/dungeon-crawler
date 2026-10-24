@@ -20,6 +20,9 @@ export function heroStats(levels, depth = 1) {
     invincibleFor: hero.invincibleFor,
     critChance: hero.critChance,
     critDamage: hero.critDamage,
+    hammerDamage: hero.hammer.damage, // the hammer, once it's bought (hammer.js)
+    hammerEvery: hero.hammer.every,
+    hammerSize: hero.hammer.size,
     magnetRange: hero.magnetRange,
     startTime: run.startTime,
     timePerSubDepth: 0,

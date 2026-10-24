@@ -54,6 +54,10 @@ export const MODEL = {
   landAlone: 0.66,      // the share of swings that come with one up close...
   landStep: 0.17,       // ...this much more for each more one...
   landMost: 0.95,       // ...up to this
+  // The hammer (hammer.js): he steers its zone onto the ones up close this
+  // often, and it catches this many of them (more with Bigger head, and in a crowd).
+  hammerLands: 0.6,
+  hammerHits: 1.5,
   dashSafety: 0.8,      // having a dash at all leaves this share of the danger...
   dashOverhead: 0.85,   // ...and this share of the walking time
   chargeSafety: 0.9,    // a second dash charge leaves this share of the danger
@@ -239,6 +243,8 @@ export function simulateRun(stats, dice, player = PLAYERS.efficient, depth = 1) 
     let nextRaise = Infinity; // when the necromancers about raise their next ice zombies
     const breakables = (room.breakables ?? []).map((name) => ({ name, left: null }));
     let nextHorde = stats.hordeEvery;
+    const hammer = stats.unlocked.has("hammer");
+    let nextHammer = stats.hammerEvery;
 
     // The rise is the game's own animation; only getting to the monster takes a typical player longer.
     const approach = MODEL.approach * (BALANCE.hero.reach / stats.reach) * walk * player.clearTime;
@@ -492,6 +498,24 @@ export function simulateRun(stats, dice, player = PLAYERS.efficient, depth = 1) 
           waiting.splice(waiting.indexOf(wanderers[0]), 1);
           comeClose(wanderers[0].type);
         }
+      }
+
+      // The hammer, once it's bought: every hammerEvery s it comes down on
+      // the ones up close (or the boss), if he steered its zone onto them.
+      if (hammer && t >= nextHammer) {
+        nextHammer = t + stats.hammerEvery;
+        const blow = stats.hammerDamage / hit; // in swings
+        if (close.length && dice() < MODEL.hammerLands) {
+          const size = (stats.hammerSize / BALANCE.hero.hammer.size) ** 2;
+          const caught = Math.min(close.length, Math.max(1, Math.round(MODEL.hammerHits * size * (1 + MODEL.crowd * (close.length - 1)))));
+          const beaten = [];
+          for (let i = 0; i < caught; i++) if ((close[i].left -= blow) <= 0) beaten.push(close[i]);
+          if (beaten.length) {
+            close = close.filter((mob) => mob.left > 0);
+            for (const { type } of beaten) kill(type);
+            for (const { type } of beaten) if (behavior(type).blast && blast(type)) return end("died", t);
+          }
+        } else if (boss && dice() < MODEL.hammerLands) boss.left -= blow;
       }
 
       // The swing: it hits the monsters up close, oldest first (if one was

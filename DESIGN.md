@@ -389,6 +389,19 @@ to:
 - **Chasers spread out.** Monsters chasing him keep about 18 px from each
   other, so a pack fans out round him instead of piling into one lump that
   a single swing could cut through.
+- **The hammer**, the warrens' weapon (`src/hammer.js`, `hero.hammer` in
+  balance.js), once the Hammer node is bought (its own branch in the
+  warrens' ring, in the gap between the two weapon branches left of
+  Descend, off a Critical hits node): every 6 s or so (give or take
+  a quarter) a giant hammer rises in his hands, raised up behind him, aimed
+  a random way. Its landing zone is marked on the floor 26 px out from him
+  that way, an ellipse 28 px across, and it moves with him for 1 s, so he
+  steers it onto monsters; then the hammer swings over and crashes down.
+  Everything in the zone takes the hammer's own damage (80 to start: about
+  a warrens goblin) and is stunned for 1 s (a boss isn't); breakables in it
+  are struck too. It never hurts him. Its upgrades (Heavier hammer, Hammer
+  time, Bigger head) need it, and the branch runs on into the fort's ring
+  (more Heavier hammers) so its damage keeps up there.
 - **A hit knocks a monster back about 14 px**, so it stays inside his reach
   for the next swing (bosses, brutes and shields budge less).
 - **No swinging at nothing:** once the timer is up and nothing is in reach,
@@ -541,7 +554,7 @@ to:
 - **The map is text** (`src/treemap.js`): every letter or symbol is a node,
   and the links are drawn between them ("---" across, "\" and "/" on the
   diagonals). Changing a letter changes the node; drawing or erasing a
-  link changes the paths. 365 nodes with Descend: 84 in depth 1 and 64-76
+  link changes the paths. 373 nodes with Descend: 84 in depth 1 and 64-81
   in each deeper depth.
 - No quiz lifelines.
 
@@ -603,6 +616,10 @@ always gave.
 | a | Wider arc | The swing covers a wider angle | Dash, depth 1 |
 | c | Critical hits | More chance that a hit is critical (3x damage to start) | Weapon, depths 2-5 |
 | j | Critical damage | Critical hits do more (3x, then 3.25x...) | Weapon, depths 2-5 |
+| % | Hammer (one) | Unlocks the hammer (section 5) | Weapon, depth 2 |
+| x | Heavier hammer (needs the Hammer) | The hammer does more damage (+60 in depth 2, +500 in depth 3...) | Weapon, depths 2-3 |
+| # | Hammer time (needs the Hammer) | The hammer comes 15% more often | Weapon, depth 2 |
+| $ | Bigger head (needs the Hammer) | The hammer's landing zone is 20% wider | Weapon, depth 2 |
 | h | Extra heart (small only) | +1 heart | Hearts |
 | n | Steady nerves | Safe a little longer after a hit | Hearts and dash |
 | l | Lucky hearts (needs an Extra heart) | Hearts drop more often | Hearts |
@@ -647,10 +664,10 @@ live in `src/balance.js`.
   | Depth | Value shopper | Cheapest shopper |
   |---|---|---|
   | 1, the crypt | 38 min | 48 min |
-  | 2, the goblin warrens | 41 min | 44 min |
-  | 3, the orc fort | 40 min | 47 min |
-  | 4, the sunken swamp | 40 min | 51 min |
-  | 5, the demon pit | 44 min | 40 min |
+  | 2, the goblin warrens | 42 min | 42 min |
+  | 3, the orc fort | 43 min | 45 min |
+  | 4, the sunken swamp | 38 min | 53 min |
+  | 5, the demon pit | 36 min | 39 min |
   | The whole game | about 3.4 hours | about 3.8 hours |
 
   Rooms 1-9 each take about 0-10 minutes to get through the first time,
