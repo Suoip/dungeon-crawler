@@ -31,6 +31,10 @@ export function heroStats(levels, depth = 1) {
     boomerangRest: hero.boomerang.rest,
     boomerangRange: hero.boomerang.range,
     boomerangCount: hero.boomerang.count,
+    bladesDamage: hero.blades.damage, // the spinning blades, once they're bought (blades.js)
+    bladesEvery: hero.blades.every,
+    bladesRadius: hero.blades.radius,
+    bladesSpins: hero.blades.spins,
     magnetRange: hero.magnetRange,
     startTime: run.startTime,
     timePerSubDepth: 0,

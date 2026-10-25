@@ -427,6 +427,16 @@ to:
   thrown again, so walking toward it as it comes back means the next throw
   comes sooner. Its upgrades (Heavy boomerang, Quick catch, Long flight,
   Twin boomerang) need it, and Heavy boomerangs run on into the pit's ring.
+- **The spinning blades**, the pit's weapon (`src/blades.js`,
+  `hero.blades` in balance.js), once the Spinning blades node is bought
+  (its own branch in the pit's part of the weapon sector, off a Demon edge
+  node at -27,-7): every 4 s, once a monster is within 30 px, the hero
+  whirls round and two blades sweep a full circle about him in 0.3 s, with
+  a faint red ring showing their reach. Everything in the circle is hit
+  once a sweep, for the blades' own damage (45,000 to start: about a sixth
+  of a chort), and shoved back out (a brute less, a boss not at all);
+  breakables in it are struck too. It never hurts him. Their upgrades
+  (Sharper blades, Quick spin, Wide spin, Double spin) need them.
 - **A hit knocks a monster back about 14 px**, so it stays inside his reach
   for the next swing (bosses, brutes and shields budge less).
 - **No swinging at nothing:** once the timer is up and nothing is in reach,
@@ -579,7 +589,7 @@ to:
 - **The map is text** (`src/treemap.js`): every letter or symbol is a node,
   and the links are drawn between them ("---" across, "\" and "/" on the
   diagonals). Changing a letter changes the node; drawing or erasing a
-  link changes the paths. 392 nodes with Descend: 84 in depth 1 and 64-81
+  link changes the paths. 398 nodes with Descend: 84 in depth 1 and 64-81
   in each deeper depth.
 - No quiz lifelines.
 
@@ -655,6 +665,11 @@ always gave.
 | : | Quick catch (needs the Boomerang) | 20% shorter rest before it's thrown again | Weapon, depth 4 |
 | ; | Long flight (needs the Boomerang) | It flies 20% further | Weapon, depth 4 |
 | ? | Twin boomerang (one; needs the Boomerang) | Two are thrown at once, a little apart | Weapon, depth 4 |
+| { | Spinning blades (one) | Unlocks the spinning blades (section 5) | Weapon, depth 5 |
+| } | Sharper blades (needs the Spinning blades) | +45000 blade damage | Weapon, depth 5 |
+| [ | Quick spin (needs the Spinning blades) | 20% less time between spins | Weapon, depth 5 |
+| ] | Wide spin (needs the Spinning blades) | The circle is 20% wider | Weapon, depth 5 |
+| < | Double spin (one; needs the Spinning blades) | The blades sweep round twice each spin | Weapon, depth 5 |
 | h | Extra heart (small only) | +1 heart | Hearts |
 | n | Steady nerves | Safe a little longer after a hit | Hearts and dash |
 | l | Lucky hearts (needs an Extra heart) | Hearts drop more often | Hearts |
@@ -702,7 +717,7 @@ live in `src/balance.js`.
   | 2, the goblin warrens | 42 min | 42 min |
   | 3, the orc fort | 43 min | 49 min |
   | 4, the sunken swamp | 41 min | 56 min |
-  | 5, the demon pit | 38 min | 39 min |
+  | 5, the demon pit | 39 min | 38 min |
   | The whole game | about 3.4 hours | about 3.8 hours |
 
   Rooms 1-9 each take about 0-10 minutes to get through the first time,
