@@ -97,6 +97,11 @@ const ICONS = {
   ":": { draw: "rangQuick" },
   ";": { draw: "rangFar" },
   "?": { draw: "rangTwin" },
+  "{": { draw: "blades" },
+  "}": { draw: "bladesSharp" },
+  "[": { draw: "bladesQuick" },
+  "]": { draw: "bladesWide" },
+  "<": { draw: "bladesDouble" },
 };
 // A node's icon: its kind's, for its depth (a list's last one past its end).
 function iconOf(node) {
@@ -187,6 +192,14 @@ const PIXELS = {
   rangQuick: [[-3, -5, 3, 3, "wood"], [-1, -3, 3, 3, "wood"], [1, -1, 4, 3, "wood"], [4, -3, 3, 3, "wood"], [-7, -2, 3, 1, "blue"], [-7, 0, 3, 1, "blue"], [-6, 2, 3, 1, "blue"]],
   rangFar: [[-2, -6, 2, 2, "wood"], [-1, -4, 2, 2, "wood"], [0, -2, 3, 2, "wood"], [2, -4, 2, 2, "wood"], [3, -6, 2, 2, "wood"], [-7, 3, 1, 1, "light"], [-4, 3, 1, 1, "light"], [-1, 3, 1, 1, "light"], [2, 3, 1, 1, "light"], [5, 3, 1, 1, "light"]],
   rangTwin: [[-7, -6, 2, 2, "wood"], [-6, -4, 2, 2, "wood"], [-5, -2, 3, 2, "wood"], [-3, -4, 2, 2, "wood"], [-2, -6, 2, 2, "wood"], [2, -1, 2, 2, "sand"], [3, 1, 2, 2, "sand"], [4, 3, 3, 2, "sand"], [6, 1, 2, 2, "sand"], [7, -1, 1, 2, "sand"]],
+  // The spinning blades: two blades crossed in a circle; Sharper blades', red
+  // edges; Quick spin's, with speed lines; Wide spin's, a wide ring; Double
+  // spin's, two rings.
+  blades: [[-6, -1, 5, 2, "light"], [1, -1, 5, 2, "light"], [-1, -6, 2, 5, "muted"], [-1, 1, 2, 5, "muted"], [-1, -1, 2, 2, "gold"]],
+  bladesSharp: [[-6, -1, 5, 2, "red"], [1, -1, 5, 2, "red"], [-1, -6, 2, 5, "light"], [-1, 1, 2, 5, "light"], [-1, -1, 2, 2, "gold"]],
+  bladesQuick: [[-3, -1, 5, 2, "light"], [4, -1, 3, 2, "light"], [1, -6, 2, 5, "muted"], [1, 1, 2, 5, "muted"], [-7, -4, 3, 1, "blue"], [-7, 3, 3, 1, "blue"]],
+  bladesWide: [[-7, -2, 1, 4, "muted"], [6, -2, 1, 4, "muted"], [-2, -7, 4, 1, "muted"], [-2, 6, 4, 1, "muted"], [-5, -5, 2, 2, "light"], [3, 3, 2, 2, "light"]],
+  bladesDouble: [[-7, -2, 1, 4, "light"], [6, -2, 1, 4, "light"], [-2, -7, 4, 1, "light"], [-2, 6, 4, 1, "light"], [-4, -1, 1, 2, "gold"], [3, -1, 1, 2, "gold"], [-1, -4, 2, 1, "gold"], [-1, 3, 2, 1, "gold"]],
   // Gravedigger's shovel.
   shovel: [[-1, -7, 2, 8, "wood"], [-3, -7, 6, 1, "wood"], [-3, 1, 6, 3, "muted"], [-2, 4, 4, 1, "muted"], [-1, 5, 2, 1, "muted"]],
   // The Shield's: steel with a gold boss.
@@ -269,8 +282,12 @@ const STAT_TEXT = {
   boomerangRest: ["THROWN AGAIN AFTER", secs],
   boomerangRange: ["BOOMERANG RANGE", null],
   boomerangCount: ["BOOMERANGS", (x) => `${x}`],
+  bladesDamage: ["BLADE DAMAGE", (x) => `${x}`],
+  bladesEvery: ["SPIN EVERY", secs],
+  bladesRadius: ["SPIN SIZE", null],
+  bladesSpins: ["SPINS", (x) => `${x}`],
 };
-const UNLOCK_TEXT = { descend: "WHERE EVERYTHING GROWS FROM", dash: "UNLOCKS THE DASH (SHIFT)", timeOrbs: "UNLOCKS TIME ORBS", hammer: "UNLOCKS THE HAMMER", lightning: "UNLOCKS CHAIN LIGHTNING", boomerang: "UNLOCKS THE BOOMERANG" };
+const UNLOCK_TEXT = { descend: "WHERE EVERYTHING GROWS FROM", dash: "UNLOCKS THE DASH (SHIFT)", timeOrbs: "UNLOCKS TIME ORBS", hammer: "UNLOCKS THE HAMMER", lightning: "UNLOCKS CHAIN LIGHTNING", boomerang: "UNLOCKS THE BOOMERANG", blades: "UNLOCKS THE SPINNING BLADES" };
 
 // "DAMAGE 3 > 4": what buying the node changes, now and after. Or, for a
 // stat shown as a percentage, "MAGNET RANGE +25%": how much bigger it makes

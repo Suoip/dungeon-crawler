@@ -63,6 +63,9 @@ export const MODEL = {
   // (each twice: out and back).
   rangFlight: 1.0,
   rangHits: 1.5,
+  // The spinning blades (blades.js): a spin catches this share of the ones
+  // up close (more with Wide spin).
+  spinShare: 0.8,
   dashSafety: 0.8,      // having a dash at all leaves this share of the danger...
   dashOverhead: 0.85,   // ...and this share of the walking time
   chargeSafety: 0.9,    // a second dash charge leaves this share of the danger
@@ -252,6 +255,8 @@ export function simulateRun(stats, dice, player = PLAYERS.efficient, depth = 1) 
     const lightning = stats.unlocked.has("lightning");
     const boomerang = stats.unlocked.has("boomerang");
     let nextThrow = 0;
+    const blades = stats.unlocked.has("blades");
+    let nextSpin = stats.bladesEvery;
     // A charged one is beaten: lightning jumps through the ones up close
     // (and a charged one it beats sets off its own).
     const zap = () => {
@@ -554,6 +559,24 @@ export function simulateRun(stats, dice, player = PLAYERS.efficient, depth = 1) 
             for (const { type } of beaten) if (behavior(type).blast && blast(type)) return end("died", t);
           }
         } else boss.left -= blow * stats.boomerangCount;
+      }
+
+      // The spinning blades, once they're bought: a spin every bladesEvery s
+      // (once one is up close) cuts through most of them, bladesSpins times.
+      if (blades && t >= nextSpin && (close.length || boss)) {
+        nextSpin = t + stats.bladesEvery;
+        const blow = (stats.bladesDamage * stats.bladesSpins) / hit; // in swings
+        if (close.length) {
+          const share = Math.min(1, MODEL.spinShare * (stats.bladesRadius / BALANCE.hero.blades.radius));
+          const caught = Math.max(1, Math.round(close.length * share));
+          const beaten = [];
+          for (let i = 0; i < caught; i++) if ((close[i].left -= blow) <= 0) beaten.push(close[i]);
+          if (beaten.length) {
+            close = close.filter((mob) => mob.left > 0);
+            for (const { type } of beaten) kill(type);
+            for (const { type } of beaten) if (behavior(type).blast && blast(type)) return end("died", t);
+          }
+        } else boss.left -= blow;
       }
 
       // The swing: it hits the monsters up close, oldest first (if one was

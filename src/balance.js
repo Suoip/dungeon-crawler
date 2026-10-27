@@ -49,6 +49,11 @@ export const BALANCE = {
     // `range` px and comes back to him, hitting everything it passes both
     // ways for `damage`; `rest` s after he catches it, it's thrown again.
     boomerang: { damage: 4000, rest: 1.5, range: 70, count: 1 },
+    // The spinning blades (blades.js), once they're bought in the pit's
+    // ring: every `every` s, when a monster is within `radius` px, he
+    // whirls, and blades sweep a full circle round him (`spins` times),
+    // hitting everything in it for `damage` and shoving it back.
+    blades: { damage: 45000, every: 4, radius: 30, spins: 1 },
     magnetRange: 20,     // px: dropped things closer than this fly to him
     dash: {
       cooldown: 2.5,     // seconds for a charge to fill (once the dash is unlocked)
@@ -317,8 +322,9 @@ export const BALANCE = {
         { xp: 79, spawns: { chort: 30, pumpkin_dude: 35, doc: 35 }, breakables: ["crate", "crate"] }, // then the boss
       ],
       // (44M before the pacts; 21M with the curses a typical player takes;
-      // 19M once the swing became narrow; 22M once the boomerang came)
-      boss: { type: "big_demon", hp: 22000000, gold: 120000000000, threat: 0.15, minion: "chort" },
+      // 19M once the swing became narrow; 22M once the boomerang came; 28M
+      // once the spinning blades did)
+      boss: { type: "big_demon", hp: 28000000, gold: 120000000000, threat: 0.15, minion: "chort" },
     },
   ],
 
@@ -438,6 +444,12 @@ export const BALANCE = {
       ":": { name: "Quick catch", effect: { stat: "boomerangRest", mul: 0.8 }, needs: ")", worth: 4 },
       ";": { name: "Long flight", effect: { stat: "boomerangRange", mul: 1.2 }, needs: ")", worth: 2 },
       "?": { name: "Twin boomerang", effect: { stat: "boomerangCount", add: 1 }, needs: ")", worth: 20 },
+      // The spinning blades (the pit's weapon) and their own upgrades
+      "{": { name: "Spinning blades", effect: { unlock: "blades" }, worth: 3 },
+      "}": { name: "Sharper blades", effect: { stat: "bladesDamage", add: 45000 }, needs: "{", worth: 1.5 },
+      "[": { name: "Quick spin", effect: { stat: "bladesEvery", mul: 0.8 }, needs: "{", worth: 4 },
+      "]": { name: "Wide spin", effect: { stat: "bladesRadius", mul: 1.2 }, needs: "{", worth: 3 },
+      "<": { name: "Double spin", effect: { stat: "bladesSpins", add: 1 }, needs: "{", worth: 20 },
       // Money
       g: { name: "Greed", effect: { stat: "goldBonus", add: [0.17, 0.13, 0.14, 0.13, 0.11] }, worth: [0.7, 1.52, 1.36, 1.66, 0.57] }, // a share more gold on kills; Smash is for breakables
       o: { name: "Bounty", effect: { stat: "goldPerKill", add: [0.23, 0.17, 0.14, 0.14, 0.23] }, perDepth: true, worth: [2.05, 2.61, 2.15, 1.26, 1.53] }, // flat gold on every kill, in the room's gold (its own depth only)

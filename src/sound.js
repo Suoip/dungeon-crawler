@@ -51,6 +51,7 @@ const SOUNDS = {
   zap:      [0.3, 0.1, 1400, 0, 0.02, 0.12, 3, 1, -30, 0, 0, 0, 0.02, 1, 0, 0.2], // chain lightning jumps: a sharp electric crack
   rangThrow: [0.2, 0.05, 500, 0.02, 0.1, 0.2, 0, 1, 3, 0, 0, 0, 0.05, 0.2],    // the boomerang is thrown: a whirring whoosh
   rangCatch: [0.2, 0.02, 700, 0, 0.02, 0.06, 1, 1, 0, 0, 200, 0.02],           // he catches it: a quick slap
+  spin:     [0.3, 0.05, 300, 0.02, 0.2, 0.2, 2, 1, 8, 0, 0, 0, 0.08, 0.3],   // the blades whirl round him: a rising, ringing whoosh
   coin:     [0.2, 0.05, 1600, 0, 0.02, 0.12, 1, 1, 0, 0, 600, 0.03],         // a little jingle
   gem:      [0.2, 0.02, 2100, 0, 0.03, 0.2, 0, 1, 0, 0, 700, 0.04],          // a gem: a brighter, ringing chime
   orb:      [0.3, 0, 784, 0.01, 0.06, 0.25, 0, 1, 0, 0, 392, 0.06],          // a time orb: a bright two-note chime
