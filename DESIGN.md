@@ -588,7 +588,23 @@ Coins stay as they are; crafting is a second way to grow, built in steps:
    - **The gear chest's page** shows every piece made (the worn one first,
      with a gold frame; new ones marked), and the picked one's bonuses. Pick
      one and wear it. There's one slot so far, the head.
-2. **A merchant** in the underworld who sells spare gear over time, for gold.
+2. **A goblin merchant** (built): a goblin trader behind a stall with a
+   striped awning, in the underworld's right side, above the gear chest.
+   - **His page** shows your spare gear (in the chest and not worn) on the
+     left and his counter on the right, with the banked gold in the title
+     bar. Pick a piece and sell it (click it twice, or E): it leaves the
+     chest for the counter. Right, past the end of a row, goes to the
+     counter, where E takes a piece back until it's sold.
+   - **The counter holds 3,** each selling on its own after its recipe's
+     time (rag hood 20 s, skull helm 40 s, zombie crown 1 min), while the
+     game is open, like the forge. A sold piece's gold is banked at once,
+     with a jingle; the TOTAL line on the floor keeps up. The goblin
+     bounces while he has something to sell.
+   - **Prices:** about 5 gold for a rag hood, 40 for a skull helm and 200
+     for a zombie crown (a crypt run earns 10-20 gold early on and 500-900
+     by the end), from 0.6 to 1.4 times that for how well its bonuses
+     rolled in their ranges, and more for each bonus over the recipe's
+     fewest. A side income: runs stay the main one.
 3. **Upgrades at the forge and the merchant,** bought with gold: making and
    selling faster, and more. They stay out of the skill tree, so its
    pacing is untouched.

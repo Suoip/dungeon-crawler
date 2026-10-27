@@ -2,7 +2,7 @@ import { TILE, TOP, GAME_WIDTH } from "./config.js";
 import { playSound } from "./sound.js";
 
 // Things placed in the menu rooms and the underworld: the ladder, the floor
-// hatch, the well, the altar, the forge, the gear chest, signs, plaques, levers, the reset button,
+// hatch, the well, the altar, the forge, the gear chest, the merchant's stall, signs, plaques, levers, the reset button,
 // keyboard keys and the title text.
 
 // The pack's wood colors, for things we draw ourselves.
@@ -221,6 +221,46 @@ export function addGearChest(x, y, hasNew) {
     for (const [gx, gy, w, h] of [[-1, -21, 3, 1], [0, -22, 1, 3]]) drawRect({ pos: vec2(gx + 4, gy), width: w, height: h, color: rgb(255, 230, 140), opacity: glow });
   });
   const zone = add([pos(x - 12, y), area({ shape: new Rect(vec2(0), 24, 14) })]);
+  return { zone };
+}
+
+// The merchant's stall in the underworld (merchant.js): a goblin trader
+// behind a wooden counter, under a striped awning on two posts, with a sack
+// of coins at the end. (x, y) is the middle of the counter's foot; it's
+// solid there, and the zone is the floor in front. `selling()` says
+// whether there's anything on the counter: then the goblin bounces with
+// glee.
+export function addStall(x, y, selling) {
+  const DARK = rgb(24, 20, 37);
+  const goblin = add([sprite("goblin", { anim: "idle" }), pos(x - 2, y - 16), anchor("bot"), z(10 + (y - 1) / 1000)]);
+  goblin.onUpdate(() => (goblin.pos.y = y - 16 - (selling() ? Math.abs(Math.round(Math.sin(time() * 6) * 2)) : 0)));
+  const stall = add([
+    pos(x, y),
+    area({ shape: new Rect(vec2(-16, -7), 32, 7) }),
+    body({ isStatic: true }),
+    z(10 + y / 1000),
+  ]);
+  stall.onDraw(() => {
+    // The posts and the striped awning over the goblin.
+    for (const px of [-16, 14]) {
+      drawRect({ pos: vec2(px - 1, -37), width: 4, height: 37, color: DARK });
+      drawRect({ pos: vec2(px, -36), width: 2, height: 36, color: rgb(...WOOD) });
+    }
+    drawRect({ pos: vec2(-20, -42), width: 40, height: 8, color: DARK });
+    for (let i = 0; i < 6; i++) drawRect({ pos: vec2(-19 + i * 6.33, -41), width: 6.33, height: 6, color: i % 2 ? rgb(240, 230, 210) : rgb(190, 50, 50) });
+    for (let i = 0; i < 6; i++) drawRect({ pos: vec2(-19 + i * 6.33, -35), width: 6.33, height: 2, color: i % 2 ? rgb(190, 50, 50) : rgb(240, 230, 210) }); // the scalloped edge
+    // The counter, in front of him.
+    drawRect({ pos: vec2(-17, -15), width: 34, height: 15, color: DARK });
+    drawRect({ pos: vec2(-16, -14), width: 32, height: 3, color: rgb(...WOOD_LIGHT) });
+    drawRect({ pos: vec2(-16, -11), width: 32, height: 11, color: rgb(...WOOD) });
+    for (const bx of [-10, 0, 10]) drawRect({ pos: vec2(bx - 1, -10), width: 2, height: 9, color: rgb(...WOOD_DARK) });
+    // A sack of coins on it.
+    drawRect({ pos: vec2(7, -21), width: 9, height: 8, color: DARK });
+    drawRect({ pos: vec2(8, -19), width: 7, height: 5, color: rgb(190, 160, 110) });
+    drawRect({ pos: vec2(10, -20), width: 3, height: 1, color: rgb(150, 120, 80) });
+    drawRect({ pos: vec2(10, -22), width: 3, height: 2, color: rgb(255, 205, 70) });
+  });
+  const zone = add([pos(x - 16, y), area({ shape: new Rect(vec2(0), 32, 14) })]);
   return { zone };
 }
 

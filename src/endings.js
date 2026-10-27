@@ -8,9 +8,10 @@ import { heroStats } from "./stats.js";
 import { setupInteractions } from "./interact.js";
 import { fallIn, climbLadder, giveControl, LAND_X } from "./cutscenes.js";
 import { addFader, fadeIn, sleep, addRedLight } from "./effects.js";
-import { addLadder, addShadowText, addSign, addAltar, addForge, addGearChest } from "./props.js";
+import { addLadder, addShadowText, addSign, addAltar, addForge, addGearChest, addStall } from "./props.js";
 import { openTree, canBuyAnything } from "./tree.js";
 import { openForge, openGearChest } from "./forge.js";
+import { openStall } from "./merchant.js";
 import { playSound } from "./sound.js";
 import { hidePrompt, showRoomName } from "./panel.js";
 import { shortGold } from "./hud.js";
@@ -39,6 +40,7 @@ const ALTAR_Y = 166;  // the altar's foot, below the results
 const LAND_Y = 184;   // he lands in front of it, already at it
 const FORGE = { x: 44, y: 182 }; // the forge's foot, in the bottom left corner
 const GEAR_CHEST = { x: 276, y: 182 }; // the gear chest's, in the bottom right
+const STALL = { x: 280, y: 138 }; // the merchant's stall's, above it
 
 const savedStats = () => heroStats(getSave().levels); // the hero as the tree has made him
 
@@ -58,6 +60,7 @@ function underworld(run, ending) {
   const signpost = unlockedDepths() > 1 ? addDepthSignpost() : null;
   const forge = addForge(FORGE.x, FORGE.y, () => getSave().forge.length > 0);
   const chest = addGearChest(GEAR_CHEST.x, GEAR_CHEST.y, () => getSave().newGear > 0);
+  const stall = addStall(STALL.x, STALL.y, () => getSave().counter.length > 0);
 
   const player = addPlayer(LAND_X, LAND_Y);
   if (ending === "died") player.use(color(255, 110, 110)); // still red, down here
@@ -102,6 +105,7 @@ function underworld(run, ending) {
   });
   const smith = { zone: forge.zone, prompt: ["Use the forge"], use: openPage(openForge) };
   const rummage = { zone: chest.zone, prompt: ["Open the gear chest"], use: openPage(openGearChest) };
+  const trade = { zone: stall.zone, prompt: ["Talk to the merchant"], use: openPage(openStall) };
   // The signpost: the next depth that's open (round to the first again).
   const pick = signpost && {
     zone: signpost.zone,
@@ -115,9 +119,19 @@ function underworld(run, ending) {
   };
   const interactions = setupInteractions(
     player,
-    [pray, smith, rummage, ...climb, ...(pick ? [pick] : [])],
-    () => (pick ? "Use the altar or the forge, pick a depth at the signpost, or climb a ladder." : "Use the altar or the forge, or climb a ladder."),
+    [pray, smith, rummage, trade, ...climb, ...(pick ? [pick] : [])],
+    () => (pick ? "Use the altar, the forge or the merchant, pick a depth at the signpost, or climb a ladder." : "Use the altar, the forge or the merchant, or climb a ladder."),
   );
+
+  // The merchant's sales bank gold at any moment: the TOTAL line and the
+  // altar's sigil keep up.
+  let shownGold = getSave().gold;
+  onUpdate(() => {
+    if (getSave().gold === shownGold) return;
+    shownGold = getSave().gold;
+    total?.setText(`TOTAL ${shortGold(shownGold)}`);
+    altar.setLit(canBuyAnything());
+  });
 
   hidePrompt();
   showRoomName("The underworld");
