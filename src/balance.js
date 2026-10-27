@@ -380,6 +380,33 @@ export const BALANCE = {
       { id: "skull_helm", name: "Skull helm", slot: "head", parts: { skull: 3, flesh: 3 }, time: 60, bonuses: [1, 2], size: [0.06, 0.15], price: 40, sells: 40 },
       { id: "zombie_crown", name: "Zombie crown", slot: "head", parts: { heart: 1, skull: 4, goo: 4 }, time: 120, bonuses: [2, 3], size: [0.12, 0.25], price: 200, sells: 60 },
     ],
+    // The upgrades sold at the forge and at the merchant's stall, along the
+    // top of their pages, for gold. `costs`: each level's price; `effect`:
+    // what each level does (crafting.js workshop):
+    //   forgeTime   pieces take this many times as long to make
+    //   anvils      more pieces made at once
+    //   rolls       each bonus is rolled this many more times, keeping the biggest
+    //   recipe      learns to make it (the ones an upgrade teaches aren't known before)
+    //   sellTime    pieces take this many times as long to sell
+    //   counter     more spaces on the counter
+    //   haggle      everything sells for this share more
+    //   autoSell    a new piece worth less than the one worn in its slot goes
+    //               straight on the counter, when there's room
+    upgrades: {
+      forge: [
+        { id: "faster_forging", name: "Faster forging", icon: "hourglass", costs: [60, 180, 540, 1600], effect: { forgeTime: 0.85 } },
+        { id: "second_anvil", name: "Second anvil", icon: "anvil", costs: [1000], effect: { anvils: 1 } },
+        { id: "better_rolls", name: "Better rolls", icon: "dice", costs: [100, 300, 900], effect: { rolls: 1 } },
+        { id: "learn_skull_helm", name: "Skull helm recipe", icon: "skull_helm", costs: [80], effect: { recipe: "skull_helm" } },
+        { id: "learn_zombie_crown", name: "Zombie crown recipe", icon: "zombie_crown", costs: [400], effect: { recipe: "zombie_crown" } },
+      ],
+      merchant: [
+        { id: "faster_selling", name: "Faster selling", icon: "hourglass", costs: [60, 180, 540, 1600], effect: { sellTime: 0.85 } },
+        { id: "bigger_counter", name: "Bigger counter", icon: "counter", costs: [100, 300, 900], effect: { counter: 1 } },
+        { id: "haggling", name: "Haggling", icon: "coins", costs: [80, 240, 720, 2200], effect: { haggle: 0.2 } },
+        { id: "auto_sell", name: "Auto-sell", icon: "sack", costs: [300], effect: { autoSell: 1 } },
+      ],
+    },
   },
 
   // ---- Special upgrades ---------------------------------------------------

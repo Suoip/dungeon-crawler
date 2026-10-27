@@ -29,7 +29,8 @@ const FRESH = {
   worn: {},                  // slot -> the id of the piece worn there
   nextPiece: 1,              // the id the next piece gets
   newGear: 0,                // pieces made since the gear chest was last opened
-  counter: [],               // the merchant's counter: { piece, price, left } (seconds left to sell)
+  counter: [],               // the merchant's counter: { piece, price, left } (its price before Haggling, and seconds left to sell at the start)
+  workshop: {},              // the forge's and merchant's upgrades: id -> level (balance.js crafting.upgrades)
 };
 
 let save = structuredClone(FRESH);
@@ -103,24 +104,28 @@ export function startCraft(recipe) {
   write();
 }
 
-// The forge works for `seconds`: on the piece on the anvil, then the next
-// one with any time left over. A finished one is made by `make(recipeId)`
-// (which rolls its bonuses) and goes in the gear chest. Returns the pieces
-// finished.
-export function workForge(seconds, make) {
+// The forge works for `seconds`: on the pieces on its `anvils` (the first
+// ones in line), all at once, and when one's done the next in line takes
+// its place with any time left over. A finished one is made by
+// `make(recipeId)` (which rolls its bonuses) and goes in the gear chest.
+// Returns the pieces finished.
+export function workForge(seconds, make, anvils = 1) {
   if (!save.forge.length) return [];
   const made = [];
   while (save.forge.length && seconds > 0) {
-    const job = save.forge[0];
-    const spent = Math.min(seconds, job.left);
-    job.left -= spent;
+    const working = save.forge.slice(0, anvils);
+    const spent = Math.min(seconds, ...working.map((job) => job.left));
+    for (const job of working) job.left -= spent;
     seconds -= spent;
-    if (job.left > 0) break;
-    save.forge.shift();
-    const piece = { id: save.nextPiece++, recipe: job.recipe, bonuses: make(job.recipe) };
-    save.gear.push(piece);
-    save.newGear++;
-    made.push(piece);
+    const done = working.filter((job) => job.left <= 0);
+    if (!done.length) break;
+    save.forge = save.forge.filter((job) => !done.includes(job));
+    for (const job of done) {
+      const piece = { id: save.nextPiece++, recipe: job.recipe, bonuses: make(job.recipe) };
+      save.gear.push(piece);
+      save.newGear++;
+      made.push(piece);
+    }
   }
   write();
   return made;
@@ -133,9 +138,11 @@ export function wearPiece(id, slot) {
 }
 
 // Puts a spare piece on the merchant's counter, to sell for `price` gold in
-// `seconds`. It leaves the gear chest.
+// `seconds`. It leaves the gear chest (and isn't new any more, if it was).
 export function putOnCounter(piece, price, seconds) {
-  save.gear = save.gear.filter((other) => other !== piece);
+  const i = save.gear.indexOf(piece);
+  if (i >= save.gear.length - save.newGear) save.newGear--;
+  save.gear.splice(i, 1);
   save.counter.push({ piece, price, left: seconds });
   write();
 }
@@ -148,15 +155,24 @@ export function takeBack(i) {
 }
 
 // The merchant sells for `seconds`: every piece on the counter at once. A
-// sold one's gold is banked. Returns the ones sold.
-export function workCounter(seconds) {
+// sold one's gold (its price, `haggle` times over) is banked. Returns the
+// ones sold.
+export function workCounter(seconds, haggle = 1) {
   if (!save.counter.length) return [];
   for (const sale of save.counter) sale.left -= seconds;
   const sold = save.counter.filter((sale) => sale.left <= 0);
   save.counter = save.counter.filter((sale) => sale.left > 0);
-  for (const sale of sold) save.gold += sale.price;
+  for (const sale of sold) save.gold += Math.round(sale.price * haggle);
   write();
   return sold;
+}
+
+// Buys a level of a forge or merchant upgrade (balance.js crafting.upgrades)
+// for `cost` gold.
+export function buyWorkshop(id, cost) {
+  save.gold -= cost;
+  save.workshop[id] = (save.workshop[id] ?? 0) + 1;
+  write();
 }
 
 // The gear chest has been opened: nothing in it is new any more.
