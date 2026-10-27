@@ -8,8 +8,9 @@ import { heroStats } from "./stats.js";
 import { setupInteractions } from "./interact.js";
 import { fallIn, climbLadder, giveControl, LAND_X } from "./cutscenes.js";
 import { addFader, fadeIn, sleep, addRedLight } from "./effects.js";
-import { addLadder, addShadowText, addSign, addAltar } from "./props.js";
+import { addLadder, addShadowText, addSign, addAltar, addForge, addGearChest } from "./props.js";
 import { openTree, canBuyAnything } from "./tree.js";
+import { openForge, openGearChest } from "./forge.js";
 import { playSound } from "./sound.js";
 import { hidePrompt, showRoomName } from "./panel.js";
 import { shortGold } from "./hud.js";
@@ -34,8 +35,10 @@ const LADDERS = [
 // On a visit there's nothing to try again: the same ladder starts a run.
 const PLAY_LADDER = { label: "PLAY", prompt: "Start a run" };
 
-const ALTAR_Y = 158;  // the altar's foot, below the results
-const LAND_Y = 176;   // he lands in front of it, already at it
+const ALTAR_Y = 166;  // the altar's foot, below the results
+const LAND_Y = 184;   // he lands in front of it, already at it
+const FORGE = { x: 44, y: 182 }; // the forge's foot, in the bottom left corner
+const GEAR_CHEST = { x: 276, y: 182 }; // the gear chest's, in the bottom right
 
 const savedStats = () => heroStats(getSave().levels); // the hero as the tree has made him
 
@@ -53,6 +56,8 @@ function underworld(run, ending) {
   const altar = addAltar(LAND_X, ALTAR_Y);
   altar.setLit(canBuyAnything());
   const signpost = unlockedDepths() > 1 ? addDepthSignpost() : null;
+  const forge = addForge(FORGE.x, FORGE.y, () => getSave().forge.length > 0);
+  const chest = addGearChest(GEAR_CHEST.x, GEAR_CHEST.y, () => getSave().newGear > 0);
 
   const player = addPlayer(LAND_X, LAND_Y);
   if (ending === "died") player.use(color(255, 110, 110)); // still red, down here
@@ -86,6 +91,17 @@ function underworld(run, ending) {
       });
     }),
   };
+  // The forge and the gear chest open their pages (forge.js) the same way.
+  const openPage = (open) => () => new Promise((done) => {
+    player.frozen = true;
+    player.play("idle");
+    open(() => {
+      player.frozen = false;
+      done(false); // still in the room
+    });
+  });
+  const smith = { zone: forge.zone, prompt: ["Use the forge"], use: openPage(openForge) };
+  const rummage = { zone: chest.zone, prompt: ["Open the gear chest"], use: openPage(openGearChest) };
   // The signpost: the next depth that's open (round to the first again).
   const pick = signpost && {
     zone: signpost.zone,
@@ -99,8 +115,8 @@ function underworld(run, ending) {
   };
   const interactions = setupInteractions(
     player,
-    [pray, ...climb, ...(pick ? [pick] : [])],
-    () => (pick ? "Use the altar, pick a depth at the signpost, or climb a ladder." : "Use the altar to spend your gold, or climb a ladder."),
+    [pray, smith, rummage, ...climb, ...(pick ? [pick] : [])],
+    () => (pick ? "Use the altar or the forge, pick a depth at the signpost, or climb a ladder." : "Use the altar or the forge, or climb a ladder."),
   );
 
   hidePrompt();
@@ -117,7 +133,8 @@ function underworld(run, ending) {
 
 // The run's results, written on the floor one line after another, like the
 // title: how it ended, the gold it earned and what's banked now, how deep it
-// got (1-4 is depth 1, room 4) and how many monsters fell. (Nothing on a
+// got (1-4 is depth 1, room 4), how many monsters fell, and the parts it
+// found for the forge. (Nothing on a
 // visit: there was no run.) Returns the TOTAL line, so it can follow the
 // gold spent at the altar.
 const ENDINGS = {
@@ -133,6 +150,7 @@ async function writeResults(run, ending) {
     { text: `TOTAL ${shortGold(getSave().gold)}` },
     { text: `DEEPEST ${depthLabel(run.depth, reached)}` },
     { text: `KILLS ${run.kills}${run.material ? `  ${BALANCE.depths[run.depth - 1].material.toUpperCase()} ${run.material}` : ""}` },
+    ...(Object.keys(run.parts).length ? [{ text: Object.entries(run.parts).map(([part, n]) => `${part.toUpperCase()} ${n}`).join("  "), color: [214, 222, 140] }] : []),
     // The first time a depth's boss falls, the next depth opens.
     ...(run.unlocked ? [{ text: `DEPTH ${run.depth + 1} UNLOCKED`, color: [99, 199, 77] }] : []),
   ];

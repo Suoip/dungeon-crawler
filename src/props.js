@@ -2,7 +2,7 @@ import { TILE, TOP, GAME_WIDTH } from "./config.js";
 import { playSound } from "./sound.js";
 
 // Things placed in the menu rooms and the underworld: the ladder, the floor
-// hatch, the well, the altar, signs, plaques, levers, the reset button,
+// hatch, the well, the altar, the forge, the gear chest, signs, plaques, levers, the reset button,
 // keyboard keys and the title text.
 
 // The pack's wood colors, for things we draw ourselves.
@@ -147,6 +147,81 @@ export function addAltar(x, y) {
   });
   const zone = add([pos(x - 14, y), area({ shape: new Rect(vec2(0), 28, 20) })]);
   return { zone, setLit: (on) => (lit = on) };
+}
+
+// The underworld's forge, where gear is made (forge.js): a stone furnace
+// with a fire in its mouth and a chimney, and an anvil in front of it.
+// (x, y) is the middle of its foot; it's solid there, and the zone is the
+// floor in front. `working()` says whether it's making something: then the
+// fire roars and sparks fly up; otherwise it smoulders.
+export function addForge(x, y, working) {
+  const DARK = rgb(24, 20, 37);
+  const forge = add([
+    pos(x, y),
+    area({ shape: new Rect(vec2(-18, -7), 36, 7) }),
+    body({ isStatic: true }),
+    z(10 + y / 1000), // sorted with the characters
+  ]);
+  forge.onDraw(() => {
+    const busy = working();
+    // The chimney and the furnace, in the altar's stone.
+    drawRect({ pos: vec2(-12, -38), width: 10, height: 12, color: DARK });
+    drawRect({ pos: vec2(-11, -37), width: 8, height: 11, color: rgb(104, 62, 66) });
+    drawRect({ pos: vec2(-18, -27), width: 24, height: 27, color: DARK });
+    drawRect({ pos: vec2(-17, -26), width: 22, height: 4, color: rgb(150, 98, 98) });
+    drawRect({ pos: vec2(-17, -26), width: 22, height: 1, color: rgb(186, 128, 124) });
+    drawRect({ pos: vec2(-17, -22), width: 22, height: 20, color: rgb(104, 62, 66) });
+    drawRect({ pos: vec2(-17, -2), width: 22, height: 2, color: rgb(78, 44, 50) });
+    // Its mouth, and the fire in it: bright and flickering while it works.
+    drawRect({ pos: vec2(-12, -17), width: 12, height: 11, color: DARK });
+    const flicker = Math.sin(time() * (busy ? 17 : 5)) * 0.5 + 0.5;
+    const flames = busy ? [[-11, -12, 10, 6, [247, 150, 23]], [-9, -15, 3, 3, [255, 205, 70]], [-5, -14, 3, 2, [255, 205, 70]], [-10, -8, 8, 2, [255, 230, 120]]]
+      : [[-11, -9, 10, 3, [150, 50, 30]], [-8, -10, 4, 1, [200, 80, 30]]];
+    for (const [fx, fy, w, h, c] of flames) drawRect({ pos: vec2(fx, fy - (busy ? Math.round(flicker) : 0)), width: w, height: h, color: rgb(...c), opacity: 0.7 + 0.3 * flicker });
+    // The anvil, on a stump, in front of the furnace's right side.
+    drawRect({ pos: vec2(5, -9), width: 14, height: 9, color: DARK });
+    drawRect({ pos: vec2(9, -5), width: 6, height: 5, color: rgb(92, 52, 30) });
+    drawRect({ pos: vec2(6, -8), width: 12, height: 3, color: rgb(120, 120, 136) });
+    drawRect({ pos: vec2(6, -8), width: 12, height: 1, color: rgb(180, 180, 196) });
+    drawRect({ pos: vec2(4, -8), width: 2, height: 2, color: rgb(120, 120, 136) }); // its horn
+  });
+  // Sparks up the chimney while it works.
+  forge.onUpdate(() => {
+    if (!working() || Math.random() > dt() * 6) return;
+    const spark = add([rect(1, 1), pos(x - 7 + rand(-2, 2), y - 38), color(255, 205, 70), opacity(1), z(11)]);
+    const rise = rand(14, 24);
+    spark.onUpdate(() => {
+      spark.pos.y -= rise * dt();
+      spark.pos.x += Math.sin(time() * 6 + rise) * 0.2;
+      spark.opacity -= dt() * 1.2;
+      if (spark.opacity <= 0) destroy(spark);
+    });
+  });
+  const zone = add([pos(x - 18, y), area({ shape: new Rect(vec2(0), 38, 18) })]);
+  return { zone };
+}
+
+// The gear chest beside the forge, where finished gear goes (forge.js): the
+// tileset's chest, solid at its foot, with the zone in front. `hasNew()`
+// says whether there's gear in it not seen yet: then it glints.
+export function addGearChest(x, y, hasNew) {
+  const chest = add([
+    sprite("chest"),
+    pos(x, y),
+    anchor("bot"),
+    area({ shape: new Rect(vec2(-7, -6), 14, 6) }),
+    body({ isStatic: true }),
+    z(10 + y / 1000),
+  ]);
+  chest.onDraw(() => {
+    if (!hasNew()) return;
+    // A glint that twinkles over its lid.
+    const t = (time() * 1.5) % 1;
+    const glow = Math.sin(t * Math.PI);
+    for (const [gx, gy, w, h] of [[-1, -21, 3, 1], [0, -22, 1, 3]]) drawRect({ pos: vec2(gx + 4, gy), width: w, height: h, color: rgb(255, 230, 140), opacity: glow });
+  });
+  const zone = add([pos(x - 12, y), area({ shape: new Rect(vec2(0), 24, 14) })]);
+  return { zone };
 }
 
 // A big red button in the floor, with its name over it. press() pushes it

@@ -144,6 +144,8 @@ export const BALANCE = {
   //   decor   what hangs on its back wall (room.js addDecor), if anything
   //   material what its kills drop from sub-depth 6 on (see drops), which buys
   //           its special upgrade at the altar
+  //   parts   the part each of its monsters drops, for the forge (see drops
+  //           and crafting)
   //   rooms   one entry per sub-depth, 1 to 10 (see below)
   //   boss    its boss (see below); a stand-in can have its own `name` and `tint`
   //
@@ -170,6 +172,7 @@ export const BALANCE = {
       scale: { hp: 1, gold: 1.25 }, // (gold 1 before the swing became narrow: fewer kills a swing, so more gold a kill)
       tint: null,
       material: "bones",
+      parts: { slug: "goo", tiny_zombie: "flesh", skeleton: "skull", big_zombie: "heart" },
       // Restless graves (graves.js): a tiny zombie or skeleton that falls may
       // leave a grave, and climb back out of it after `riseAfter` seconds
       // unless he stamps it down first (walks over it).
@@ -338,6 +341,39 @@ export const BALANCE = {
     // Each depth's material (bones, teeth, tusks, slime, embers: its
     // `material`): none before sub-depth 6, then more common the deeper you are.
     material: { fromSubDepth: 6, chance: 0.02, stepPerSubDepth: 0.02 },
+    // A monster's part (its depth's `parts`), for the forge: this share of
+    // kills drop one, from the first room. A boss always drops its own.
+    part: { chance: 0.25 },
+  },
+
+  // ---- Crafting ------------------------------------------------------------
+  // The forge in the underworld (forge.js) makes gear out of monsters' parts.
+  // It works on one piece at a time, with `queue` more waiting, and only
+  // while the game is open (in a run too). A finished piece goes in the gear
+  // chest beside it, where one of each slot can be worn.
+  crafting: {
+    queue: 3,
+    // What a piece can roll: each bonus is a share (0.1 = +10%), and `scale`
+    // shrinks it for one that would be too strong at full size. How each
+    // works on the hero is in stats.js (withGear).
+    bonuses: {
+      damage:     { name: "DAMAGE" },              // the sword's and every weapon's
+      speed:      { name: "SWING SPEED" },
+      gold:       { name: "GOLD" },                // on top of Greed
+      time:       { name: "TIME" },                // more on the clock at the start
+      magnet:     { name: "MAGNET" },
+      critChance: { name: "CRIT CHANCE", scale: 0.25 }, // added to the chance itself: +2% at 8%
+      critDamage: { name: "CRIT DAMAGE" },
+      xp:         { name: "XP" },                  // on top of Wisdom
+    },
+    // `parts`: what it takes; `time`: seconds at the forge; it rolls
+    // `bonuses` [fewest, most] different bonuses, each `size` [smallest,
+    // biggest] (before its scale), at random.
+    recipes: [
+      { id: "rag_hood", name: "Rag hood", slot: "head", parts: { goo: 3, flesh: 2 }, time: 30, bonuses: [1, 1], size: [0.03, 0.08] },
+      { id: "skull_helm", name: "Skull helm", slot: "head", parts: { skull: 3, flesh: 3 }, time: 60, bonuses: [1, 2], size: [0.06, 0.15] },
+      { id: "zombie_crown", name: "Zombie crown", slot: "head", parts: { heart: 1, skull: 4, goo: 4 }, time: 120, bonuses: [2, 3], size: [0.12, 0.25] },
+    ],
   },
 
   // ---- Special upgrades ---------------------------------------------------

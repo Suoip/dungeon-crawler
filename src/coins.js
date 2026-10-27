@@ -1,5 +1,6 @@
 import { playSound } from "./sound.js";
 import { roomLimits } from "./room.js";
+import { drawPart } from "./crafting.js";
 
 // Coins on the floor (DESIGN.md section 6). A kill drops its gold as coins
 // that hop out of the monster and lie where they land. Once the hero is
@@ -112,6 +113,14 @@ function drawStone(stone, twinkleAt) {
   if ((time() + twinkleAt) % 2.5 < 0.12) drawRect({ pos: vec2(-1, -7), width: 1, height: 1, color: rgb(255, 255, 255) });
 }
 
+// A monster's part (balance.js depths' `parts`), for the forge: picked up
+// like a coin, into `run.parts`.
+export function dropPart(at, run, player, magnet, part) {
+  const limits = roomLimits([6, 4]);
+  const land = at.add(rand(-8, 8), rand(-3, 3));
+  addPickup(at, vec2(clamp(land.x, limits.left, limits.right), clamp(land.y, limits.top, limits.bottom)), "part", 1, run, player, magnet, part);
+}
+
 // A coin, a stone or a piece of material, hopping out to `to` and lying
 // there until the magnet (or the end-of-run sweep) brings it to him. Stones
 // are tagged "coin" too: they're gold.
@@ -130,6 +139,10 @@ function addPickup(from, to, kind, value, run, player, magnet, material = null) 
   if (kind === "material") {
     const flickerAt = rand(0, 3);
     coin.onDraw(() => drawMaterial(material, flickerAt));
+  }
+  if (kind === "part") {
+    coin.part = material;
+    coin.onDraw(() => drawPart(material, vec2(0, -4)));
   }
   if (stone) {
     const twinkleAt = rand(0, 2.5);
@@ -155,6 +168,9 @@ function addPickup(from, to, kind, value, run, player, magnet, material = null) 
     if (distance < PICKUP) {
       if (kind === "material") {
         run.material += coin.value;
+        playSound("bone");
+      } else if (kind === "part") {
+        addParts(run, { [coin.part]: coin.value });
         playSound("bone");
       } else {
         run.gold += coin.value;
@@ -183,11 +199,22 @@ export function sweepFloor() {
 // What's still on the floor (or still flying): the gold in coins and stones, and the material.
 export const floorValue = () => get("coin").reduce((sum, coin) => sum + coin.value, 0);
 export const floorMaterial = () => get("material").reduce((sum, piece) => sum + piece.value, 0);
+// ...and the parts: part -> how many.
+export const floorParts = () => {
+  const parts = {};
+  for (const piece of get("part")) parts[piece.part] = (parts[piece.part] ?? 0) + piece.value;
+  return parts;
+};
+// Adds parts (part -> how many) to the run's.
+export function addParts(run, parts) {
+  for (const [part, count] of Object.entries(parts)) run.parts[part] = (run.parts[part] ?? 0) + count;
+}
 
 // Every coin and piece of material still on the floor (or still flying), added to the run
 // at once: the ones the sweep didn't bring in before the screen went dark.
 export function collectFloor(run) {
   run.gold += floorValue();
   run.material += floorMaterial();
+  addParts(run, floorParts());
   for (const pickup of get("pickup")) destroy(pickup);
 }

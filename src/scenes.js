@@ -12,7 +12,7 @@ import {
 import { sleep, animate, addFader, fadeIn, fadeOut, shakeScreen, flashScreen, puffDust } from "./effects.js";
 import { startSpawning, raiseMob, bossSpot, MOB_TYPES } from "./mobs.js";
 import { setupAutoSwing, setupHurt, addHearts, setupHeartDrops, setupOrbDrops } from "./combat.js";
-import { dropCoins, dropMaterial, collectFloor, sweepFloor, floorValue, floorMaterial } from "./coins.js";
+import { dropCoins, dropMaterial, dropPart, collectFloor, sweepFloor, floorValue, floorMaterial, floorParts } from "./coins.js";
 import { buildLayout } from "./crypt.js";
 import { setupGraves } from "./graves.js";
 import { setupThieves } from "./thieves.js";
@@ -95,6 +95,7 @@ export function registerRoomScene() {
         maybeDropHeart(mob);
         maybeDropOrb(mob);
         maybeDropMaterial(mob);
+        maybeDropPart(mob);
         // Flat gold per kill (a tree upgrade) comes on top of the monster's own,
         // in this room's gold, and Greed adds its share of both.
         const flat = mob.def.boss ? 0 : stats.goldPerKill * roomScale(run.depth, sub).gold;
@@ -136,6 +137,12 @@ export function registerRoomScene() {
     const materialChance = sub < drop.fromSubDepth ? 0 : drop.chance + drop.stepPerSubDepth * (sub - drop.fromSubDepth);
     const maybeDropMaterial = (mob) => {
       if (Math.random() < materialChance) dropMaterial(mob.pos.clone(), run, player, () => stats.magnetRange, depth.material);
+    };
+    // A monster's part, for the forge (the depth's `parts`): a share of kills
+    // drop one, and a boss always drops its own.
+    const maybeDropPart = (mob) => {
+      const part = depth.parts?.[mob.type];
+      if (part && (mob.def.boss || Math.random() < BALANCE.drops.part.chance)) dropPart(mob.pos.clone(), run, player, () => stats.magnetRange, part);
     };
     const hud = addHud(() => ({ clock: run.clock, sand: run.sand, stopped: clockStopped, xp, xpNeeded: room.xp, gold: run.gold, goldTimes: run.pact?.gold }));
     // Time orbs: while the clock runs, a kill may drop one, worth seconds.
@@ -322,11 +329,11 @@ export function registerRoomScene() {
       collectTheRest();
     }
 
-    // The run is over: its gold and material go into the save right away,
+    // The run is over: its gold, material and parts go into the save right away,
     // counting what's still on the floor (so closing the page during the
     // cutscene loses nothing), and then those fly to him, just to show it.
     function bankWithTheFloor() {
-      bank(floorValue(), floorMaterial());
+      bank(floorValue(), floorMaterial(), floorParts());
       sweepFloor();
     }
 
@@ -336,13 +343,13 @@ export function registerRoomScene() {
       collectFloor(run);
     }
 
-    // The run's gold and material (plus `gold` and `pieces` more) go into the
+    // The run's gold, material and parts (plus `gold`, `pieces` and `parts` more) go into the
     // save: once per run, however it ends. `run.unlocked`: this run beat the
     // depth's boss for the first time, and the next depth is open now.
-    function bank(gold = 0, pieces = 0) {
+    function bank(gold = 0, pieces = 0, parts = {}) {
       if (run.banked) return;
       run.banked = true;
-      run.unlocked = endRun({ gold: run.gold + gold, deepest: run.deepest, depth: run.depth, cleared: bossDown, material: run.material + pieces });
+      run.unlocked = endRun({ gold: run.gold + gold, deepest: run.deepest, depth: run.depth, cleared: bossDown, material: run.material + pieces, parts: { ...run.parts, ...Object.fromEntries(Object.entries(parts).map(([part, n]) => [part, n + (run.parts[part] ?? 0)])) } });
     }
 
     // Through the door: on to the next room. Coins left on the floor stay

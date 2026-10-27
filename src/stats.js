@@ -83,6 +83,28 @@ export function heroStats(levels, depth = 1) {
   return stats;
 }
 
+// The hero with his worn gear on (`worn`: pieces from the forge, save.js):
+// each bonus a piece rolled (balance.js crafting) makes what it's for that
+// share bigger, on top of the tree. Changes `stats` and returns it.
+export function withGear(stats, worn) {
+  for (const piece of worn) {
+    for (const [kind, size] of Object.entries(piece.bonuses)) GEAR[kind]?.(stats, 1 + size, size);
+  }
+  return stats;
+}
+const GEAR = {
+  damage: (s, x) => {
+    for (const stat of ["damage", "hammerDamage", "lightningDamage", "boomerangDamage", "bladesDamage"]) s[stat] *= x;
+  },
+  speed: (s, x) => (s.swingEvery /= x),
+  gold: (s, x) => (s.goldBonus = (1 + s.goldBonus) * x - 1),
+  time: (s, x) => (s.startTime *= x),
+  magnet: (s, x) => (s.magnetRange *= x),
+  critChance: (s, x, size) => (s.critChance += size),
+  critDamage: (s, x) => (s.critDamage *= x),
+  xp: (s, x) => (s.xpBonus = (1 + s.xpBonus) * x - 1),
+};
+
 // What level `level` (counting from 0) of a node costs (nodes.js works out
 // each node's price), rounded to a tidy number: whole gold under 100, then
 // two significant figures (130, 2100...).
