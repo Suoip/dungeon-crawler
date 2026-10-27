@@ -523,6 +523,13 @@ to:
     so there are exactly 5 in the game. Repeat boss kills still pay gold.
     Its use is decided later, because the first milestone ends at the first
     boss.
+- **Monster parts, for crafting.** Each depth's monsters drop their own
+  part (balance.js depths' `parts`): a quarter of kills drop one, from the
+  first room, and the boss always drops its own. The crypt's: GOO from
+  slugs, ROTTEN FLESH from tiny zombies, SKULLS from skeletons, and the Big
+  Zombie's HEART. They're picked up like coins, banked with the run, and
+  listed on the results. They don't buy tree upgrades: they're for the
+  forge (below).
 - **For the first milestone, gold buys every node.**
 - **Collecting:** drops land on the floor, and a small magnet pulls them in
   when you're close. The tree grows the magnet's range. Anything left behind
@@ -553,6 +560,43 @@ to:
   1 has too few kills for orb upgrades to pay off, so **Orb finder and
   Bigger orbs are an investment for depth 2** (see "Buying early" in
   section 7).
+
+### Crafting
+
+Inspired by Chef Knight, where the run's drops are cooked between runs.
+Coins stay as they are; crafting is a second way to grow, built in steps:
+
+1. **Parts, the forge and helmets** (built). The forge stands in the
+   underworld's bottom left corner, the gear chest in the bottom right.
+   - **The forge's page** lists the recipes (each piece's picture, name,
+     parts and time), the piece on the anvil with how long it has left, and
+     up to three more waiting in line; the parts you have are along the
+     title bar. Pick a recipe and make it (click it twice, or E): its parts
+     are paid and it joins the line.
+   - **It works while the game is open,** anywhere (in a run, in the menu),
+     not while it's closed. A finished piece rings, goes into the gear
+     chest, and the chest glints until it's opened. While it works, the
+     forge's fire roars and sparks fly up its chimney.
+   - **The crypt's recipes are helmets:** RAG HOOD (3 goo, 2 flesh, 30 s,
+     one bonus of 3-8%), SKULL HELM (3 skulls, 3 flesh, 1 min, one or two
+     of 6-15%) and ZOMBIE CROWN (a heart, 4 skulls, 4 goo, 2 min, two or
+     three of 12-25%).
+   - **A piece rolls its bonuses:** each a different one picked at random
+     from damage (the sword's and every weapon's), swing speed, gold, time,
+     magnet, crit chance (a quarter the size), crit damage and XP. Each is a
+     share on top of the tree, so it's worth as much in every depth.
+   - **The gear chest's page** shows every piece made (the worn one first,
+     with a gold frame; new ones marked), and the picked one's bonuses. Pick
+     one and wear it. There's one slot so far, the head.
+2. **A merchant** in the underworld who sells spare gear over time, for gold.
+3. **Upgrades at the forge and the merchant,** bought with gold: making and
+   selling faster, and more. They stay out of the skill tree, so its
+   pacing is untouched.
+4. **A new slot per depth,** made from its monsters' parts: the warrens'
+   boots, the fort's armour, the swamp's amulet and the pit's ring.
+5. **Enchanting** gear with rare drops from the dungeon.
+
+The pacing simulator doesn't wear gear, so its times are without it.
 
 ## 7. The skill tree
 

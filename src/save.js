@@ -23,6 +23,12 @@ const FRESH = {
   depth: 1,                  // the depth the next run goes to (picked in the underworld)
   materials: { bones: 0, teeth: 0, tusks: 0, slime: 0, embers: 0 }, // each depth's material, for its special upgrade
   seenUnderworld: false,     // the first visit puts the well in the title room
+  parts: {},                 // monsters' parts, for the forge: part -> how many
+  forge: [],                 // what the forge is making, in order: { recipe, left } (seconds left), the first on the anvil
+  gear: [],                  // every piece it has made: { id, recipe, bonuses: { kind: share } } (balance.js crafting)
+  worn: {},                  // slot -> the id of the piece worn there
+  nextPiece: 1,              // the id the next piece gets
+  newGear: 0,                // pieces made since the gear chest was last opened
 };
 
 let save = structuredClone(FRESH);
@@ -51,13 +57,14 @@ function write() {
   }
 }
 
-// A run in `depth` is over: bank its gold and material, and remember how deep
+// A run in `depth` is over: bank its gold, material and parts, and remember how deep
 // it got (`cleared` is true when it beat the boss). Beating a depth's boss
 // for the first time unlocks the next depth, and the next run goes there.
 // Returns true when that happened.
-export function endRun({ gold, deepest, depth, cleared = false, material = 0 }) {
+export function endRun({ gold, deepest, depth, cleared = false, material = 0, parts = {} }) {
   save.gold += gold;
   save.materials[BALANCE.depths[depth - 1].material] += material;
+  for (const [part, count] of Object.entries(parts)) save.parts[part] = (save.parts[part] ?? 0) + count;
   save.runs++;
   save.best = Math.max(save.best, (depth - 1) * 10 + deepest);
   const unlocked = cleared && depth > save.cleared && depth < BALANCE.depths.length;
@@ -88,6 +95,49 @@ export function buySpecial(id, material, cost) {
   write();
 }
 
+// Puts a recipe (balance.js crafting) in at the forge, paying its parts.
+export function startCraft(recipe) {
+  for (const [part, count] of Object.entries(recipe.parts)) save.parts[part] -= count;
+  save.forge.push({ recipe: recipe.id, left: recipe.time });
+  write();
+}
+
+// The forge works for `seconds`: on the piece on the anvil, then the next
+// one with any time left over. A finished one is made by `make(recipeId)`
+// (which rolls its bonuses) and goes in the gear chest. Returns the pieces
+// finished.
+export function workForge(seconds, make) {
+  if (!save.forge.length) return [];
+  const made = [];
+  while (save.forge.length && seconds > 0) {
+    const job = save.forge[0];
+    const spent = Math.min(seconds, job.left);
+    job.left -= spent;
+    seconds -= spent;
+    if (job.left > 0) break;
+    save.forge.shift();
+    const piece = { id: save.nextPiece++, recipe: job.recipe, bonuses: make(job.recipe) };
+    save.gear.push(piece);
+    save.newGear++;
+    made.push(piece);
+  }
+  write();
+  return made;
+}
+
+// Puts a piece on, in its slot (the one there goes back in the chest).
+export function wearPiece(id, slot) {
+  save.worn[slot] = id;
+  write();
+}
+
+// The gear chest has been opened: nothing in it is new any more.
+export function seeGear() {
+  if (!save.newGear) return;
+  save.newGear = 0;
+  write();
+}
+
 // The first time he's in the underworld, the title room gets its well.
 export function seeUnderworld() {
   if (save.seenUnderworld) return;
@@ -95,7 +145,7 @@ export function seeUnderworld() {
   write();
 }
 
-// Starts over: no gold, no upgrades (the settings stay).
+// Starts over: no gold, no upgrades, no parts or gear (the settings stay).
 export function resetSave() {
   save = structuredClone(FRESH);
   write();
