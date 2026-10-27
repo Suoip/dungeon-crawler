@@ -1,19 +1,22 @@
 import { GAME_WIDTH, GAME_HEIGHT } from "./config.js";
 import { BALANCE } from "./balance.js";
-import { getSave, startCraft, wearPiece, seeGear } from "./save.js";
-import { recipeOf, partsShort, forgeFull, canCraft, bonusText, drawCrafted } from "./crafting.js";
+import { getSave, startCraft, wearPiece, seeGear, buyWorkshop } from "./save.js";
+import { recipeOf, partsShort, forgeFull, canCraft, knowsRecipe, workshop, takes, upgradeLevel, upgradeCost, bonusText, drawCrafted } from "./crafting.js";
 import { playSound } from "./sound.js";
 import { getGamePixel } from "./display.js";
 import { setPrompt } from "./panel.js";
+import { shortGold } from "./hud.js";
 
 // The forge's two pages (DESIGN.md section 6), drawn in the game over the
 // dimmed underworld like the skill tree:
 //   - the forge: the recipes on the left, what it's making on the right (the
-//     piece on the anvil and the ones waiting), and the parts you have along
-//     the title bar. Pick a recipe and make it.
+//     pieces on the anvils and the ones waiting), the parts and gold you have
+//     along the title bar, and the forge's upgrades in a row under it. Pick a
+//     recipe and make it, or an upgrade and buy it.
 //   - the gear chest: every piece it has made. Pick one and wear it.
-// Mouse: click a recipe or piece to pick it, click it again to make or wear
-// it. Keyboard: the arrows or WASD pick, E makes or wears, Esc closes.
+// Mouse: click a recipe, piece or upgrade to pick it, click it again to
+// make, wear or buy it. Keyboard: the arrows or WASD pick, E does it, Esc
+// closes.
 
 const PALETTE = {
   ink: [24, 20, 37], stone: [58, 47, 74], stoneLight: [90, 77, 110],
@@ -133,87 +136,222 @@ function drawParts() {
   }
 }
 
+// ---- The upgrades row -------------------------------------------------------------
+// The forge's or the merchant's upgrades (balance.js crafting.upgrades), in
+// a row under the title bar, like the altar's specials over the skill tree:
+// each one's icon in a round frame (gold once it's maxed, green when you can
+// afford the next level), its levels as pips, and the next level's price.
+// On a page they're picked as "up:0", "up:1"...
+
+export const UP_ROW = 24; // the row's height
+const UP_GAP = 62;        // px from one upgrade to the next
+const upSpot = (k) => vec2(17 + k * UP_GAP, TOP_BAR + UP_ROW / 2);
+export const isUp = (id) => typeof id === "string" && id.startsWith("up:");
+const upIndex = (id) => Number(id.slice(3));
+
+// What an upgrade does at a level, as the panel says it.
+function upgradeText(upgrade, level) {
+  const [[kind, by]] = Object.entries(upgrade.effect);
+  if (kind === "recipe") return `LEARNS TO MAKE THE ${recipeOf(by).name.toUpperCase()}`;
+  if (kind === "autoSell") return "SELLS NEW PIECES WORSE THAN YOURS";
+  const [label, show] = {
+    forgeTime: ["FORGING TIME", (l) => `-${Math.round((1 - by ** l) * 100)}%`],
+    sellTime: ["SELLING TIME", (l) => `-${Math.round((1 - by ** l) * 100)}%`],
+    anvils: ["ANVILS", (l) => `${1 + by * l}`],
+    rolls: ["ROLLS", (l) => `BEST OF ${1 + by * l}`],
+    counter: ["COUNTER", (l) => `${BALANCE.crafting.counter + by * l}`],
+    haggle: ["PRICES", (l) => `+${Math.round(by * l * 100)}%`],
+  }[kind];
+  return level >= upgrade.costs.length ? `${label} ${show(level)}` : `${label} ${show(level)} > ${show(level + 1)}`;
+}
+
+export function upgradeRow(list) {
+  const affordable = (upgrade) => upgradeCost(upgrade) !== null && getSave().gold >= upgradeCost(upgrade);
+  let message = null; // { k, text, color, until }
+
+  return {
+    pick: (point) => {
+      if (point.y < TOP_BAR || point.y >= TOP_BAR + UP_ROW) return null;
+      const k = Math.floor((point.x - 4) / UP_GAP);
+      return k >= 0 && k < list.length ? `up:${k}` : null;
+    },
+    step: (id, dir) => {
+      const k = upIndex(id) + dir.x;
+      return dir.x && k >= 0 && k < list.length ? `up:${k}` : null;
+    },
+    draw: (picked) => {
+      drawRect({ pos: vec2(0, TOP_BAR), width: GAME_WIDTH, height: UP_ROW, color: C.ink });
+      drawRect({ pos: vec2(0, TOP_BAR + UP_ROW - 1), width: GAME_WIDTH, height: 1, color: C.stoneLight });
+      list.forEach((upgrade, k) => {
+        const spot = upSpot(k);
+        const cost = upgradeCost(upgrade);
+        const rim = cost === null ? C.gold : affordable(upgrade) ? C.green : C.stoneLight;
+        drawCircle({ pos: spot, radius: 11, color: C.ink });
+        drawCircle({ pos: spot, radius: 10, color: rim });
+        drawCircle({ pos: spot, radius: 8, color: C.stone });
+        drawCrafted(upgrade.icon, spot);
+        for (let i = 0; i < upgrade.costs.length; i++) {
+          drawRect({ pos: spot.add(14 + i * 5, -8), width: 3, height: 3, color: i < upgradeLevel(upgrade) ? C.gold : C.stoneLight });
+        }
+        text(cost === null ? "MAX" : shortGold(cost), spot.x + 14, spot.y - 1, cost === null ? C.gold : affordable(upgrade) ? C.light : C.muted);
+      });
+      if (isUp(picked)) {
+        const spot = upSpot(upIndex(picked));
+        drawCursor(spot.x - 11, spot.y - 11, 22);
+      }
+    },
+    // The panel's text for one, at `y`, its status line `statusY` below that
+    // (`chosen`: it's the picked one, a click or E from bought).
+    panel: (id, y, statusY, chosen) => {
+      const k = upIndex(id), upgrade = list[k];
+      const level = upgradeLevel(upgrade), cost = upgradeCost(upgrade);
+      drawCrafted(upgrade.icon, vec2(15, y + 19));
+      text(upgrade.name.toUpperCase(), 30, y + 4, C.gold);
+      text(`${level}/${upgrade.costs.length}`, GAME_WIDTH - 6, y + 4, C.muted, "topright");
+      text(upgradeText(upgrade, level), 30, y + 15);
+      let status;
+      if (message?.k === k && time() < message.until) status = [message.text, message.color];
+      else if (cost === null) status = [upgrade.effect.recipe ? "KNOWN" : "MAXED", C.gold];
+      else if (getSave().gold < cost) status = [`COSTS ${shortGold(cost)} GOLD`, C.red];
+      else status = [chosen ? `BUY ${shortGold(cost)} GOLD: CLICK OR E` : `${shortGold(cost)} GOLD: CLICK TO PICK`, C.green];
+      text(status[0], 30, y + statusY, status[1]);
+    },
+    buy: (id) => {
+      const k = upIndex(id), upgrade = list[k];
+      const cost = upgradeCost(upgrade);
+      if (cost === null) return;
+      if (getSave().gold < cost) {
+        message = { k, text: "NOT ENOUGH GOLD", color: C.red, until: time() + 1 };
+        playSound("letter");
+        return;
+      }
+      buyWorkshop(upgrade.id, cost);
+      message = { k, text: "BOUGHT", color: C.gold, until: time() + 1 };
+      playSound("unlock");
+    },
+  };
+}
+
+// The banked gold, as the tree shows it: a coin and the amount, its right
+// end at `right` (or its left end at `left`).
+export function drawGold({ right, left }) {
+  const gold = shortGold(getSave().gold);
+  const start = left ?? right - 11 - gold.length * 8;
+  drawSprite({ sprite: "coin", frame: 0, pos: vec2(start, 2) });
+  text(gold, start + 11, 2, C.gold);
+}
+
 // ---- The forge -------------------------------------------------------------------
 
-const ROW = 30;          // px from one recipe to the next
-const LIST = { x: 8, y: 20 }; // the first recipe's frame
-const ANVIL = { x: 204, y: 30 };
+const ROW = 30;                              // px from one recipe to the next
+const LIST = { x: 8, y: TOP_BAR + UP_ROW + 6 };      // the first recipe's frame
+const ANVIL = { x: 204, y: TOP_BAR + UP_ROW + 6 };   // the first anvil's
+const ANVIL_GAP = 36;                        // px from one anvil to the next
 const FORGE_PANEL = GAME_HEIGHT - 38;
 
 export function openForge(onClose) {
   const recipes = BALANCE.crafting.recipes;
   const save = getSave();
+  const row = upgradeRow(BALANCE.crafting.upgrades.forge);
   let message = null; // { text, color, until }: a moment's note in the panel
 
   const page = {
     picked: 0,
     pick: (point) => {
+      const up = row.pick(point);
+      if (up) return up;
       const i = Math.floor((point.y - LIST.y + 3) / ROW);
       return point.x >= LIST.x - 2 && point.x < 190 && i >= 0 && i < recipes.length ? i : null;
     },
-    step: (dir) => (dir.y ? Math.max(0, Math.min(recipes.length - 1, page.picked + dir.y)) : null),
-    use: (i) => {
-      const recipe = recipes[i];
+    step: (dir) => {
+      if (isUp(page.picked)) return dir.y > 0 ? 0 : row.step(page.picked, dir);
+      if (dir.y < 0 && page.picked === 0) return "up:0";
+      return dir.y ? Math.max(0, Math.min(recipes.length - 1, page.picked + dir.y)) : null;
+    },
+    use: (id) => {
+      if (isUp(id)) return row.buy(id);
+      const recipe = recipes[id];
       if (!canCraft(recipe)) {
-        message = { text: forgeFull() ? "THE FORGE IS FULL" : "NOT ENOUGH PARTS", color: C.red, until: time() + 1 };
+        const why = !knowsRecipe(recipe) ? "BUY ITS RECIPE FIRST" : forgeFull() ? "THE FORGE IS FULL" : "NOT ENOUGH PARTS";
+        message = { text: why, color: C.red, until: time() + 1 };
         playSound("letter");
         return;
       }
       startCraft(recipe);
-      message = { text: save.forge.length > 1 ? "IN THE QUEUE" : "ON THE ANVIL", color: C.gold, until: time() + 1 };
+      message = { text: save.forge.length > workshop().anvils ? "IN THE QUEUE" : "ON THE ANVIL", color: C.gold, until: time() + 1 };
       playSound("forge");
     },
     draw: (hover) => {
+      drawGold({ left: 54 });
       drawParts();
       recipes.forEach((recipe, i) => drawRecipe(recipe, LIST.y + i * ROW));
-      drawCursor(LIST.x, LIST.y + page.picked * ROW, 24);
+      if (!isUp(page.picked)) drawCursor(LIST.x, LIST.y + page.picked * ROW, 24);
       drawWork();
-      drawPanel(recipes[hover ?? page.picked]);
+      row.draw(page.picked);
+      drawPanel(hover ?? page.picked);
     },
   };
 
+  // A recipe: its piece, name and time, and the parts it takes (red where
+  // you're short). One not known yet is dim, with a lock.
   function drawRecipe(recipe, y) {
+    const known = knowsRecipe(recipe);
     const short = partsShort(recipe);
+    const dim = known ? 1 : 0.4;
     drawFrame(LIST.x, y, 24, canCraft(recipe) ? C.green : C.stoneLight);
-    drawCrafted(recipe.id, vec2(LIST.x + 12, y + 13));
-    text(recipe.name.toUpperCase(), LIST.x + 32, y + 1, C.gold);
-    text(timeText(recipe.time), 186, y + 1, C.muted, "topright");
-    // What it takes: each part's picture and how many, red if you're short.
+    drawCrafted(recipe.id, vec2(LIST.x + 12, y + 13), 1, dim);
+    if (!known) drawLock(LIST.x + 18, y + 16);
+    text(recipe.name.toUpperCase(), LIST.x + 32, y + 1, known ? C.gold : C.muted);
+    text(timeText(takes(recipe.time, "forgeTime")), 186, y + 1, C.muted, "topright", dim);
     let x = LIST.x + 37;
     for (const [part, count] of Object.entries(recipe.parts)) {
-      drawCrafted(part, vec2(x, y + 17));
-      text(String(count), x + 7, y + 13, short[part] ? C.red : C.light);
+      drawCrafted(part, vec2(x, y + 17), 1, dim);
+      text(String(count), x + 7, y + 13, short[part] ? C.red : C.light, "topleft", dim);
       x += 14 + String(count).length * 8;
     }
   }
+  // A little padlock.
+  function drawLock(x, y) {
+    drawRect({ pos: vec2(x - 1, y - 4), width: 8, height: 10, color: C.ink });
+    drawRect({ pos: vec2(x + 1, y - 3), width: 4, height: 3, color: C.muted });
+    drawRect({ pos: vec2(x + 2, y - 2), width: 2, height: 2, color: C.ink });
+    drawRect({ pos: vec2(x, y), width: 6, height: 5, color: C.gold });
+  }
 
-  // The right side: the piece on the anvil, how far along it is, and the
-  // ones waiting their turn.
+  // The right side: the pieces on the anvils (two with the Second anvil),
+  // how far along each is, and the ones waiting their turn.
   function drawWork() {
-    text("ANVIL", ANVIL.x, 18, C.muted);
-    const [first, ...waiting] = save.forge;
-    drawFrame(ANVIL.x, ANVIL.y, 24, first ? C.gold : C.stoneLight);
-    if (first) {
-      const recipe = recipeOf(first.recipe);
-      const bob = Math.round(Math.sin(time() * 6));
-      drawCrafted(recipe.id, vec2(ANVIL.x + 12, ANVIL.y + 13 + bob));
-      text(timeText(first.left), ANVIL.x + 30, ANVIL.y + 8, C.light);
-      const done = 1 - first.left / recipe.time;
-      drawRect({ pos: vec2(ANVIL.x, ANVIL.y + 28), width: 110, height: 4, color: C.dark });
-      drawRect({ pos: vec2(ANVIL.x, ANVIL.y + 28), width: Math.round(110 * done), height: 4, color: C.gold });
-      text(recipe.name.toUpperCase(), ANVIL.x, ANVIL.y + 35, C.muted);
-    } else text("IDLE", ANVIL.x + 30, ANVIL.y + 8, C.muted);
-    text("NEXT", ANVIL.x, ANVIL.y + 50, C.muted);
+    const { anvils } = workshop();
+    for (let k = 0; k < anvils; k++) {
+      const job = save.forge[k];
+      const y = ANVIL.y + k * ANVIL_GAP;
+      drawFrame(ANVIL.x, y, 24, job ? C.gold : C.stoneLight);
+      if (!job) {
+        text("IDLE", ANVIL.x + 30, y + 8, C.muted);
+        continue;
+      }
+      const recipe = recipeOf(job.recipe);
+      const bob = Math.round(Math.sin(time() * 6 + k));
+      drawCrafted(recipe.id, vec2(ANVIL.x + 12, y + 13 + bob));
+      text(timeText(takes(job.left, "forgeTime")), ANVIL.x + 30, y + 8, C.light);
+      drawRect({ pos: vec2(ANVIL.x, y + 27), width: 110, height: 3, color: C.dark });
+      drawRect({ pos: vec2(ANVIL.x, y + 27), width: Math.round(110 * (1 - job.left / recipe.time)), height: 3, color: C.gold });
+    }
+    const waiting = save.forge.slice(anvils);
+    const y = ANVIL.y + anvils * ANVIL_GAP;
+    text("NEXT", ANVIL.x, y, C.muted);
     for (let i = 0; i < BALANCE.crafting.queue; i++) {
-      const x = ANVIL.x + i * 26, y = ANVIL.y + 62;
-      drawFrame(x, y, 20, C.stoneLight, waiting[i] ? 1 : 0.5);
-      if (waiting[i]) drawCrafted(waiting[i].recipe, vec2(x + 10, y + 11));
+      const x = ANVIL.x + i * 26;
+      drawFrame(x, y + 11, 20, C.stoneLight, waiting[i] ? 1 : 0.5);
+      if (waiting[i]) drawCrafted(waiting[i].recipe, vec2(x + 10, y + 22));
     }
   }
 
-  function drawPanel(recipe) {
+  function drawPanel(id) {
     drawRect({ pos: vec2(0, FORGE_PANEL), width: GAME_WIDTH, height: GAME_HEIGHT - FORGE_PANEL, color: C.ink });
     drawRect({ pos: vec2(0, FORGE_PANEL), width: GAME_WIDTH, height: 1, color: C.stoneLight });
+    if (isUp(id)) return row.panel(id, FORGE_PANEL, 26, id === page.picked);
+    const recipe = recipes[id];
     drawCrafted(recipe.id, vec2(15, FORGE_PANEL + 19));
     text(recipe.name.toUpperCase(), 30, FORGE_PANEL + 4, C.gold);
     text(recipe.slot.toUpperCase(), GAME_WIDTH - 6, FORGE_PANEL + 4, C.muted, "topright");
@@ -224,13 +362,14 @@ export function openForge(onClose) {
     const short = partsShort(recipe);
     let status;
     if (message && time() < message.until) status = [message.text, message.color];
+    else if (!knowsRecipe(recipe)) status = ["NOT KNOWN: BUY ITS RECIPE ABOVE", C.red];
     else if (Object.keys(short).length) status = [`NEEDS ${Object.entries(short).map(([part, n]) => `${n} ${part.toUpperCase()}`).join(", ")} MORE`, C.red];
     else if (forgeFull()) status = ["THE FORGE IS FULL: WAIT FOR ONE", C.red];
-    else status = [recipe === recipes[page.picked] ? "MAKE IT: CLICK OR E" : "CLICK TO PICK", C.green];
+    else status = [id === page.picked ? "MAKE IT: CLICK OR E" : "CLICK TO PICK", C.green];
     text(status[0], 30, FORGE_PANEL + 26, status[1]);
   }
 
-  return openPage("FORGE", "Click twice or press E to make it. Esc closes.", page, onClose);
+  return openPage("FORGE", "Click twice or press E to make or buy it. Esc closes.", page, onClose);
 }
 
 // ---- The gear chest -------------------------------------------------------------

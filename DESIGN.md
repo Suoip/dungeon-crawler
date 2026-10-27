@@ -605,9 +605,26 @@ Coins stay as they are; crafting is a second way to grow, built in steps:
      by the end), from 0.6 to 1.4 times that for how well its bonuses
      rolled in their ranges, and more for each bonus over the recipe's
      fewest. A side income: runs stay the main one.
-3. **Upgrades at the forge and the merchant,** bought with gold: making and
-   selling faster, and more. They stay out of the skill tree, so its
-   pacing is untouched.
+3. **Upgrades at the forge and the merchant** (built), bought with gold in
+   a row along the top of each one's page, like the altar's specials over
+   the tree: each one's icon in a round frame (gold once maxed, green when
+   you can afford it), its levels as pips, and the next level's price.
+   They stay out of the skill tree, so its pacing is untouched. Prices
+   start around what an early-middle crypt run earns and triple a level.
+   - **The forge's:** Faster forging (4 levels, 15% less time each, 60 to
+     1600 gold), Second anvil (two pieces made at once, 1000), Better rolls
+     (3 levels: each bonus's size is rolled once more and the biggest
+     kept, 100 to 900), and the recipes: only the rag hood is known at
+     first, the Skull helm recipe costs 80 and the Zombie crown recipe
+     400. A recipe not known yet is dim on the forge's page, with a lock.
+   - **The merchant's:** Faster selling (4 levels, 15% less time each, 60
+     to 1600), Bigger counter (3 levels, one more space each, up to 6, 100
+     to 900), Haggling (4 levels, everything sells for 20% more each, 80
+     to 2200) and Auto-sell (300: a finished piece worth less than the one
+     worn in its slot goes straight on the counter, when there's room;
+     with nothing worn, it's kept).
+   - Faster forging and selling speed up the pieces already in progress
+     too, and Haggling raises what's already on the counter.
 4. **A new slot per depth,** made from its monsters' parts: the warrens'
    boots, the fort's armour, the swamp's amulet and the pit's ring.
 5. **Enchanting** gear with rare drops from the dungeon.
