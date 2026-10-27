@@ -350,9 +350,12 @@ export const BALANCE = {
   // The forge in the underworld (forge.js) makes gear out of monsters' parts.
   // It works on one piece at a time, with `queue` more waiting, and only
   // while the game is open (in a run too). A finished piece goes in the gear
-  // chest beside it, where one of each slot can be worn.
+  // chest beside it, where one of each slot can be worn. The merchant
+  // (merchant.js) sells spare pieces for gold: up to `counter` at a time,
+  // each on its own, also only while the game is open.
   crafting: {
     queue: 3,
+    counter: 3,
     // What a piece can roll: each bonus is a share (0.1 = +10%), and `scale`
     // shrinks it for one that would be too strong at full size. How each
     // works on the hero is in stats.js (withGear).
@@ -368,11 +371,14 @@ export const BALANCE = {
     },
     // `parts`: what it takes; `time`: seconds at the forge; it rolls
     // `bonuses` [fewest, most] different bonuses, each `size` [smallest,
-    // biggest] (before its scale), at random.
+    // biggest] (before its scale), at random. `price`: about what it sells
+    // for, in gold (more for a better roll, see crafting.js priceOf), and
+    // `sells`: the seconds it takes to sell. (A crypt run earns 10-20 gold
+    // early on and 500-900 by the end.)
     recipes: [
-      { id: "rag_hood", name: "Rag hood", slot: "head", parts: { goo: 3, flesh: 2 }, time: 30, bonuses: [1, 1], size: [0.03, 0.08] },
-      { id: "skull_helm", name: "Skull helm", slot: "head", parts: { skull: 3, flesh: 3 }, time: 60, bonuses: [1, 2], size: [0.06, 0.15] },
-      { id: "zombie_crown", name: "Zombie crown", slot: "head", parts: { heart: 1, skull: 4, goo: 4 }, time: 120, bonuses: [2, 3], size: [0.12, 0.25] },
+      { id: "rag_hood", name: "Rag hood", slot: "head", parts: { goo: 3, flesh: 2 }, time: 30, bonuses: [1, 1], size: [0.03, 0.08], price: 5, sells: 20 },
+      { id: "skull_helm", name: "Skull helm", slot: "head", parts: { skull: 3, flesh: 3 }, time: 60, bonuses: [1, 2], size: [0.06, 0.15], price: 40, sells: 40 },
+      { id: "zombie_crown", name: "Zombie crown", slot: "head", parts: { heart: 1, skull: 4, goo: 4 }, time: 120, bonuses: [2, 3], size: [0.12, 0.25], price: 200, sells: 60 },
     ],
   },
 

@@ -62,6 +62,7 @@ const SOUNDS = {
   spikes:   [0.1, 0.05, 1100, 0, 0.01, 0.05, 3, 1, 0, 0, 0, 0, 0.02],       // the floor spikes coming up
   forge:    [0.35, 0.05, 900, 0, 0.01, 0.2, 3, 2, 0, 0, 0, 0, 0, 0.4],      // a recipe put in at the forge: a hammer on the anvil
   forged:   [0.25, 0, 1300, 0, 0.02, 0.5, 0, 1.5, 0, 0, 400, 0.06],        // a piece comes out of the forge: a ringing ding
+  sold:     [0.25, 0.05, 1500, 0, 0.03, 0.2, 1, 1, 0, 0, 500, 0.05, 0.08],  // the merchant sold a piece: a double jingle
   wear:     [0.3, 0.05, 220, 0.01, 0.04, 0.12, 1, 1, -10],                 // a piece put on: a soft thud
   bone:     [0.22, 0.05, 260, 0, 0.02, 0.07, 1, 1, 0, 0, 140, 0.03],        // a bone picked up: a hollow clack
 

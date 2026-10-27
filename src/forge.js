@@ -20,25 +20,25 @@ const PALETTE = {
   light: [240, 230, 210], muted: [169, 155, 185], dark: [44, 36, 56],
   gold: [255, 205, 70], green: [99, 199, 77], red: [230, 72, 46],
 };
-let C = null;
+export let C = null; // the colors, made when the first page opens
 const TOP_BAR = 12;
-const text = (content, x, y, color = C.light, anchorName = "topleft", opacity = 1) =>
+export const text = (content, x, y, color = C.light, anchorName = "topleft", opacity = 1) =>
   drawText({ text: content, pos: vec2(x, y), size: 8, font: "pixel", color, anchor: anchorName, opacity });
 
 // "30S", "1:00", "2:30".
-const timeText = (seconds) => {
+export const timeText = (seconds) => {
   const whole = Math.ceil(seconds);
   return whole < 60 ? `${whole}S` : `${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, "0")}`;
 };
 
 // A square frame for a recipe or a piece, its rim saying where it stands.
-function drawFrame(x, y, size, rim, opacity = 1) {
+export function drawFrame(x, y, size, rim, opacity = 1) {
   drawRect({ pos: vec2(x - 1, y - 1), width: size + 2, height: size + 2, color: C.ink, opacity });
   drawRect({ pos: vec2(x, y), width: size, height: size, color: rim, opacity });
   drawRect({ pos: vec2(x + 1, y + 1), width: size - 2, height: size - 2, color: C.stone, opacity });
 }
 // Four breathing corner brackets round the picked one, like the tree's.
-function drawCursor(x, y, size) {
+export function drawCursor(x, y, size) {
   const out = 2 + Math.round(Math.sin(time() * 5));
   const [left, top, right, bottom] = [x - out, y - out, x + size + out, y + size + out];
   for (const [cx, cy, sx, sy] of [[left, top, 1, 1], [right, top, -1, 1], [left, bottom, 1, -1], [right, bottom, -1, -1]]) {
@@ -49,14 +49,14 @@ function drawCursor(x, y, size) {
   }
 }
 
-// What the two pages share: the dimmed room behind, the title bar, the
+// What the pages share (the merchant's too): the dimmed room behind, the title bar, the
 // panel at the bottom, and the mouse and keys. `page` gives:
 //   pick(point)  what's under the mouse (an index, or null)
 //   step(dir)    the picked one after an arrow key (or null to stay)
-//   use(index)   make or wear it
+//   use(index)   make it, wear it, sell it...
 //   draw(hover)  the page itself (hover: the one the mouse is on, or null)
 //   scroll(dir)  the wheel, up -1 or down 1 (optional)
-function openPage(title, hint, page, onClose) {
+export function openPage(title, hint, page, onClose) {
   C ??= Object.fromEntries(Object.entries(PALETTE).map(([name, [r, g, b]]) => [name, rgb(r, g, b)]));
   const born = time();
   const pointer = () => mousePos().scale(1 / getGamePixel());

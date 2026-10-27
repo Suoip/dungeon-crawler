@@ -1,12 +1,13 @@
 import { BALANCE } from "./balance.js";
-import { getSave, workForge } from "./save.js";
+import { getSave, workForge, workCounter } from "./save.js";
 import { playSound } from "./sound.js";
 
 // Crafting's rules (DESIGN.md section 6): monsters drop parts, the forge in
-// the underworld makes gear out of them (forge.js is its page), and worn
-// gear makes the hero a share stronger (stats.js withGear). The forge works
-// only while the game is open, in a run too, so its clock lives here rather
-// than in a room.
+// the underworld makes gear out of them (forge.js is its page), worn gear
+// makes the hero a share stronger (stats.js withGear), and the merchant
+// sells the spares for gold (merchant.js). The forge and the merchant work
+// only while the game is open, in a run too, so their clock lives here
+// rather than in a room.
 
 const { crafting } = BALANCE;
 export const recipeOf = (id) => crafting.recipes.find((recipe) => recipe.id === id);
@@ -43,15 +44,38 @@ export function rollBonuses(recipeId) {
   return bonuses;
 }
 
+// What a piece sells for: its recipe's price, more for a better roll. Each
+// bonus's place in its range (0 the smallest, 1 the biggest), averaged,
+// makes it 0.6 to 1.4 times that, times how many bonuses it has over the
+// recipe's fewest. Always at least 1 gold.
+export function priceOf(piece) {
+  const recipe = recipeOf(piece.recipe);
+  const [small, big] = recipe.size;
+  const places = Object.entries(piece.bonuses).map(([kind, size]) => {
+    const full = size / (crafting.bonuses[kind].scale ?? 1);
+    return Math.max(0, Math.min(1, (full - small) / (big - small)));
+  });
+  const place = places.reduce((sum, p) => sum + p, 0) / places.length;
+  return Math.max(1, Math.round(recipe.price * (0.6 + 0.8 * place) * places.length / recipe.bonuses[0]));
+}
+
+// The pieces in the gear chest that aren't worn, newest first.
+export const spareGear = () => {
+  const worn = Object.values(getSave().worn);
+  return getSave().gear.filter((piece) => !worn.includes(piece.id)).reverse();
+};
+export const counterFull = () => getSave().counter.length >= crafting.counter;
+
 // The pieces he's wearing, one per slot.
 export const wornGear = () => {
   const { gear, worn } = getSave();
   return Object.values(worn).map((id) => gear.find((piece) => piece.id === id)).filter(Boolean);
 };
 
-// The forge's clock: once a second, it works for however long it's been
-// (at most a minute, so a computer waking from sleep doesn't count the
-// night), and a piece coming out of it rings.
+// The forge's and the merchant's clock: once a second, they work for
+// however long it's been (at most a minute, so a computer waking from sleep
+// doesn't count the night). A piece coming out of the forge rings; a piece
+// sold jingles.
 export function startForge() {
   let last = performance.now();
   setInterval(() => {
@@ -59,6 +83,7 @@ export function startForge() {
     const seconds = Math.min(60, (now - last) / 1000);
     last = now;
     if (workForge(seconds, rollBonuses).length) playSound("forged");
+    if (workCounter(seconds).length) playSound("sold");
   }, 1000);
 }
 

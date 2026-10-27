@@ -29,6 +29,7 @@ const FRESH = {
   worn: {},                  // slot -> the id of the piece worn there
   nextPiece: 1,              // the id the next piece gets
   newGear: 0,                // pieces made since the gear chest was last opened
+  counter: [],               // the merchant's counter: { piece, price, left } (seconds left to sell)
 };
 
 let save = structuredClone(FRESH);
@@ -129,6 +130,33 @@ export function workForge(seconds, make) {
 export function wearPiece(id, slot) {
   save.worn[slot] = id;
   write();
+}
+
+// Puts a spare piece on the merchant's counter, to sell for `price` gold in
+// `seconds`. It leaves the gear chest.
+export function putOnCounter(piece, price, seconds) {
+  save.gear = save.gear.filter((other) => other !== piece);
+  save.counter.push({ piece, price, left: seconds });
+  write();
+}
+
+// Takes the counter's `i`th piece back, into the gear chest.
+export function takeBack(i) {
+  const [{ piece }] = save.counter.splice(i, 1);
+  save.gear.push(piece);
+  write();
+}
+
+// The merchant sells for `seconds`: every piece on the counter at once. A
+// sold one's gold is banked. Returns the ones sold.
+export function workCounter(seconds) {
+  if (!save.counter.length) return [];
+  for (const sale of save.counter) sale.left -= seconds;
+  const sold = save.counter.filter((sale) => sale.left <= 0);
+  save.counter = save.counter.filter((sale) => sale.left > 0);
+  for (const sale of sold) save.gold += sale.price;
+  write();
+  return sold;
 }
 
 // The gear chest has been opened: nothing in it is new any more.
