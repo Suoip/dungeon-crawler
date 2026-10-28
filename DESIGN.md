@@ -527,7 +527,11 @@ to:
   part (balance.js depths' `parts`): a quarter of kills drop one, from the
   first room, and the boss always drops its own. The crypt's: GOO from
   slugs, ROTTEN FLESH from tiny zombies, SKULLS from skeletons, and the Big
-  Zombie's HEART. They're picked up like coins, banked with the run, and
+  Zombie's HEART. The warrens': goblin EARS, imp HORNS, wogol POWDER and
+  the ogre's KNUCKLE. The fort's: orc HIDE, shaman FEATHERS, masked orc
+  IRON and the ogre's CREST. The swamp's: swampy MOSS, muddy CLAY,
+  necromancer DUST and the Bog Zombie's PEARL. The pit's: chort HOOVES,
+  pumpkin SEEDS, plague doctor VIALS and the Big Demon's EYE. They're picked up like coins, banked with the run, and
   listed on the results. They don't buy tree upgrades: they're for the
   forge (below).
 - **For the first milestone, gold buys every node.**
@@ -580,7 +584,8 @@ Coins stay as they are; crafting is a second way to grow, built in steps:
    - **The crypt's recipes are helmets:** RAG HOOD (3 goo, 2 flesh, 30 s,
      one bonus of 3-8%), SKULL HELM (3 skulls, 3 flesh, 1 min, one or two
      of 6-15%) and ZOMBIE CROWN (a heart, 4 skulls, 4 goo, 2 min, two or
-     three of 12-25%).
+     three of 12-25%). Every slot's recipes follow the same three tiers
+     (step 4).
    - **A piece rolls its bonuses:** each a different one picked at random
      from damage (the sword's and every weapon's), swing speed, gold, time,
      magnet, crit chance (a quarter the size), crit damage and XP. Each is a
@@ -612,11 +617,10 @@ Coins stay as they are; crafting is a second way to grow, built in steps:
    They stay out of the skill tree, so its pacing is untouched. Prices
    start around what an early-middle crypt run earns and triple a level.
    - **The forge's:** Faster forging (4 levels, 15% less time each, 60 to
-     1600 gold), Second anvil (two pieces made at once, 1000), Better rolls
-     (3 levels: each bonus's size is rolled once more and the biggest
-     kept, 100 to 900), and the recipes: only the rag hood is known at
-     first, the Skull helm recipe costs 80 and the Zombie crown recipe
-     400. A recipe not known yet is dim on the forge's page, with a lock.
+     1600 gold), Second anvil (two pieces made at once, 1000) and Better
+     rolls (3 levels: each bonus's size is rolled once more and the biggest
+     kept, 100 to 900). (Recipes were upgrades here at first; since step 4
+     they're learned on their own rows.)
    - **The merchant's:** Faster selling (4 levels, 15% less time each, 60
      to 1600), Bigger counter (3 levels, one more space each, up to 6, 100
      to 900), Haggling (4 levels, everything sells for 20% more each, 80
@@ -625,8 +629,29 @@ Coins stay as they are; crafting is a second way to grow, built in steps:
      with nothing worn, it's kept).
    - Faster forging and selling speed up the pieces already in progress
      too, and Haggling raises what's already on the counter.
-4. **A new slot per depth,** made from its monsters' parts: the warrens'
-   boots, the fort's armour, the swamp's amulet and the pit's ring.
+4. **A gear slot per depth** (built), made from its monsters' parts: the
+   crypt's HEAD (helmets), the warrens' FEET (boots), the fort's BODY
+   (armour), the swamp's NECK (amulets) and the pit's FINGER (rings). Like
+   helmets, any of them can roll any bonus.
+   - **Three recipes a slot,** in the same tiers (balance.js crafting
+     `tiers`): the first from the depth's first and second monsters'
+     parts (3 and 2), the second from its third's and second's (3 and 3),
+     the third from the boss's part and the third's and first's (1, 4 and
+     4). Times, bonuses and selling times are the same in every slot.
+     Warrens: goblin sandals, imp boots, ogre stompers. Fort: hide vest,
+     iron mail, warlord plate. Swamp: moss charm, dust locket, pearl
+     amulet. Pit: hoof band, glass ring, demon eye ring.
+   - **Learning:** each slot's first recipe is known; the second costs 80
+     gold to learn and the third 400, in the crypt. Deeper slots' prices
+     and learning costs grow with their depth's gold (its `scale`): the
+     warrens' about 25 times the crypt's (imp boots 2000, ogre stompers
+     9900), the pit's billions.
+   - **The forge's page** has a tab per open slot (a slot opens with its
+     depth), switched with left and right or a click; the tab's parts are
+     along the title bar. A recipe not known yet is dim with a lock and
+     shows what it costs to learn; picking it and pressing E (or clicking
+     it twice) learns it.
+   - **The gear chest** wears one piece per slot, all at once.
 5. **Enchanting** gear with rare drops from the dungeon.
 
 The pacing simulator doesn't wear gear, so its times are without it.

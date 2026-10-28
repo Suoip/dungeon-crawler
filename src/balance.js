@@ -201,6 +201,7 @@ export const BALANCE = {
       growth: { hp: 1.080 }, // each room's monsters are this much tougher than the last's
       tint: [196, 168, 120],
       material: "teeth",
+      parts: { goblin: "ear", imp: "horn", wogol: "powder", ogre: "knuckle" },
       // Coin thieves (thieves.js): a goblin may be a thief, with a sack on its
       // back. It goes for coins lying on the floor, scoops up the ones within
       // `grab` px, and runs for one of the burrows dug into the side walls.
@@ -232,6 +233,7 @@ export const BALANCE = {
       tint: [148, 164, 204],
       decor: "banners",
       material: "tusks",
+      parts: { orc_warrior: "hide", orc_shaman: "feather", masked_orc: "iron", ogre: "crest" },
       // War drums (fort.js): every `every` seconds or so (at random), a boom,
       // then `warning` s later the drums beat for `lasts` s. While they
       // beat, these monsters rage: nothing hurts them, they move `speed`
@@ -267,6 +269,7 @@ export const BALANCE = {
       tint: [140, 180, 140],
       decor: "goo",
       material: "slime",
+      parts: { swampy: "moss", muddy: "clay", necromancer: "dust", big_zombie: "pearl" },
       // Rising water (water.js): each room starts with `start` rows of the
       // floor flooded from the bottom (from room 1's to room 10's), and every
       // `rise` s (room 1's to room 10's) it creeps up a row, up to `most`.
@@ -297,6 +300,7 @@ export const BALANCE = {
       tint: [196, 112, 148],
       decor: "lava",
       material: "embers",
+      parts: { chort: "hoof", pumpkin_dude: "seed", doc: "vial", big_demon: "eye" },
       // Pacts (pacts.js): as he lands in each room he picks one of three
       // curses, each mild, harsh or brutal (picked at random by
       // `tierWeights`). They stack for the run, and each adds its `gold` to
@@ -369,16 +373,30 @@ export const BALANCE = {
       critDamage: { name: "CRIT DAMAGE" },
       xp:         { name: "XP" },                  // on top of Wisdom
     },
-    // `parts`: what it takes; `time`: seconds at the forge; it rolls
-    // `bonuses` [fewest, most] different bonuses, each `size` [smallest,
-    // biggest] (before its scale), at random. `price`: about what it sells
-    // for, in gold (more for a better roll, see crafting.js priceOf), and
-    // `sells`: the seconds it takes to sell. (A crypt run earns 10-20 gold
-    // early on and 500-900 by the end.)
-    recipes: [
-      { id: "rag_hood", name: "Rag hood", slot: "head", parts: { goo: 3, flesh: 2 }, time: 30, bonuses: [1, 1], size: [0.03, 0.08], price: 5, sells: 20 },
-      { id: "skull_helm", name: "Skull helm", slot: "head", parts: { skull: 3, flesh: 3 }, time: 60, bonuses: [1, 2], size: [0.06, 0.15], price: 40, sells: 40 },
-      { id: "zombie_crown", name: "Zombie crown", slot: "head", parts: { heart: 1, skull: 4, goo: 4 }, time: 120, bonuses: [2, 3], size: [0.12, 0.25], price: 200, sells: 60 },
+    // The gear slots, one per depth: its recipes use its monsters' parts,
+    // and its tab on the forge's page opens once the depth is.
+    slots: ["head", "feet", "body", "neck", "finger"],
+    // A slot's three recipes, from the parts of its depth's first (a),
+    // second (b) and third (c) monster and its boss (boss): `parts` is what
+    // it takes, `time` seconds at the forge, and it rolls `bonuses` [fewest,
+    // most] different bonuses, each `size` [smallest, biggest] (before its
+    // scale), at random. `price`: about what it sells for (more for a better
+    // roll, see crafting.js priceOf), and `sells` the seconds it takes to
+    // sell; `learn`: what it costs to learn (the first is known). Prices
+    // are in the crypt's gold, and grow with the depth's (its `scale`): a
+    // crypt run earns 10-20 gold early on and 500-900 by the end.
+    tiers: [
+      { parts: { a: 3, b: 2 }, time: 30, bonuses: [1, 1], size: [0.03, 0.08], price: 5, sells: 20 },
+      { parts: { c: 3, b: 3 }, time: 60, bonuses: [1, 2], size: [0.06, 0.15], price: 40, sells: 40, learn: 80 },
+      { parts: { boss: 1, c: 4, a: 4 }, time: 120, bonuses: [2, 3], size: [0.12, 0.25], price: 200, sells: 60, learn: 400 },
+    ],
+    // Each slot's recipes, by tier: [id, name], and its depth's parts.
+    gear: [
+      { slot: "head", parts: { a: "goo", b: "flesh", c: "skull", boss: "heart" }, recipes: [["rag_hood", "Rag hood"], ["skull_helm", "Skull helm"], ["zombie_crown", "Zombie crown"]] },
+      { slot: "feet", parts: { a: "ear", b: "horn", c: "powder", boss: "knuckle" }, recipes: [["goblin_sandals", "Goblin sandals"], ["imp_boots", "Imp boots"], ["ogre_stompers", "Ogre stompers"]] },
+      { slot: "body", parts: { a: "hide", b: "feather", c: "iron", boss: "crest" }, recipes: [["hide_vest", "Hide vest"], ["iron_mail", "Iron mail"], ["warlord_plate", "Warlord plate"]] },
+      { slot: "neck", parts: { a: "moss", b: "clay", c: "dust", boss: "pearl" }, recipes: [["moss_charm", "Moss charm"], ["dust_locket", "Dust locket"], ["pearl_amulet", "Pearl amulet"]] },
+      { slot: "finger", parts: { a: "hoof", b: "seed", c: "vial", boss: "eye" }, recipes: [["hoof_band", "Hoof band"], ["glass_ring", "Glass ring"], ["demon_eye_ring", "Demon eye ring"]] },
     ],
     // The upgrades sold at the forge and at the merchant's stall, along the
     // top of their pages, for gold. `costs`: each level's price; `effect`:
@@ -386,7 +404,6 @@ export const BALANCE = {
     //   forgeTime   pieces take this many times as long to make
     //   anvils      more pieces made at once
     //   rolls       each bonus is rolled this many more times, keeping the biggest
-    //   recipe      learns to make it (the ones an upgrade teaches aren't known before)
     //   sellTime    pieces take this many times as long to sell
     //   counter     more spaces on the counter
     //   haggle      everything sells for this share more
@@ -397,8 +414,6 @@ export const BALANCE = {
         { id: "faster_forging", name: "Faster forging", icon: "hourglass", costs: [60, 180, 540, 1600], effect: { forgeTime: 0.85 } },
         { id: "second_anvil", name: "Second anvil", icon: "anvil", costs: [1000], effect: { anvils: 1 } },
         { id: "better_rolls", name: "Better rolls", icon: "dice", costs: [100, 300, 900], effect: { rolls: 1 } },
-        { id: "learn_skull_helm", name: "Skull helm recipe", icon: "skull_helm", costs: [80], effect: { recipe: "skull_helm" } },
-        { id: "learn_zombie_crown", name: "Zombie crown recipe", icon: "zombie_crown", costs: [400], effect: { recipe: "zombie_crown" } },
       ],
       merchant: [
         { id: "faster_selling", name: "Faster selling", icon: "hourglass", costs: [60, 180, 540, 1600], effect: { sellTime: 0.85 } },
