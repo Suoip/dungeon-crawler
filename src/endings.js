@@ -8,10 +8,12 @@ import { heroStats } from "./stats.js";
 import { setupInteractions } from "./interact.js";
 import { fallIn, climbLadder, giveControl, LAND_X } from "./cutscenes.js";
 import { addFader, fadeIn, sleep, addRedLight } from "./effects.js";
-import { addLadder, addShadowText, addSign, addAltar, addForge, addGearChest, addStall } from "./props.js";
+import { addLadder, addShadowText, addSign, addAltar, addForge, addGearChest, addStall, addRuneTable } from "./props.js";
 import { openTree, canBuyAnything } from "./tree.js";
 import { openForge, openGearChest } from "./forge.js";
 import { openStall } from "./merchant.js";
+import { openRuneTable } from "./runes.js";
+import { isRune, runeName, canEnchantAny } from "./crafting.js";
 import { playSound } from "./sound.js";
 import { hidePrompt, showRoomName } from "./panel.js";
 import { shortGold } from "./hud.js";
@@ -41,6 +43,7 @@ const LAND_Y = 184;   // he lands in front of it, already at it
 const FORGE = { x: 44, y: 182 }; // the forge's foot, in the bottom left corner
 const GEAR_CHEST = { x: 276, y: 182 }; // the gear chest's, in the bottom right
 const STALL = { x: 280, y: 138 }; // the merchant's stall's, above it
+const RUNE_TABLE = { x: 44, y: 134 }; // the rune table's, above the forge
 
 const savedStats = () => heroStats(getSave().levels); // the hero as the tree has made him
 
@@ -61,6 +64,7 @@ function underworld(run, ending) {
   const forge = addForge(FORGE.x, FORGE.y, () => getSave().forge.length > 0);
   const chest = addGearChest(GEAR_CHEST.x, GEAR_CHEST.y, () => getSave().newGear > 0);
   const stall = addStall(STALL.x, STALL.y, () => getSave().counter.length > 0);
+  const runeTable = addRuneTable(RUNE_TABLE.x, RUNE_TABLE.y, canEnchantAny);
 
   const player = addPlayer(LAND_X, LAND_Y);
   if (ending === "died") player.use(color(255, 110, 110)); // still red, down here
@@ -94,7 +98,8 @@ function underworld(run, ending) {
       });
     }),
   };
-  // The forge and the gear chest open their pages (forge.js) the same way.
+  // The forge, the gear chest, the merchant and the rune table open their
+  // pages (forge.js, merchant.js, runes.js) the same way.
   const openPage = (open) => () => new Promise((done) => {
     player.frozen = true;
     player.play("idle");
@@ -106,6 +111,7 @@ function underworld(run, ending) {
   const smith = { zone: forge.zone, prompt: ["Use the forge"], use: openPage(openForge) };
   const rummage = { zone: chest.zone, prompt: ["Open the gear chest"], use: openPage(openGearChest) };
   const trade = { zone: stall.zone, prompt: ["Talk to the merchant"], use: openPage(openStall) };
+  const enchant = { zone: runeTable.zone, prompt: ["Use the rune table"], use: openPage(openRuneTable) };
   // The signpost: the next depth that's open (round to the first again).
   const pick = signpost && {
     zone: signpost.zone,
@@ -119,7 +125,7 @@ function underworld(run, ending) {
   };
   const interactions = setupInteractions(
     player,
-    [pray, smith, rummage, trade, ...climb, ...(pick ? [pick] : [])],
+    [pray, smith, rummage, trade, enchant, ...climb, ...(pick ? [pick] : [])],
     () => (pick ? "Use the altar, the forge or the merchant, pick a depth at the signpost, or climb a ladder." : "Use the altar, the forge or the merchant, or climb a ladder."),
   );
 
@@ -148,7 +154,7 @@ function underworld(run, ending) {
 // The run's results, written on the floor one line after another, like the
 // title: how it ended, the gold it earned and what's banked now, how deep it
 // got (1-4 is depth 1, room 4), how many monsters fell, and the parts it
-// found for the forge. (Nothing on a
+// found for the forge, and any runes. (Nothing on a
 // visit: there was no run.) Returns the TOTAL line, so it can follow the
 // gold spent at the altar.
 const ENDINGS = {
@@ -158,13 +164,15 @@ const ENDINGS = {
 };
 async function writeResults(run, ending) {
   const reached = ending === "boss" ? run.deepest : Math.min(Math.floor(run.deepest) + 1, 10);
+  const found = { parts: Object.entries(run.parts).filter(([part]) => !isRune(part)), runes: Object.entries(run.parts).filter(([part]) => isRune(part)) };
   const lines = [
     { text: ENDINGS[ending].text, size: 16, color: ENDINGS[ending].color },
     { text: `GOLD EARNED ${shortGold(run.gold)}`, color: [255, 205, 70] },
     { text: `TOTAL ${shortGold(getSave().gold)}` },
     { text: `DEEPEST ${depthLabel(run.depth, reached)}` },
     { text: `KILLS ${run.kills}${run.material ? `  ${BALANCE.depths[run.depth - 1].material.toUpperCase()} ${run.material}` : ""}` },
-    ...(Object.keys(run.parts).length ? [{ text: Object.entries(run.parts).map(([part, n]) => `${part.toUpperCase()} ${n}`).join("  "), color: [214, 222, 140] }] : []),
+    ...(found.parts.length ? [{ text: found.parts.map(([part, n]) => `${part.toUpperCase()} ${n}`).join("  "), color: [214, 222, 140] }] : []),
+    ...(found.runes.length ? [{ text: found.runes.map(([rune, n]) => `${runeName(rune)} ${n}`).join("  "), color: [190, 140, 255] }] : []),
     // The first time a depth's boss falls, the next depth opens.
     ...(run.unlocked ? [{ text: `DEPTH ${run.depth + 1} UNLOCKED`, color: [99, 199, 77] }] : []),
   ];

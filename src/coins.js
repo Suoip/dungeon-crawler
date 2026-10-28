@@ -1,6 +1,6 @@
 import { playSound } from "./sound.js";
 import { roomLimits } from "./room.js";
-import { drawPart } from "./crafting.js";
+import { drawPart, isRune } from "./crafting.js";
 
 // Coins on the floor (DESIGN.md section 6). A kill drops its gold as coins
 // that hop out of the monster and lie where they land. Once the hero is
@@ -171,7 +171,7 @@ function addPickup(from, to, kind, value, run, player, magnet, material = null) 
         playSound("bone");
       } else if (kind === "part") {
         addParts(run, { [coin.part]: coin.value });
-        playSound("bone");
+        playSound(isRune(coin.part) ? "rune" : "bone");
       } else {
         run.gold += coin.value;
         if (time() - lastJingle > 0.06) {

@@ -1,7 +1,7 @@
 import { GAME_WIDTH, GAME_HEIGHT } from "./config.js";
 import { BALANCE } from "./balance.js";
 import { getSave, startCraft, wearPiece, seeGear, buyWorkshop } from "./save.js";
-import { recipeOf, recipesFor, slotOpen, partsShort, forgeFull, canCraft, knowsRecipe, workshop, takes, upgradeLevel, upgradeCost, bonusText, drawCrafted } from "./crafting.js";
+import { recipeOf, recipesFor, slotOpen, partsShort, forgeFull, canCraft, knowsRecipe, workshop, takes, upgradeLevel, upgradeCost, bonusText, enchanted, levelOf, drawCrafted } from "./crafting.js";
 import { playSound } from "./sound.js";
 import { getGamePixel } from "./display.js";
 import { setPrompt } from "./panel.js";
@@ -138,7 +138,7 @@ function drawParts(slot) {
 }
 
 // ---- The upgrades row -------------------------------------------------------------
-// The forge's or the merchant's upgrades (balance.js crafting.upgrades), in
+// The forge's, the merchant's or the rune table's upgrades (balance.js crafting.upgrades), in
 // a row under the title bar, like the altar's specials over the skill tree:
 // each one's icon in a round frame (gold once it's maxed, green when you can
 // afford the next level), its levels as pips, and the next level's price.
@@ -162,6 +162,8 @@ function upgradeText(upgrade, level) {
     rolls: ["ROLLS", (l) => `BEST OF ${1 + by * l}`],
     counter: ["COUNTER", (l) => `${BALANCE.crafting.counter + by * l}`],
     haggle: ["PRICES", (l) => `+${Math.round(by * l * 100)}%`],
+    luck: ["ENCHANTS WORK", (l) => `+${Math.round(by * l * 100)}%`],
+    runeChance: ["RUNES DROP", (l) => `+${Math.round(by * l * 100)}%`],
   }[kind];
   return level >= upgrade.costs.length ? `${label} ${show(level)}` : `${label} ${show(level)} > ${show(level + 1)}`;
 }
@@ -429,6 +431,14 @@ export function openForge(onClose) {
 
 // ---- The gear chest -------------------------------------------------------------
 
+// A piece's name, with its enchanting: "ZOMBIE CROWN +2".
+export const nameOf = (piece) => `${recipeOf(piece.recipe).name.toUpperCase()}${levelOf(piece) ? ` +${levelOf(piece)}` : ""}`;
+// Its enchanting as purple pips along the bottom right of its frame (at
+// `at`, `size` across), one a level.
+export function drawLevel(piece, at, size) {
+  for (let k = 0; k < levelOf(piece); k++) drawRect({ pos: at.add(size - 6 - k * 3, size - 6), width: 2, height: 2, color: rgb(190, 140, 255) });
+}
+
 const COLS = 13;
 const CELL = 22;
 const GRID = { x: (GAME_WIDTH - COLS * CELL) / 2, y: 18 };
@@ -496,6 +506,7 @@ export function openGearChest(onClose) {
     drawFrame(at.x, at.y, CELL - 2, isWorn(piece) ? C.gold : C.stoneLight);
     drawCrafted(piece.recipe, at.add(10, 11));
     if (fresh.has(piece.id)) drawRect({ pos: at.add(CELL - 6, 2), width: 2, height: 2, color: C.green }); // new
+    drawLevel(piece, at, CELL - 2);
   }
 
   function drawPanel(piece) {
@@ -504,10 +515,10 @@ export function openGearChest(onClose) {
     if (!piece) return;
     const recipe = recipeOf(piece.recipe);
     drawCrafted(piece.recipe, vec2(15, CHEST_PANEL + 22));
-    text(recipe.name.toUpperCase(), 30, CHEST_PANEL + 4, C.gold);
+    text(nameOf(piece), 30, CHEST_PANEL + 4, C.gold);
     text(recipe.slot.toUpperCase(), GAME_WIDTH - 6, CHEST_PANEL + 4, C.muted, "topright");
-    // Its bonuses, two to a line.
-    const bonuses = Object.entries(piece.bonuses).map(([kind, size]) => bonusText(kind, size));
+    // Its bonuses, enchanting and all, two to a line.
+    const bonuses = Object.entries(enchanted(piece)).map(([kind, size]) => bonusText(kind, size));
     text(bonuses.slice(0, 2).join("  "), 30, CHEST_PANEL + 14);
     if (bonuses.length > 2) text(bonuses.slice(2).join("  "), 30, CHEST_PANEL + 24);
     const status = isWorn(piece) ? ["YOU'RE WEARING IT", C.gold]

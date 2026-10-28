@@ -174,11 +174,20 @@ export function workCounter(seconds, haggle = 1) {
   return sold;
 }
 
-// Buys a level of a forge or merchant upgrade (balance.js crafting.upgrades)
+// Buys a level of a forge, merchant or rune table upgrade (balance.js crafting.upgrades)
 // for `cost` gold.
 export function buyWorkshop(id, cost) {
   save.gold -= cost;
   save.workshop[id] = (save.workshop[id] ?? 0) + 1;
+  write();
+}
+
+// Enchants piece `id` with a `rune` (it's used up either way): when it
+// `works`, the piece's level goes up by one.
+export function enchantPiece(id, rune, works) {
+  save.parts[rune]--;
+  const piece = save.gear.find((other) => other.id === id);
+  if (works) piece.level = (piece.level ?? 0) + 1;
   write();
 }
 

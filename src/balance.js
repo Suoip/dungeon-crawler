@@ -144,6 +144,8 @@ export const BALANCE = {
   //   decor   what hangs on its back wall (room.js addDecor), if anything
   //   material what its kills drop from sub-depth 6 on (see drops), which buys
   //           its special upgrade at the altar
+  //   rune    the rare rune its monsters drop, which enchants its slot's gear
+  //           at the rune table (see drops and crafting.enchant)
   //   parts   the part each of its monsters drops, for the forge (see drops
   //           and crafting)
   //   rooms   one entry per sub-depth, 1 to 10 (see below)
@@ -173,6 +175,7 @@ export const BALANCE = {
       tint: null,
       material: "bones",
       parts: { slug: "goo", tiny_zombie: "flesh", skeleton: "skull", big_zombie: "heart" },
+      rune: "bone_rune",
       // Restless graves (graves.js): a tiny zombie or skeleton that falls may
       // leave a grave, and climb back out of it after `riseAfter` seconds
       // unless he stamps it down first (walks over it).
@@ -202,6 +205,7 @@ export const BALANCE = {
       tint: [196, 168, 120],
       material: "teeth",
       parts: { goblin: "ear", imp: "horn", wogol: "powder", ogre: "knuckle" },
+      rune: "ember_rune",
       // Coin thieves (thieves.js): a goblin may be a thief, with a sack on its
       // back. It goes for coins lying on the floor, scoops up the ones within
       // `grab` px, and runs for one of the burrows dug into the side walls.
@@ -234,6 +238,7 @@ export const BALANCE = {
       decor: "banners",
       material: "tusks",
       parts: { orc_warrior: "hide", orc_shaman: "feather", masked_orc: "iron", ogre: "crest" },
+      rune: "iron_rune",
       // War drums (fort.js): every `every` seconds or so (at random), a boom,
       // then `warning` s later the drums beat for `lasts` s. While they
       // beat, these monsters rage: nothing hurts them, they move `speed`
@@ -270,6 +275,7 @@ export const BALANCE = {
       decor: "goo",
       material: "slime",
       parts: { swampy: "moss", muddy: "clay", necromancer: "dust", big_zombie: "pearl" },
+      rune: "bog_rune",
       // Rising water (water.js): each room starts with `start` rows of the
       // floor flooded from the bottom (from room 1's to room 10's), and every
       // `rise` s (room 1's to room 10's) it creeps up a row, up to `most`.
@@ -301,6 +307,7 @@ export const BALANCE = {
       decor: "lava",
       material: "embers",
       parts: { chort: "hoof", pumpkin_dude: "seed", doc: "vial", big_demon: "eye" },
+      rune: "hell_rune",
       // Pacts (pacts.js): as he lands in each room he picks one of three
       // curses, each mild, harsh or brutal (picked at random by
       // `tierWeights`). They stack for the run, and each adds its `gold` to
@@ -348,6 +355,9 @@ export const BALANCE = {
     // A monster's part (its depth's `parts`), for the forge: this share of
     // kills drop one, from the first room. A boss always drops its own.
     part: { chance: 0.25 },
+    // The depth's rune (its `rune`), for enchanting: this share of kills
+    // drop one (more with Rune finder), and a boss `boss` of the time.
+    rune: { chance: 0.005, boss: 0.25 },
   },
 
   // ---- Crafting ------------------------------------------------------------
@@ -398,7 +408,14 @@ export const BALANCE = {
       { slot: "neck", parts: { a: "moss", b: "clay", c: "dust", boss: "pearl" }, recipes: [["moss_charm", "Moss charm"], ["dust_locket", "Dust locket"], ["pearl_amulet", "Pearl amulet"]] },
       { slot: "finger", parts: { a: "hoof", b: "seed", c: "vial", boss: "eye" }, recipes: [["hoof_band", "Hoof band"], ["glass_ring", "Glass ring"], ["demon_eye_ring", "Demon eye ring"]] },
     ],
-    // The upgrades sold at the forge and at the merchant's stall, along the
+    // Enchanting, at the rune table (runes.js): a rune of the piece's depth
+    // raises its level by one, up to `most`; each level makes all its
+    // bonuses `per` bigger (+25%: 1.25 times at +1, 1.75 at +3). `odds`:
+    // the chance it works, going to +1, +2, +3. When it doesn't, the rune is
+    // lost and the piece stays as it was.
+    enchant: { most: 3, per: 0.25, odds: [1, 0.7, 0.4] },
+    // The upgrades sold at the forge, at the merchant's stall and at the rune
+    // table, along the
     // top of their pages, for gold. `costs`: each level's price; `effect`:
     // what each level does (crafting.js workshop):
     //   forgeTime   pieces take this many times as long to make
@@ -409,6 +426,8 @@ export const BALANCE = {
     //   haggle      everything sells for this share more
     //   autoSell    a new piece worth less than the one worn in its slot goes
     //               straight on the counter, when there's room
+    //   luck        this much more chance an enchant works
+    //   runeChance  runes drop this share more often
     upgrades: {
       forge: [
         { id: "faster_forging", name: "Faster forging", icon: "hourglass", costs: [60, 180, 540, 1600], effect: { forgeTime: 0.85 } },
@@ -420,6 +439,10 @@ export const BALANCE = {
         { id: "bigger_counter", name: "Bigger counter", icon: "counter", costs: [100, 300, 900], effect: { counter: 1 } },
         { id: "haggling", name: "Haggling", icon: "coins", costs: [80, 240, 720, 2200], effect: { haggle: 0.2 } },
         { id: "auto_sell", name: "Auto-sell", icon: "sack", costs: [300], effect: { autoSell: 1 } },
+      ],
+      runes: [
+        { id: "steady_hands", name: "Steady hands", icon: "candle", costs: [100, 300, 900], effect: { luck: 0.1 } },
+        { id: "rune_finder", name: "Rune finder", icon: "lens", costs: [150, 450, 1350], effect: { runeChance: 0.25 } },
       ],
     },
   },

@@ -85,10 +85,16 @@ export function heroStats(levels, depth = 1) {
 
 // The hero with his worn gear on (`worn`: pieces from the forge, save.js):
 // each bonus a piece rolled (balance.js crafting) makes what it's for that
-// share bigger, on top of the tree. Changes `stats` and returns it.
+// share bigger, on top of the tree, and more for an enchanted piece (its
+// `level`: each makes its bonuses crafting.enchant.per bigger). Changes
+// `stats` and returns it.
 export function withGear(stats, worn) {
   for (const piece of worn) {
-    for (const [kind, size] of Object.entries(piece.bonuses)) GEAR[kind]?.(stats, 1 + size, size);
+    const boost = 1 + BALANCE.crafting.enchant.per * (piece.level ?? 0);
+    for (const [kind, rolled] of Object.entries(piece.bonuses)) {
+      const size = rolled * boost;
+      GEAR[kind]?.(stats, 1 + size, size);
+    }
   }
   return stats;
 }

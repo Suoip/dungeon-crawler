@@ -26,6 +26,7 @@ import { setupBlades } from "./blades.js";
 import { addHud } from "./hud.js";
 import { addLadder, addWell } from "./props.js";
 import { playSound } from "./sound.js";
+import { workshop } from "./crafting.js";
 import { showDepth, hidePrompt } from "./panel.js";
 import { depthData } from "./dungeon.js";
 
@@ -96,6 +97,7 @@ export function registerRoomScene() {
         maybeDropOrb(mob);
         maybeDropMaterial(mob);
         maybeDropPart(mob);
+        maybeDropRune(mob);
         // Flat gold per kill (a tree upgrade) comes on top of the monster's own,
         // in this room's gold, and Greed adds its share of both.
         const flat = mob.def.boss ? 0 : stats.goldPerKill * roomScale(run.depth, sub).gold;
@@ -143,6 +145,13 @@ export function registerRoomScene() {
     const maybeDropPart = (mob) => {
       const part = depth.parts?.[mob.type];
       if (part && (mob.def.boss || Math.random() < BALANCE.drops.part.chance)) dropPart(mob.pos.clone(), run, player, () => stats.magnetRange, part);
+    };
+    // The depth's rune, for enchanting: rare, a boss's more often, and more
+    // often still with Rune finder. It's picked up like a part.
+    const runeChance = workshop().runeChance;
+    const maybeDropRune = (mob) => {
+      const chance = (mob.def.boss ? BALANCE.drops.rune.boss : BALANCE.drops.rune.chance) * runeChance;
+      if (depth.rune && Math.random() < chance) dropPart(mob.pos.clone(), run, player, () => stats.magnetRange, depth.rune);
     };
     const hud = addHud(() => ({ clock: run.clock, sand: run.sand, stopped: clockStopped, xp, xpNeeded: room.xp, gold: run.gold, goldTimes: run.pact?.gold }));
     // Time orbs: while the clock runs, a kill may drop one, worth seconds.

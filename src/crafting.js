@@ -5,7 +5,8 @@ import { playSound } from "./sound.js";
 // Crafting's rules (DESIGN.md section 6): monsters drop parts, the forge in
 // the underworld makes gear out of them (forge.js is its page), worn gear
 // makes the hero a share stronger (stats.js withGear), and the merchant
-// sells the spares for gold (merchant.js). The forge and the merchant work
+// sells the spares for gold (merchant.js). Rare runes enchant gear at the
+// rune table (runes.js), making its bonuses bigger. The forge and the merchant work
 // only while the game is open, in a run too, so their clock lives here
 // rather than in a room.
 
@@ -33,14 +34,14 @@ export const recipeOf = (id) => RECIPES.find((recipe) => recipe.id === id);
 export const recipesFor = (slot) => RECIPES.filter((recipe) => recipe.slot === slot);
 export const slotOpen = (slot) => crafting.slots.indexOf(slot) + 1 <= getSave().cleared + 1;
 
-// The forge's and the merchant's upgrades, as bought (balance.js
-// crafting.upgrades, levels in save.js workshop): what they're working
-// with now.
-const UPGRADES = [...crafting.upgrades.forge, ...crafting.upgrades.merchant];
+// The forge's, the merchant's and the rune table's upgrades, as bought
+// (balance.js crafting.upgrades, levels in save.js workshop): what they're
+// working with now.
+const UPGRADES = [...crafting.upgrades.forge, ...crafting.upgrades.merchant, ...crafting.upgrades.runes];
 export const upgradeLevel = (upgrade) => getSave().workshop[upgrade.id] ?? 0;
 export const upgradeCost = (upgrade) => upgrade.costs[upgradeLevel(upgrade)] ?? null; // null once it's maxed
 export function workshop(levels = getSave().workshop) {
-  const shop = { forgeTime: 1, anvils: 1, rolls: 1, sellTime: 1, counter: crafting.counter, haggle: 1, autoSell: false };
+  const shop = { forgeTime: 1, anvils: 1, rolls: 1, sellTime: 1, counter: crafting.counter, haggle: 1, autoSell: false, luck: 0, runeChance: 1 };
   for (const upgrade of UPGRADES) {
     const level = levels[upgrade.id] ?? 0;
     if (!level) continue;
@@ -93,7 +94,8 @@ export function rollBonuses(recipeId) {
 // What a piece sells for: its recipe's price, more for a better roll. Each
 // bonus's place in its range (0 the smallest, 1 the biggest), averaged,
 // makes it 0.6 to 1.4 times that, times how many bonuses it has over the
-// recipe's fewest. Always at least 1 gold.
+// recipe's fewest, and as much more as its enchanting makes its bonuses.
+// Always at least 1 gold.
 export function priceOf(piece) {
   const recipe = recipeOf(piece.recipe);
   const [small, big] = recipe.size;
@@ -102,7 +104,7 @@ export function priceOf(piece) {
     return Math.max(0, Math.min(1, (full - small) / (big - small)));
   });
   const place = places.reduce((sum, p) => sum + p, 0) / places.length;
-  return Math.max(1, Math.round(recipe.price * (0.6 + 0.8 * place) * places.length / recipe.bonuses[0]));
+  return Math.max(1, Math.round(recipe.price * (0.6 + 0.8 * place) * places.length / recipe.bonuses[0] * boostOf(piece)));
 }
 
 // The pieces in the gear chest that aren't worn, newest first.
@@ -150,6 +152,29 @@ function autoSell(piece) {
   putOnCounter(piece, priceOf(piece), recipeOf(piece.recipe).sells);
 }
 
+// ---- Enchanting --------------------------------------------------------------
+// Each depth's rune (balance.js depths' `rune`) enchants its slot's gear at
+// the rune table: a piece's `level` (none at first) goes up by one, and
+// each level makes all its bonuses a share bigger (crafting.enchant). Runes
+// are kept with the parts (save.js parts, a run's parts).
+const { enchant } = crafting;
+export const RUNES = BALANCE.depths.map((depth) => depth.rune);
+export const isRune = (part) => RUNES.includes(part);
+export const runeName = (rune) => rune.replace("_", " ").toUpperCase(); // "BONE RUNE"
+export const levelOf = (piece) => piece.level ?? 0;
+// How many times its rolled bonuses it gives: 1.25 at +1.
+export const boostOf = (piece) => 1 + enchant.per * levelOf(piece);
+// Its bonuses as they work on the hero, enchanting and all.
+export const enchanted = (piece) => Object.fromEntries(Object.entries(piece.bonuses).map(([kind, size]) => [kind, size * boostOf(piece)]));
+// The rune that enchants it: its depth's.
+export const runeFor = (piece) => RUNES[recipeOf(piece.recipe).depth - 1];
+// The chance enchanting it works now (with Steady hands), or null when it's
+// as enchanted as it gets.
+export const enchantOdds = (piece) => (levelOf(piece) >= enchant.most ? null : Math.min(1, enchant.odds[levelOf(piece)] + workshop().luck));
+// Whether there's a piece a rune you have could enchant (the rune table
+// glows then).
+export const canEnchantAny = () => getSave().gear.some((piece) => enchantOdds(piece) !== null && (getSave().parts[runeFor(piece)] ?? 0) > 0);
+
 // A bonus as the pages show it: "DAMAGE +7%".
 export const bonusText = (kind, size) => `${crafting.bonuses[kind].name} +${Math.round(size * 100)}%`;
 
@@ -189,13 +214,22 @@ const SHAPES = {
   seed: [[-1, -4, 3, 1, [240, 225, 180]], [-2, -3, 5, 5, [230, 210, 160]], [-1, 2, 3, 1, [200, 180, 130]], [-1, -3, 1, 2, [255, 245, 215]]],
   vial: [[-1, -5, 2, 1, [150, 100, 60]], [-1, -4, 2, 2, [200, 220, 230]], [-3, -2, 6, 5, [200, 220, 230]], [-3, 0, 6, 3, [110, 200, 90]], [-2, -2, 1, 2, [255, 255, 255]]],
   eye: [[-4, -2, 8, 4, [240, 230, 210]], [-3, -3, 6, 1, [240, 230, 210]], [-3, 2, 6, 1, [240, 230, 210]], [-1, -2, 3, 4, [230, 72, 46]], [0, -1, 1, 2, [24, 20, 37]]],
+  // The runes, one per depth: bone, ember, iron, bog and hell.
+  bone_rune: [[-3, -6, 6, 1, [232, 224, 208]], [-4, -5, 8, 10, [232, 224, 208]], [-3, 5, 6, 1, [232, 224, 208]], [-4, -5, 1, 9, [255, 250, 236]], [-3, -6, 5, 1, [255, 250, 236]], [0, -4, 1, 8, [150, 90, 220]], [-2, -4, 1, 2, [150, 90, 220]], [2, -4, 1, 2, [150, 90, 220]], [-1, -2, 1, 1, [150, 90, 220]], [1, -2, 1, 1, [150, 90, 220]]],
+  ember_rune: [[-3, -6, 6, 1, [110, 60, 50]], [-4, -5, 8, 10, [110, 60, 50]], [-3, 5, 6, 1, [110, 60, 50]], [-4, -5, 1, 9, [150, 90, 70]], [-3, -6, 5, 1, [150, 90, 70]], [0, -4, 1, 8, [255, 150, 40]], [-2, -4, 1, 2, [255, 150, 40]], [2, -4, 1, 2, [255, 150, 40]], [-1, -2, 1, 1, [255, 150, 40]], [1, -2, 1, 1, [255, 150, 40]]],
+  iron_rune: [[-3, -6, 6, 1, [130, 130, 145]], [-4, -5, 8, 10, [130, 130, 145]], [-3, 5, 6, 1, [130, 130, 145]], [-4, -5, 1, 9, [190, 190, 205]], [-3, -6, 5, 1, [190, 190, 205]], [0, -4, 1, 8, [90, 180, 255]], [-2, -4, 1, 2, [90, 180, 255]], [2, -4, 1, 2, [90, 180, 255]], [-1, -2, 1, 1, [90, 180, 255]], [1, -2, 1, 1, [90, 180, 255]]],
+  bog_rune: [[-3, -6, 6, 1, [70, 110, 70]], [-4, -5, 8, 10, [70, 110, 70]], [-3, 5, 6, 1, [70, 110, 70]], [-4, -5, 1, 9, [110, 150, 100]], [-3, -6, 5, 1, [110, 150, 100]], [0, -4, 1, 8, [190, 255, 120]], [-2, -4, 1, 2, [190, 255, 120]], [2, -4, 1, 2, [190, 255, 120]], [-1, -2, 1, 1, [190, 255, 120]], [1, -2, 1, 1, [190, 255, 120]]],
+  hell_rune: [[-3, -6, 6, 1, [70, 34, 40]], [-4, -5, 8, 10, [70, 34, 40]], [-3, 5, 6, 1, [70, 34, 40]], [-4, -5, 1, 9, [110, 55, 60]], [-3, -6, 5, 1, [110, 55, 60]], [0, -4, 1, 8, [255, 70, 40]], [-2, -4, 1, 2, [255, 70, 40]], [2, -4, 1, 2, [255, 70, 40]], [-1, -2, 1, 1, [255, 70, 40]], [1, -2, 1, 1, [255, 70, 40]]],
   // The forge's and merchant's upgrades: an hourglass, an anvil, a die, a
-  // stall's counter with a coin on it, a stack of coins, and a sack.
+  // stall's counter with a coin on it, a stack of coins, and a sack. The
+  // rune table's: a candle (steady hands) and a magnifying glass.
   hourglass: [[-4, -6, 8, 1, [140, 92, 52]], [-3, -5, 6, 2, [237, 201, 120]], [-2, -3, 4, 1, [237, 201, 120]], [-1, -2, 2, 2, [220, 240, 255]], [-2, 0, 4, 1, [220, 240, 255]], [-3, 1, 6, 3, [237, 201, 120]], [-4, 4, 8, 1, [140, 92, 52]]],
   anvil: [[-6, -3, 2, 1, [120, 120, 136]], [-4, -4, 10, 3, [120, 120, 136]], [-4, -4, 10, 1, [180, 180, 196]], [-1, -1, 4, 2, [84, 84, 100]], [-4, 1, 10, 3, [84, 84, 100]]],
   dice: [[-5, -5, 10, 10, [240, 230, 210]], [-3, -3, 2, 2, [24, 20, 37]], [1, 1, 2, 2, [24, 20, 37]], [1, -3, 2, 2, [24, 20, 37]], [-3, 1, 2, 2, [24, 20, 37]], [-5, -5, 10, 1, [255, 255, 255]]],
   counter: [[-6, -1, 12, 2, [184, 111, 60]], [-6, 1, 12, 4, [138, 75, 43]], [-4, 2, 1, 3, [59, 30, 20]], [3, 2, 1, 3, [59, 30, 20]], [-2, -5, 4, 4, [255, 205, 70]], [-1, -4, 1, 1, [255, 240, 170]]],
   coins: [[-4, 2, 8, 2, [230, 160, 40]], [-5, 0, 8, 2, [255, 205, 70]], [-3, -2, 8, 2, [230, 160, 40]], [-4, -4, 8, 2, [255, 205, 70]], [-3, -4, 3, 1, [255, 240, 170]]],
+  candle: [[0, -7, 1, 1, [255, 230, 120]], [-1, -6, 3, 2, [255, 160, 50]], [0, -5, 1, 1, [255, 240, 170]], [-2, -3, 5, 8, [240, 230, 210]], [-2, -3, 1, 8, [255, 255, 255]], [-4, 5, 9, 1, [140, 92, 52]]],
+  lens: [[-4, -6, 6, 1, [190, 190, 205]], [-5, -5, 1, 6, [190, 190, 205]], [2, -5, 1, 6, [190, 190, 205]], [-4, 1, 6, 1, [190, 190, 205]], [-4, -5, 6, 6, [140, 200, 240]], [-3, -4, 2, 1, [230, 250, 255]], [2, 2, 2, 2, [140, 92, 52]], [4, 4, 2, 2, [140, 92, 52]]],
   sack: [[-2, -6, 4, 2, [150, 120, 80]], [-1, -4, 2, 1, [255, 205, 70]], [-4, -3, 8, 7, [190, 160, 110]], [-5, -1, 10, 4, [190, 160, 110]], [-1, -1, 2, 3, [150, 120, 80]]],
   // Gear: a ragged hood, a helm with a skull's face, and a crown of the dead.
   rag_hood: [[-3, -6, 6, 2, [150, 112, 76]], [-5, -4, 10, 6, [126, 92, 60]], [-6, 2, 12, 3, [126, 92, 60]], [-2, -2, 4, 3, [40, 28, 30]], [-2, 1, 4, 1, [150, 112, 76]], [-3, -5, 2, 1, [186, 146, 100]], [-4, 4, 1, 1, [96, 70, 46]], [3, 4, 1, 1, [96, 70, 46]]],
@@ -230,5 +264,12 @@ export function drawCrafted(kind, at, scale = 1, opacity = 1) {
   }
   for (const [x, y, w, h, c] of shape) drawRect({ pos: at.add(x * scale, y * scale), width: w * scale, height: h * scale, color: rgb(...c), opacity });
 }
-// A part lying on the floor, like a piece of material.
-export const drawPart = (part, at) => drawCrafted(part, at);
+// A part lying on the floor, like a piece of material. A rune glows.
+export function drawPart(part, at) {
+  if (isRune(part)) {
+    const glyph = SHAPES[part][5][4];
+    const pulse = 0.5 + 0.5 * Math.sin(time() * 4);
+    drawCircle({ pos: at, radius: 8 + pulse * 2, color: rgb(...glyph), opacity: 0.15 + 0.15 * pulse });
+  }
+  drawCrafted(part, at);
+}
