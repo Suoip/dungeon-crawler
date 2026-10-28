@@ -264,6 +264,54 @@ export function addStall(x, y, selling) {
   return { zone };
 }
 
+// The rune table in the underworld (runes.js): a stone table with a circle
+// carved in its top. (x, y) is the middle of its foot; it's solid there,
+// and the zone is the floor in front. `ready()` says whether a rune you
+// have could enchant something: then the circle glows and sparks of its
+// light drift up.
+export function addRuneTable(x, y, ready) {
+  const DARK = rgb(24, 20, 37);
+  const table = add([
+    pos(x, y),
+    area({ shape: new Rect(vec2(-15, -6), 30, 6) }),
+    body({ isStatic: true }),
+    z(10 + y / 1000),
+  ]);
+  // The carved circle, an oval seen from above.
+  const CIRCLE = [[-6, -19, 12, 1], [-8, -18, 2, 1], [6, -18, 2, 1], [-9, -17, 1, 1], [8, -17, 1, 1], [-8, -16, 2, 1], [6, -16, 2, 1], [-6, -15, 12, 1], [-1, -17, 2, 1]];
+  table.onDraw(() => {
+    const on = ready();
+    // Two thick legs, lit on the left.
+    for (const lx of [-13, 7]) {
+      drawRect({ pos: vec2(lx - 1, -12), width: 8, height: 12, color: DARK });
+      drawRect({ pos: vec2(lx, -11), width: 6, height: 11, color: rgb(104, 96, 120) });
+      drawRect({ pos: vec2(lx, -11), width: 1, height: 11, color: rgb(150, 144, 160) });
+    }
+    // The slab: its top, then its front edge in shade.
+    drawRect({ pos: vec2(-17, -22), width: 34, height: 12, color: DARK });
+    drawRect({ pos: vec2(-16, -21), width: 32, height: 7, color: rgb(150, 144, 160) });
+    drawRect({ pos: vec2(-16, -21), width: 32, height: 1, color: rgb(190, 184, 200) });
+    drawRect({ pos: vec2(-16, -14), width: 32, height: 3, color: rgb(104, 96, 120) });
+    const pulse = 0.5 + 0.5 * Math.sin(time() * 3);
+    if (on) drawCircle({ pos: vec2(0, -17), radius: 12, color: rgb(170, 110, 255), opacity: 0.12 + 0.1 * pulse });
+    for (const [cx, cy, w, h] of CIRCLE) {
+      drawRect({ pos: vec2(cx, cy), width: w, height: h, color: on ? rgb(190, 140, 255) : rgb(90, 77, 110), opacity: on ? 0.7 + 0.3 * pulse : 1 });
+    }
+  });
+  table.onUpdate(() => {
+    if (!ready() || Math.random() > dt() * 5) return;
+    const spark = add([rect(1, 1), pos(x + rand(-7, 7), y - 18), color(200, 160, 255), opacity(1), z(11)]);
+    const rise = rand(10, 18);
+    spark.onUpdate(() => {
+      spark.pos.y -= rise * dt();
+      spark.opacity -= dt() * 1.1;
+      if (spark.opacity <= 0) destroy(spark);
+    });
+  });
+  const zone = add([pos(x - 16, y), area({ shape: new Rect(vec2(0), 32, 14) })]);
+  return { zone };
+}
+
 // A big red button in the floor, with its name over it. press() pushes it
 // down for good; the label can be changed with setLabel.
 export function addFloorButton(x, y, title) {

@@ -652,7 +652,27 @@ Coins stay as they are; crafting is a second way to grow, built in steps:
      shows what it costs to learn; picking it and pressing E (or clicking
      it twice) learns it.
    - **The gear chest** wears one piece per slot, all at once.
-5. **Enchanting** gear with rare drops from the dungeon.
+5. **Enchanting** (built) gear with rare drops from the dungeon.
+   - **Runes, one per depth** (balance.js depths' `rune`): BONE in the
+     crypt, EMBER in the warrens, IRON in the fort, BOG in the swamp and
+     HELL in the pit. 1 kill in 200 drops its depth's rune, and a boss 1
+     time in 4 (balance.js drops.rune). It's picked up like a part, with a
+     glow and a shimmer, kept with the parts, and has its own line in the
+     results.
+   - **The rune table** stands in the underworld above the forge: a stone
+     table with a circle carved in it, which glows (and sparks drift up)
+     when a rune you have could enchant something. Its page shows all your
+     gear like the gear chest (a gold dot on the worn ones, a purple pip a
+     level), the runes you have along the title bar, and its upgrades in a
+     row.
+   - **Enchanting** (balance.js crafting.enchant): a rune of the piece's
+     depth raises its level by one, up to +3, and each level makes all its
+     bonuses 25% bigger (x1.25 at +1, x1.75 at +3), on the hero and in its
+     price. Going to +1 always works, +2 70% of the time, +3 40%. When it
+     fails, the rune crumbles and the piece stays as it was.
+   - **The table's upgrades:** Steady hands (3 levels, +10% to the chance
+     each, 100 to 900 gold) and Rune finder (3 levels, runes drop 25% more
+     often each, 150 to 1350).
 
 The pacing simulator doesn't wear gear, so its times are without it.
 

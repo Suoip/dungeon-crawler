@@ -1,8 +1,8 @@
 import { GAME_WIDTH, GAME_HEIGHT } from "./config.js";
 import { BALANCE } from "./balance.js";
 import { getSave, putOnCounter, takeBack } from "./save.js";
-import { recipeOf, priceOf, spareGear, counterFull, haggled, takes, workshop, bonusText, drawCrafted } from "./crafting.js";
-import { C, text, timeText, drawFrame, drawCursor, openPage, upgradeRow, isUp, UP_ROW, drawGold } from "./forge.js";
+import { recipeOf, priceOf, spareGear, counterFull, haggled, takes, workshop, bonusText, enchanted, drawCrafted } from "./crafting.js";
+import { C, text, timeText, drawFrame, drawCursor, openPage, upgradeRow, isUp, UP_ROW, drawGold, nameOf, drawLevel } from "./forge.js";
 import { playSound } from "./sound.js";
 
 // The merchant's page (DESIGN.md section 6), opened at his stall in the
@@ -115,6 +115,7 @@ export function openStall(onClose) {
           if (!at) continue;
           drawFrame(at.x, at.y, CELL - 2, C.stoneLight);
           drawCrafted(spares[i].recipe, at.add(10, 11));
+          drawLevel(spares[i], at, CELL - 2);
         }
       } else {
         text("NO SPARE GEAR.", GRID.x + COLS * CELL / 2, 70, C.muted, "top");
@@ -166,9 +167,9 @@ export function openStall(onClose) {
     }
     const recipe = recipeOf(piece.recipe);
     drawCrafted(piece.recipe, vec2(15, PANEL + 22));
-    text(recipe.name.toUpperCase(), 30, PANEL + 4, C.gold);
+    text(nameOf(piece), 30, PANEL + 4, C.gold);
     text(`${haggled(sale ? sale.price : priceOf(piece))} GOLD`, GAME_WIDTH - 6, PANEL + 4, C.gold, "topright");
-    const bonuses = Object.entries(piece.bonuses).map(([kind, size]) => bonusText(kind, size));
+    const bonuses = Object.entries(enchanted(piece)).map(([kind, size]) => bonusText(kind, size));
     text(bonuses.slice(0, 2).join("  "), 30, PANEL + 14);
     if (bonuses.length > 2) text(bonuses.slice(2).join("  "), 30, PANEL + 24);
     const picked = i === page.picked;
