@@ -829,22 +829,38 @@ live in `src/balance.js`.
   typical player is a bit slower than perfect: about 20% slower clears, 10%
   of the gold missed, and more hits taken. A sharp player is faster (about
   30 minutes).
-- **Where it stands:** with the branching tree, the pacing simulator
-  (playing the whole game 30 times per shopper, each depth starting with
-  what the depths before left) has the typical player at:
+- **Where it stands:** with the branching tree and crafting, the pacing
+  simulator (playing the whole game 30 times per shopper, each depth
+  starting with what the depths before left) has the typical player at:
 
   | Depth | Value shopper | Cheapest shopper |
   |---|---|---|
-  | 1, the crypt | 38 min | 48 min |
-  | 2, the goblin warrens | 42 min | 42 min |
-  | 3, the orc fort | 43 min | 49 min |
-  | 4, the sunken swamp | 41 min | 56 min |
-  | 5, the demon pit | 39 min | 38 min |
-  | The whole game | about 3.4 hours | about 3.8 hours |
+  | 1, the crypt | 58 min | 67 min |
+  | 2, the goblin warrens | 36 min | 38 min |
+  | 3, the orc fort | 40 min | 39 min |
+  | 4, the sunken swamp | 37 min | 44 min |
+  | 5, the demon pit | 40 min | 41 min |
+  | The whole game | about 3.5 hours | about 3.8 hours |
+
+  **Crafting** (2026-10-28) is played too (`tools/gear.mjs`): parts and
+  runes drop from his kills, the forge and the merchant work through his
+  runs and his time in the underworld, he wears the best piece in each
+  slot, sells the spares, enchants with every rune, keeps back the parts
+  for each slot's best piece, buys a crafting upgrade when it costs less
+  than a run earns, and saves up for the next recipe. Without crafting
+  (`--no-gear`) the depths took 38-43 minutes; with it, the crypt got
+  slower (the crafting upgrades are priced in crypt gold and compete with
+  the tree there, while crypt gear comes too late to help) and the later
+  depths much faster (the swamp and the pit about 17 minutes: four or five
+  pieces at +2 or +3 multiply up). The crypt was left slower (a choice);
+  the fort, swamp and pit pay less gold instead (`scale.gold` 15000 ->
+  10000, 7.8M -> 2.4M, 3.36B -> 470M), so gear stays strong and each
+  depth still takes about 40 minutes.
 
   Rooms 1-9 each take about 0-10 minutes to get through the first time,
   and the boss rooms up to about 15. The golden rule mostly holds; it slips
-  for a few runs early in depth 1 and in depth 4. These numbers are rough:
+  for a few runs early in depth 1, in depth 4, and (since the retune for
+  crafting) for a few runs in depth 5, at about 0.8 times the cheapest. These numbers are rough:
   the depths' own numbers (monsters, rooms, bosses) were set for the old
   tree, and the branching tree's prices were only roughly tuned to them
   (each kind costs about what it did in each depth, plus the new kinds,
