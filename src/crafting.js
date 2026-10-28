@@ -10,7 +10,28 @@ import { playSound } from "./sound.js";
 // rather than in a room.
 
 const { crafting } = BALANCE;
-export const recipeOf = (id) => crafting.recipes.find((recipe) => recipe.id === id);
+
+// Every recipe, from each slot's gear and the tiers (balance.js crafting):
+// { id, name, slot, depth, tier, parts: { part: count }, time, bonuses,
+// size, price, sells, learn }. Prices and learning costs grow with the
+// depth's gold, rounded to two figures.
+const tidy = (x) => (x < 100 ? Math.round(x) : Number(x.toPrecision(2)));
+const goldOf = (depth) => BALANCE.depths[depth - 1].scale.gold / BALANCE.depths[0].scale.gold;
+export const RECIPES = crafting.gear.flatMap((gear, i) => gear.recipes.map(([id, name], tier) => {
+  const { parts, learn, price, ...rest } = crafting.tiers[tier];
+  const depth = i + 1;
+  return {
+    id, name, slot: gear.slot, depth, tier, ...rest,
+    parts: Object.fromEntries(Object.entries(parts).map(([which, count]) => [gear.parts[which], count])),
+    price: price * goldOf(depth),
+    learn: learn ? tidy(learn * goldOf(depth)) : null,
+  };
+}));
+export const recipeOf = (id) => RECIPES.find((recipe) => recipe.id === id);
+// A slot's recipes, and whether its depth is open yet (one past the deepest
+// boss beaten).
+export const recipesFor = (slot) => RECIPES.filter((recipe) => recipe.slot === slot);
+export const slotOpen = (slot) => crafting.slots.indexOf(slot) + 1 <= getSave().cleared + 1;
 
 // The forge's and the merchant's upgrades, as bought (balance.js
 // crafting.upgrades, levels in save.js workshop): what they're working
@@ -19,22 +40,21 @@ const UPGRADES = [...crafting.upgrades.forge, ...crafting.upgrades.merchant];
 export const upgradeLevel = (upgrade) => getSave().workshop[upgrade.id] ?? 0;
 export const upgradeCost = (upgrade) => upgrade.costs[upgradeLevel(upgrade)] ?? null; // null once it's maxed
 export function workshop(levels = getSave().workshop) {
-  const shop = { forgeTime: 1, anvils: 1, rolls: 1, recipes: new Set(), sellTime: 1, counter: crafting.counter, haggle: 1, autoSell: false };
+  const shop = { forgeTime: 1, anvils: 1, rolls: 1, sellTime: 1, counter: crafting.counter, haggle: 1, autoSell: false };
   for (const upgrade of UPGRADES) {
     const level = levels[upgrade.id] ?? 0;
     if (!level) continue;
     const [[kind, by]] = Object.entries(upgrade.effect);
     if (kind === "forgeTime" || kind === "sellTime") shop[kind] *= by ** level;
-    else if (kind === "recipe") shop.recipes.add(by);
     else if (kind === "autoSell") shop.autoSell = true;
     else shop[kind] += by * level;
   }
   return shop;
 }
-// Whether a recipe can be made: the ones no upgrade teaches are known from
-// the start.
-const taught = new Set(UPGRADES.map((upgrade) => upgrade.effect.recipe).filter(Boolean));
-export const knowsRecipe = (recipe) => !taught.has(recipe.id) || workshop().recipes.has(recipe.id);
+// Whether a recipe can be made: each slot's first is known from the start,
+// the others once they're learned (bought on their row of the forge's page,
+// saved as "recipe:<id>" in the workshop).
+export const knowsRecipe = (recipe) => !recipe.learn || (getSave().workshop[`recipe:${recipe.id}`] ?? 0) > 0;
 
 // How many of each part it still needs, beyond what's saved: { part: missing }.
 export function partsShort(recipe) {
@@ -145,6 +165,30 @@ const SHAPES = {
   flesh: [[-3, -3, 6, 2, [196, 112, 112]], [-4, -1, 8, 3, [160, 82, 88]], [-3, 2, 6, 1, [122, 60, 70]], [-2, -2, 2, 1, [226, 160, 150]], [1, 0, 2, 1, [116, 150, 80]]],
   skull: [[-3, -4, 6, 1, BONE], [-4, -3, 8, 4, BONE], [-3, 1, 6, 2, BONE], [-3, -2, 2, 2, INK], [1, -2, 2, 2, INK], [-1, 2, 1, 1, INK], [1, 2, 1, 1, INK]],
   heart: [[-4, -3, 3, 2, [150, 40, 60]], [1, -3, 3, 2, [150, 40, 60]], [-4, -1, 8, 2, [128, 32, 52]], [-3, 1, 6, 1, [108, 26, 46]], [-2, 2, 4, 1, [96, 22, 40]], [-1, 3, 2, 1, [96, 22, 40]], [-3, -3, 1, 1, [210, 120, 120]], [-1, -1, 1, 1, [110, 160, 80]]],
+  // The warrens' parts: a goblin's ear, an imp's horn, a wogol's powder
+  // (with a spark in it), and an ogre's knuckle.
+  ear: [[-3, -4, 4, 2, [120, 170, 80]], [-4, -2, 6, 3, [120, 170, 80]], [-2, 1, 4, 2, [120, 170, 80]], [-2, -2, 2, 2, [80, 120, 50]]],
+  horn: [[1, -5, 2, 2, [230, 200, 170]], [0, -3, 3, 2, [200, 90, 60]], [-1, -1, 3, 2, [180, 70, 50]], [-3, 1, 4, 2, [160, 60, 40]]],
+  powder: [[-1, -3, 2, 1, [90, 90, 100]], [-3, -2, 6, 2, [70, 70, 80]], [-5, 0, 10, 2, [50, 50, 60]], [0, -2, 1, 1, [255, 140, 40]]],
+  knuckle: [[-4, -2, 3, 4, [230, 200, 160]], [-1, -1, 3, 2, [210, 180, 140]], [2, -2, 3, 4, [230, 200, 160]]],
+  // The fort's: a patch of orc hide, a shaman's feather, a scrap of a masked
+  // orc's iron, and the ogre's crest.
+  hide: [[-4, -4, 8, 8, [150, 100, 60]], [-5, -2, 10, 4, [150, 100, 60]], [-3, -3, 2, 1, [190, 140, 90]], [1, 1, 2, 2, [110, 70, 40]]],
+  feather: [[2, -6, 2, 2, [200, 230, 240]], [0, -4, 3, 3, [150, 200, 220]], [-2, -1, 3, 3, [110, 170, 200]], [-4, 2, 2, 3, [230, 230, 230]]],
+  iron: [[-4, -3, 8, 6, [130, 130, 145]], [-4, -3, 8, 1, [190, 190, 205]], [-2, -1, 1, 1, [80, 80, 95]], [2, 1, 1, 1, [80, 80, 95]]],
+  crest: [[-4, -5, 8, 2, [200, 50, 50]], [-4, -3, 8, 4, [180, 40, 40]], [-3, 1, 6, 2, [160, 30, 30]], [-1, 3, 2, 2, [140, 20, 20]], [-1, -3, 2, 4, [255, 205, 70]]],
+  // The swamp's: a clump of moss, a lump of clay, a pile of bone dust, and
+  // the Bog Zombie's pearl.
+  moss: [[-3, -3, 6, 2, [110, 170, 80]], [-5, -1, 10, 3, [80, 140, 60]], [-4, 2, 8, 1, [60, 110, 45]], [-2, -2, 1, 1, [170, 220, 120]]],
+  clay: [[-3, -3, 6, 2, [200, 130, 90]], [-4, -1, 8, 3, [170, 105, 70]], [-3, 2, 6, 1, [140, 85, 55]], [-2, -2, 2, 1, [230, 170, 130]]],
+  dust: [[-1, -2, 2, 1, [220, 210, 230]], [-3, -1, 6, 2, [190, 180, 205]], [-5, 1, 10, 2, [160, 150, 180]], [2, -4, 1, 1, [255, 255, 255]]],
+  pearl: [[-2, -3, 4, 1, [230, 230, 240]], [-3, -2, 6, 4, [210, 215, 230]], [-2, 2, 4, 1, [180, 185, 200]], [-2, -2, 2, 1, [255, 255, 255]]],
+  // The pit's: a chort's hoof, a pumpkin seed, a plague doctor's vial, and
+  // the Big Demon's eye.
+  hoof: [[-4, -2, 3, 5, [60, 40, 40]], [1, -2, 3, 5, [60, 40, 40]], [-4, -3, 8, 2, [90, 60, 55]], [-4, 3, 3, 1, [30, 20, 20]], [1, 3, 3, 1, [30, 20, 20]]],
+  seed: [[-1, -4, 3, 1, [240, 225, 180]], [-2, -3, 5, 5, [230, 210, 160]], [-1, 2, 3, 1, [200, 180, 130]], [-1, -3, 1, 2, [255, 245, 215]]],
+  vial: [[-1, -5, 2, 1, [150, 100, 60]], [-1, -4, 2, 2, [200, 220, 230]], [-3, -2, 6, 5, [200, 220, 230]], [-3, 0, 6, 3, [110, 200, 90]], [-2, -2, 1, 2, [255, 255, 255]]],
+  eye: [[-4, -2, 8, 4, [240, 230, 210]], [-3, -3, 6, 1, [240, 230, 210]], [-3, 2, 6, 1, [240, 230, 210]], [-1, -2, 3, 4, [230, 72, 46]], [0, -1, 1, 2, [24, 20, 37]]],
   // The forge's and merchant's upgrades: an hourglass, an anvil, a die, a
   // stall's counter with a coin on it, a stack of coins, and a sack.
   hourglass: [[-4, -6, 8, 1, [140, 92, 52]], [-3, -5, 6, 2, [237, 201, 120]], [-2, -3, 4, 1, [237, 201, 120]], [-1, -2, 2, 2, [220, 240, 255]], [-2, 0, 4, 1, [220, 240, 255]], [-3, 1, 6, 3, [237, 201, 120]], [-4, 4, 8, 1, [140, 92, 52]]],
@@ -157,6 +201,23 @@ const SHAPES = {
   rag_hood: [[-3, -6, 6, 2, [150, 112, 76]], [-5, -4, 10, 6, [126, 92, 60]], [-6, 2, 12, 3, [126, 92, 60]], [-2, -2, 4, 3, [40, 28, 30]], [-2, 1, 4, 1, [150, 112, 76]], [-3, -5, 2, 1, [186, 146, 100]], [-4, 4, 1, 1, [96, 70, 46]], [3, 4, 1, 1, [96, 70, 46]]],
   skull_helm: [[-6, -8, 2, 3, BONE], [4, -8, 2, 3, BONE], [-4, -6, 8, 2, BONE], [-5, -4, 10, 6, BONE], [-4, 2, 8, 3, [196, 186, 170]], [-3, -2, 2, 2, INK], [1, -2, 2, 2, INK], [-1, 0, 2, 1, INK], [-3, 3, 1, 1, INK], [-1, 3, 1, 1, INK], [1, 3, 1, 1, INK], [-4, -5, 3, 1, [255, 250, 236]]],
   zombie_crown: [[-5, -5, 2, 3, [255, 205, 70]], [-1, -6, 2, 4, [255, 205, 70]], [3, -5, 2, 3, [255, 205, 70]], [-5, -2, 10, 4, [230, 160, 40]], [-5, 2, 10, 1, [170, 110, 30]], [-1, -1, 2, 2, [99, 199, 77]], [-4, -1, 1, 1, [230, 72, 46]], [3, -1, 1, 1, [230, 72, 46]], [-5, -2, 10, 1, [255, 230, 140]]],
+  // Boots: goblin sandals, red imp boots, and big ogre stompers.
+  goblin_sandals: [[-6, 2, 11, 2, [120, 80, 50]], [-5, 0, 2, 2, [170, 120, 70]], [-1, -1, 2, 3, [170, 120, 70]], [3, 0, 2, 2, [170, 120, 70]], [-6, 4, 11, 1, [80, 50, 30]]],
+  imp_boots: [[-2, -6, 5, 7, [180, 60, 50]], [-2, -6, 5, 1, [220, 100, 80]], [-2, 1, 8, 3, [160, 50, 40]], [-2, 4, 8, 1, [60, 30, 30]], [4, 1, 2, 2, [230, 200, 170]]],
+  ogre_stompers: [[-3, -6, 6, 7, [150, 110, 70]], [-4, 1, 10, 4, [130, 95, 60]], [-4, 5, 10, 1, [60, 40, 30]], [-3, -6, 6, 1, [190, 150, 100]], [-1, -3, 2, 1, [230, 200, 160]], [3, 2, 2, 1, [230, 200, 160]]],
+  // Armour: a hide vest, iron mail, and a warlord's red and gold plate.
+  hide_vest: [[-6, -5, 3, 3, [150, 100, 60]], [3, -5, 3, 3, [150, 100, 60]], [-5, -3, 10, 9, [150, 100, 60]], [-5, -3, 10, 1, [190, 140, 90]], [-1, -3, 2, 9, [110, 70, 40]]],
+  iron_mail: [[-6, -5, 3, 3, [130, 130, 145]], [3, -5, 3, 3, [130, 130, 145]], [-5, -3, 10, 9, [130, 130, 145]], [-5, -3, 10, 1, [190, 190, 205]], [-3, -1, 1, 1, [190, 190, 205]], [1, -1, 1, 1, [190, 190, 205]], [-1, 1, 1, 1, [190, 190, 205]], [-3, 3, 1, 1, [190, 190, 205]], [1, 3, 1, 1, [190, 190, 205]]],
+  warlord_plate: [[-6, -5, 3, 3, [180, 40, 40]], [3, -5, 3, 3, [180, 40, 40]], [-5, -3, 10, 9, [180, 40, 40]], [-5, -3, 10, 1, [230, 90, 80]], [-6, -5, 3, 3, [255, 205, 70]], [3, -5, 3, 3, [255, 205, 70]], [-1, -2, 2, 6, [255, 205, 70]], [-3, 0, 6, 2, [255, 205, 70]]],
+  // Amulets: a moss charm on a cord, a silver locket, and a pearl on gold.
+  moss_charm: [[-5, -7, 1, 3, [140, 92, 52]], [4, -7, 1, 3, [140, 92, 52]], [-4, -4, 1, 2, [140, 92, 52]], [3, -4, 1, 2, [140, 92, 52]], [-3, -2, 1, 1, [140, 92, 52]], [2, -2, 1, 1, [140, 92, 52]], [-2, -1, 4, 4, [80, 140, 60]], [-1, 0, 1, 1, [170, 220, 120]]],
+  dust_locket: [[-5, -7, 1, 3, [140, 92, 52]], [4, -7, 1, 3, [140, 92, 52]], [-4, -4, 1, 2, [140, 92, 52]], [3, -4, 1, 2, [140, 92, 52]], [-3, -2, 1, 1, [140, 92, 52]], [2, -2, 1, 1, [140, 92, 52]], [-2, -1, 4, 5, [190, 190, 205]], [-1, 0, 2, 3, [160, 150, 180]]],
+  pearl_amulet: [[-5, -7, 1, 3, [255, 205, 70]], [4, -7, 1, 3, [255, 205, 70]], [-4, -4, 1, 2, [255, 205, 70]], [3, -4, 1, 2, [255, 205, 70]], [-3, -2, 1, 1, [255, 205, 70]], [2, -2, 1, 1, [255, 205, 70]], [-2, -1, 4, 4, [230, 230, 240]], [-1, -1, 1, 1, [255, 255, 255]]],
+  // Rings: a dark band with a little hoof, a silver ring with a green glass
+  // stone, and a gold ring set with a demon's eye.
+  hoof_band: [[-3, -3, 6, 1, [90, 60, 55]], [-4, -2, 1, 6, [90, 60, 55]], [3, -2, 1, 6, [90, 60, 55]], [-3, 4, 6, 1, [90, 60, 55]], [-1, -6, 2, 3, [60, 40, 40]]],
+  glass_ring: [[-3, -3, 6, 1, [190, 190, 205]], [-4, -2, 1, 6, [190, 190, 205]], [3, -2, 1, 6, [190, 190, 205]], [-3, 4, 6, 1, [190, 190, 205]], [-1, -6, 3, 3, [110, 200, 90]], [-1, -6, 1, 1, [220, 255, 210]]],
+  demon_eye_ring: [[-3, -3, 6, 1, [255, 205, 70]], [-4, -2, 1, 6, [255, 205, 70]], [3, -2, 1, 6, [255, 205, 70]], [-3, 4, 6, 1, [255, 205, 70]], [-2, -7, 5, 4, [240, 230, 210]], [-1, -6, 3, 2, [230, 72, 46]], [0, -6, 1, 2, [24, 20, 37]]],
 };
 
 // Draws a part or a piece of gear (by its recipe's id) around `at`, `scale`

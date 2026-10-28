@@ -30,7 +30,7 @@ const FRESH = {
   nextPiece: 1,              // the id the next piece gets
   newGear: 0,                // pieces made since the gear chest was last opened
   counter: [],               // the merchant's counter: { piece, price, left } (its price before Haggling, and seconds left to sell at the start)
-  workshop: {},              // the forge's and merchant's upgrades: id -> level (balance.js crafting.upgrades)
+  workshop: {},              // the forge's and merchant's upgrades: id -> level (balance.js crafting.upgrades), and "recipe:<id>" -> 1 for each recipe learned
 };
 
 let save = structuredClone(FRESH);
@@ -42,6 +42,13 @@ try {
   save.materials = { ...FRESH.materials, ...stored.materials };
   if (stored.bones) save.materials.bones += stored.bones;
   delete save.bones;
+  // Saves from before recipes were learned on their own rows had them as
+  // forge upgrades.
+  for (const old of Object.keys(save.workshop)) {
+    if (!old.startsWith("learn_")) continue;
+    save.workshop[`recipe:${old.slice(6)}`] = save.workshop[old];
+    delete save.workshop[old];
+  }
   // Saves from before the well existed: every run ends in the underworld,
   // so anyone who has played a run has been there.
   save.seenUnderworld ||= save.runs > 0;

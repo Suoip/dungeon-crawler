@@ -1,7 +1,7 @@
 import { GAME_WIDTH, GAME_HEIGHT } from "./config.js";
 import { BALANCE } from "./balance.js";
 import { getSave, startCraft, wearPiece, seeGear, buyWorkshop } from "./save.js";
-import { recipeOf, partsShort, forgeFull, canCraft, knowsRecipe, workshop, takes, upgradeLevel, upgradeCost, bonusText, drawCrafted } from "./crafting.js";
+import { recipeOf, recipesFor, slotOpen, partsShort, forgeFull, canCraft, knowsRecipe, workshop, takes, upgradeLevel, upgradeCost, bonusText, drawCrafted } from "./crafting.js";
 import { playSound } from "./sound.js";
 import { getGamePixel } from "./display.js";
 import { setPrompt } from "./panel.js";
@@ -9,10 +9,11 @@ import { shortGold } from "./hud.js";
 
 // The forge's two pages (DESIGN.md section 6), drawn in the game over the
 // dimmed underworld like the skill tree:
-//   - the forge: the recipes on the left, what it's making on the right (the
-//     pieces on the anvils and the ones waiting), the parts and gold you have
-//     along the title bar, and the forge's upgrades in a row under it. Pick a
-//     recipe and make it, or an upgrade and buy it.
+//   - the forge: a tab for each gear slot that's open (one per depth reached),
+//     the tab's recipes on the left, what it's making on the right (the
+//     pieces on the anvils and the ones waiting), the tab's parts and your
+//     gold along the title bar, and the forge's upgrades in a row under it.
+//     Pick a recipe and make it (or learn it), or an upgrade and buy it.
 //   - the gear chest: every piece it has made. Pick one and wear it.
 // Mouse: click a recipe, piece or upgrade to pick it, click it again to
 // make, wear or buy it. Keyboard: the arrows or WASD pick, E does it, Esc
@@ -120,11 +121,11 @@ export function openPage(title, hint, page, onClose) {
   return { close };
 }
 
-// The parts you have, along the right of the title bar: each one's picture
-// and how many. Only the ones found so far, in the order the recipes use.
-function drawParts() {
+// The parts you have for a slot's recipes, along the right of the title
+// bar: each one's picture and how many. Only the ones found so far.
+function drawParts(slot) {
   const { parts } = getSave();
-  const order = [...new Set(BALANCE.crafting.recipes.flatMap((recipe) => Object.keys(recipe.parts)))];
+  const order = [...new Set(recipesFor(slot).flatMap((recipe) => Object.keys(recipe.parts)))];
   let x = GAME_WIDTH - 6;
   for (const part of order.reverse()) {
     if (parts[part] === undefined) continue;
@@ -243,37 +244,57 @@ export function drawGold({ right, left }) {
 
 // ---- The forge -------------------------------------------------------------------
 
-const ROW = 30;                              // px from one recipe to the next
-const LIST = { x: 8, y: TOP_BAR + UP_ROW + 6 };      // the first recipe's frame
-const ANVIL = { x: 204, y: TOP_BAR + UP_ROW + 6 };   // the first anvil's
-const ANVIL_GAP = 36;                        // px from one anvil to the next
+const TABS_Y = TOP_BAR + UP_ROW + 3;       // the tabs' tops
+const TAB_GAP = 14;                         // px between two tabs
+const ROW = 30;                             // px from one recipe to the next
+const LIST = { x: 8, y: TABS_Y + 16 };      // the first recipe's frame
+const ANVIL = { x: 204, y: TABS_Y + 16 };   // the first anvil's
+const ANVIL_GAP = 36;                       // px from one anvil to the next
 const FORGE_PANEL = GAME_HEIGHT - 38;
+let lastTab = "head"; // the tab the forge's page opens on: the one it was left on
 
 export function openForge(onClose) {
-  const recipes = BALANCE.crafting.recipes;
   const save = getSave();
   const row = upgradeRow(BALANCE.crafting.upgrades.forge);
+  const tabs = BALANCE.crafting.slots.filter(slotOpen);
+  let slot = tabs.includes(lastTab) ? lastTab : tabs[0];
+  let recipes = recipesFor(slot);
   let message = null; // { text, color, until }: a moment's note in the panel
+  // The tabs: each slot's name, left to right.
+  const tabX = (k) => LIST.x + tabs.slice(0, k).reduce((x, name) => x + name.length * 8 + TAB_GAP, 0);
+  const switchTab = (k) => {
+    if (k < 0 || k >= tabs.length || tabs[k] === slot) return;
+    slot = lastTab = tabs[k];
+    recipes = recipesFor(slot);
+    page.picked = 0;
+    playSound("letter");
+  };
 
   const page = {
     picked: 0,
     pick: (point) => {
       const up = row.pick(point);
       if (up) return up;
+      if (point.y >= TABS_Y - 2 && point.y < TABS_Y + 10) {
+        const k = tabs.findIndex((name, i) => point.x >= tabX(i) - 4 && point.x < tabX(i) + name.length * 8 + 4);
+        return k >= 0 ? `tab:${k}` : null;
+      }
       const i = Math.floor((point.y - LIST.y + 3) / ROW);
       return point.x >= LIST.x - 2 && point.x < 190 && i >= 0 && i < recipes.length ? i : null;
     },
     step: (dir) => {
       if (isUp(page.picked)) return dir.y > 0 ? 0 : row.step(page.picked, dir);
       if (dir.y < 0 && page.picked === 0) return "up:0";
+      // Left and right go through the tabs.
+      if (dir.x) return switchTab(tabs.indexOf(slot) + dir.x), null;
       return dir.y ? Math.max(0, Math.min(recipes.length - 1, page.picked + dir.y)) : null;
     },
     use: (id) => {
       if (isUp(id)) return row.buy(id);
       const recipe = recipes[id];
+      if (!knowsRecipe(recipe)) return learn(recipe);
       if (!canCraft(recipe)) {
-        const why = !knowsRecipe(recipe) ? "BUY ITS RECIPE FIRST" : forgeFull() ? "THE FORGE IS FULL" : "NOT ENOUGH PARTS";
-        message = { text: why, color: C.red, until: time() + 1 };
+        message = { text: forgeFull() ? "THE FORGE IS FULL" : "NOT ENOUGH PARTS", color: C.red, until: time() + 1 };
         playSound("letter");
         return;
       }
@@ -282,27 +303,58 @@ export function openForge(onClose) {
       playSound("forge");
     },
     draw: (hover) => {
+      // A click on a tab switches to it.
+      if (typeof page.picked === "string" && page.picked.startsWith("tab:")) {
+        switchTab(Number(page.picked.slice(4)));
+        page.picked = 0;
+      }
       drawGold({ left: 54 });
-      drawParts();
+      drawParts(slot);
+      drawTabs();
       recipes.forEach((recipe, i) => drawRecipe(recipe, LIST.y + i * ROW));
       if (!isUp(page.picked)) drawCursor(LIST.x, LIST.y + page.picked * ROW, 24);
       drawWork();
       row.draw(page.picked);
-      drawPanel(hover ?? page.picked);
+      const shown = typeof hover === "string" && hover.startsWith("tab:") ? page.picked : hover ?? page.picked;
+      drawPanel(shown);
     },
   };
 
+  // Learns a recipe, for its `learn` gold.
+  function learn(recipe) {
+    if (save.gold < recipe.learn) {
+      message = { text: "NOT ENOUGH GOLD", color: C.red, until: time() + 1 };
+      playSound("letter");
+      return;
+    }
+    buyWorkshop(`recipe:${recipe.id}`, recipe.learn);
+    message = { text: "LEARNED", color: C.gold, until: time() + 1 };
+    playSound("unlock");
+  }
+
+  // The tabs: the open slots' names, the one on show in gold and underlined.
+  function drawTabs() {
+    tabs.forEach((name, k) => {
+      const x = tabX(k), on = name === slot;
+      text(name.toUpperCase(), x, TABS_Y, on ? C.gold : C.muted);
+      if (on) drawRect({ pos: vec2(x, TABS_Y + 9), width: name.length * 8 - 1, height: 1, color: C.gold });
+    });
+  }
+
   // A recipe: its piece, name and time, and the parts it takes (red where
-  // you're short). One not known yet is dim, with a lock.
+  // you're short). One not known yet is dim, with a lock, and says what it
+  // costs to learn instead of its time.
   function drawRecipe(recipe, y) {
     const known = knowsRecipe(recipe);
     const short = partsShort(recipe);
     const dim = known ? 1 : 0.4;
-    drawFrame(LIST.x, y, 24, canCraft(recipe) ? C.green : C.stoneLight);
+    const canLearn = !known && save.gold >= recipe.learn;
+    drawFrame(LIST.x, y, 24, canCraft(recipe) || canLearn ? C.green : C.stoneLight);
     drawCrafted(recipe.id, vec2(LIST.x + 12, y + 13), 1, dim);
     if (!known) drawLock(LIST.x + 18, y + 16);
     text(recipe.name.toUpperCase(), LIST.x + 32, y + 1, known ? C.gold : C.muted);
-    text(timeText(takes(recipe.time, "forgeTime")), 186, y + 1, C.muted, "topright", dim);
+    if (known) text(timeText(takes(recipe.time, "forgeTime")), 186, y + 1, C.muted, "topright");
+    else text(shortGold(recipe.learn), 186, y + 13, canLearn ? C.gold : C.muted, "topright");
     let x = LIST.x + 37;
     for (const [part, count] of Object.entries(recipe.parts)) {
       drawCrafted(part, vec2(x, y + 17), 1, dim);
@@ -362,14 +414,17 @@ export function openForge(onClose) {
     const short = partsShort(recipe);
     let status;
     if (message && time() < message.until) status = [message.text, message.color];
-    else if (!knowsRecipe(recipe)) status = ["NOT KNOWN: BUY ITS RECIPE ABOVE", C.red];
+    else if (!knowsRecipe(recipe)) {
+      status = save.gold < recipe.learn ? [`LEARNING IT COSTS ${shortGold(recipe.learn)} GOLD`, C.red]
+        : [id === page.picked ? `LEARN IT: ${shortGold(recipe.learn)} GOLD, CLICK OR E` : `LEARN IT: ${shortGold(recipe.learn)} GOLD`, C.green];
+    }
     else if (Object.keys(short).length) status = [`NEEDS ${Object.entries(short).map(([part, n]) => `${n} ${part.toUpperCase()}`).join(", ")} MORE`, C.red];
     else if (forgeFull()) status = ["THE FORGE IS FULL: WAIT FOR ONE", C.red];
     else status = [id === page.picked ? "MAKE IT: CLICK OR E" : "CLICK TO PICK", C.green];
     text(status[0], 30, FORGE_PANEL + 26, status[1]);
   }
 
-  return openPage("FORGE", "Click twice or press E to make or buy it. Esc closes.", page, onClose);
+  return openPage("FORGE", "Click twice or press E to make, learn or buy it. Esc closes.", page, onClose);
 }
 
 // ---- The gear chest -------------------------------------------------------------
