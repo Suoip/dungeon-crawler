@@ -232,7 +232,7 @@ export const BALANCE = {
       // others from a distance, and masked orcs (from room 5) hide behind
       // shields. The ogre stands in for the depth's boss, raising orcs.
       name: "FORT",
-      scale: { hp: 630, gold: 15000 },
+      scale: { hp: 630, gold: 10000 }, // (gold 15000 before crafting: worn gear made it too quick)
       growth: { hp: 1.071 }, // each room's monsters are this much tougher than the last's
       tint: [148, 164, 204],
       decor: "banners",
@@ -269,7 +269,7 @@ export const BALANCE = {
       // from a distance. A swamp-green Big Zombie stands in for the depth's
       // boss, raising swampies.
       name: "SWAMP",
-      scale: { hp: 11000, gold: 7800000 },
+      scale: { hp: 11000, gold: 2400000 }, // (gold 7800000 before crafting)
       growth: { hp: 1.100 }, // each room's monsters are this much tougher than the last's
       tint: [140, 180, 140],
       decor: "goo",
@@ -301,7 +301,7 @@ export const BALANCE = {
       // 3) leap at you, and plague doctors (from room 5) lob flasks that
       // burst into fire. The Big Demon waits at the bottom, raising chorts.
       name: "PIT",
-      scale: { hp: 93000, gold: 3360000000 },
+      scale: { hp: 93000, gold: 470000000 }, // (gold 3360000000 before crafting)
       growth: { hp: 1.046 }, // each room's monsters are this much tougher than the last's
       tint: [196, 112, 148],
       decor: "lava",

@@ -19,6 +19,10 @@
 // depth starts the climb over, so its first room should be a struggle with
 // only the earlier depths' upgrades.
 //
+// It crafts too (tools/gear.mjs): parts drop, the forge makes gear, he wears
+// the best, sells the rest and enchants with runes, and some of his gold goes
+// on recipes and the forge's, merchant's and rune table's upgrades.
+//
 // It plays with two kinds of shopper, because real players fall somewhere in
 // between:
 //   value     buys whatever helps most for its price (it tries each one out)
@@ -30,6 +34,7 @@
 //   node tools/simulate.mjs --runs          ...and the golden-rule path, run by run
 //   node tools/simulate.mjs --seeds 300     ...playing each case 300 times (default 100)
 //   node tools/simulate.mjs --json out.json ...and save it all, for charts
+//   node tools/simulate.mjs --no-gear       ...without crafting (as before it was built)
 
 import { writeFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
@@ -37,6 +42,7 @@ import { BALANCE } from "../src/balance.js";
 import { MODEL, PLAYERS, heroStats, costOf, simulateRun, makeDice } from "./model.mjs";
 import { isEarly } from "../src/stats.js";
 import { NODES, byId, blockerOf } from "../src/nodes.js";
+import { newCrafter, afterRun, spend, geared, describe } from "./gear.mjs";
 
 export const DEPTHS = BALANCE.depths.length;
 const TARGET_MINUTES = 40;  // DESIGN.md section 8: about 40 minutes per depth, typical player
@@ -48,6 +54,10 @@ const BARE_RUNS = 1000;     // dice rolls for the no-upgrades check
 // A player sharper than the efficient one, for that check: he walks and
 // dodges better (nobody swings faster than the swing's timer).
 const SHARP = { clearTime: 0.8, gold: 1, danger: 0.8 };
+
+// Whether the player crafts (--no-gear turns it off).
+let GEAR = true;
+export const setGear = (on) => (GEAR = on);
 
 export const startingLevels = () => Object.fromEntries(NODES.filter((n) => n.owned).map((n) => [n.id, 1]));
 
@@ -93,9 +103,9 @@ function forSale(levels, depth, usefulOnly = false, want = () => true) {
 
 // Plays the same upgrades `count` times in `depth`, with the dice seeded 1,
 // 2, 3... Using the same seeds everywhere means two sets of upgrades are
-// compared on the same luck.
-function rollRuns(levels, player, count, depth) {
-  return rollHero(heroStats(levels, depth), player, count, depth);
+// compared on the same luck. `crafter`: the gear he's wearing (gear.mjs).
+function rollRuns(levels, player, count, depth, crafter = null) {
+  return rollHero(geared(heroStats(levels, depth), crafter), player, count, depth);
 }
 const rollHero = (stats, player, count, depth) => Array.from({ length: count }, (_, i) => simulateRun(stats, makeDice(i + 1), player, depth));
 
@@ -104,6 +114,9 @@ const rollHero = (stats, player, count, depth) => Array.from({ length: count }, 
 // bonus for the chance of beating the boss, since that's the goal. Two sets
 // that make the same hero (the same stats) are worth the same, so it's
 // remembered by the hero: the many look-alike nodes on sale share one try.
+// It's judged without gear: gear makes nearly every hero different, and
+// then nothing could be remembered (a node that helps without gear helps
+// with it too).
 const worthCache = new Map();
 export const forgetWorth = () => worthCache.clear(); // after changing BALANCE or MODEL (e.g. while tuning)
 function worth(levels, player, depth) {
@@ -155,8 +168,9 @@ export const SHOPPER_NAMES = Object.keys(SHOPPERS);
 
 // Plays one depth: one run after another, shopping in between, until its
 // boss is beaten. `start` is what's carried in from the depths before:
-// { levels, bank, minutes } (minutes so far, over the whole game).
-// `nextRun(levels, depth)` says how each run goes: one roll of the dice for
+// { levels, bank, minutes, crafter } (minutes so far, over the whole game;
+// crafter: his crafting, gear.mjs, or null without it).
+// `nextRun(levels, depth, crafter)` says how each run goes: one roll of the dice for
 // a playthrough, or the median of many for the golden rule's path. Each run
 // records `minutes` since this depth began.
 //
@@ -173,8 +187,10 @@ export const SHOPPER_NAMES = Object.keys(SHOPPERS);
 // buys, before the first run, and `startLevels` the hero it starts with.
 const FARM_AFTER = 3;
 const SAVE_RUNS = 4; // a stuck player saves for what he needs if it's within this many runs' gold
-export function playDepth(shopperName, player, nextRun, depth, start = { levels: startingLevels(), bank: 0, minutes: 0 }) {
+export function playDepth(shopperName, player, nextRun, depth, start = { levels: startingLevels(), bank: 0, minutes: 0, crafter: null }) {
   const shop = SHOPPERS[shopperName];
+  const { crafter } = start;
+  const soldBefore = crafter?.sold ?? 0;
   const levels = { ...start.levels };
   let bank = start.bank;
   let minutes = 0;
@@ -192,10 +208,12 @@ export function playDepth(shopperName, player, nextRun, depth, start = { levels:
   for (let n = 1; n <= MAX_RUNS; n++) {
     const farm = depth > 1 && runs.length >= FARM_AFTER
       && runs.slice(-FARM_AFTER).every((r) => r.ending !== "farm" && r.deepest < 1 && r.cheapest !== null && r.gold < r.cheapest);
-    const played = nextRun(levels, farm ? depth - 1 : depth);
+    const played = nextRun(levels, farm ? depth - 1 : depth, crafter);
     const run = farm ? { ...played, deepest: 0, ending: "farm" } : played;
     minutes += (run.wall + MODEL.hubPerRun) / 60;
     bank += run.gold;
+    // The forge and the merchant worked all the while; he sees to his gear.
+    if (crafter) bank += afterRun(crafter, played, farm ? depth - 1 : depth);
 
     // The golden rule, checked strictly: this run's gold alone (not savings)
     // must cover the cheapest thing on sale that helps here.
@@ -206,6 +224,9 @@ export function playDepth(shopperName, player, nextRun, depth, start = { levels:
       break; // its gold is spent at the next depth's prices (`opening`)
     }
 
+    // Crafting first: cheap upgrades, and recipes (or saving up for one).
+    const craft = crafter ? spend(crafter, bank, run.gold) : { spent: 0, saving: false };
+    bank -= craft.spent;
     const bought = [];
     // The clock stopped him again where it stopped him before (no deeper
     // than his best run, by a tenth of a room): anyone would buy more time
@@ -223,43 +244,47 @@ export function playDepth(shopperName, player, nextRun, depth, start = { levels:
     // it instead of spending on something else.
     const needed = first ? null : (atDoor ? moreDamage(levels, Infinity, depth) : null) ?? (stuck ? moreTime(levels, Infinity, depth) : null);
     const saving = needed && needed.price > bank && needed.price <= bank + SAVE_RUNS * run.gold;
-    for (let pick = saving ? null : first ?? shop(levels, bank, player, depth); pick; pick = shop(levels, bank, player, depth)) {
+    // (What he's stuck on comes before a recipe he's saving for.)
+    const hold = saving || (craft.saving && !first);
+    for (let pick = hold ? null : first ?? shop(levels, bank, player, depth); pick; pick = shop(levels, bank, player, depth)) {
       bank -= pick.price;
       levels[pick.node.id] = 1;
       bought.push(pick.node.name);
     }
     runs.push({ n, minutes, deepest: run.deepest, ending: run.ending, gold: run.gold, bank, cheapest, bought });
   }
-  return { depth, runs, levels, bank, minutes: start.minutes + minutes, opening, startLevels };
+  const gear = crafter ? { worn: describe(crafter), sold: crafter.sold - soldBefore } : null;
+  return { depth, runs, levels, bank, minutes: start.minutes + minutes, opening, startLevels, crafter, gear };
 }
 
 // Plays depths 1 to `upTo` in order, each starting from where the last
 // ended. `nextRunFor(depth)` gives the depth's nextRun. Returns the depths'
 // results, in order (it stops early at a depth whose boss never fell).
-function playGame(shopperName, player, nextRunFor, upTo) {
+// `gearSeed` seeds his crafting's dice.
+function playGame(shopperName, player, nextRunFor, upTo, gearSeed) {
   const depths = [];
-  let start = { levels: startingLevels(), bank: 0, minutes: 0 };
+  let start = { levels: startingLevels(), bank: 0, minutes: 0, crafter: GEAR ? newCrafter(makeDice(gearSeed)) : null };
   for (let depth = 1; depth <= upTo; depth++) {
     const result = playDepth(shopperName, player, nextRunFor(depth), depth, start);
     depths.push(result);
     if (result.runs.at(-1).ending !== "boss") break;
-    start = { levels: result.levels, bank: result.bank, minutes: result.minutes };
+    start = { levels: result.levels, bank: result.bank, minutes: result.minutes, crafter: result.crafter };
   }
   return depths;
 }
 
 // The golden rule's path: every run is the median run of its upgrades
 // (sorted by gold, the middle one of MEDIAN_OF rolls).
-const medianRun = (player) => (levels, depth) =>
-  rollRuns(levels, player, MEDIAN_OF, depth).sort((a, b) => a.gold - b.gold)[(MEDIAN_OF - 1) / 2];
+const medianRun = (player) => (levels, depth, crafter) =>
+  rollRuns(levels, player, MEDIAN_OF, depth, crafter).sort((a, b) => a.gold - b.gold)[(MEDIAN_OF - 1) / 2];
 export function goldenPath(shopperName, player = PLAYERS.efficient, upTo = DEPTHS) {
-  return playGame(shopperName, player, () => medianRun(player), upTo);
+  return playGame(shopperName, player, () => medianRun(player), upTo, 1);
 }
 
 // One playthrough with its own dice, from seed `seed`.
 export function playthrough(shopperName, player, seed, upTo = DEPTHS) {
   const dice = makeDice(1_000_003 * seed);
-  return playGame(shopperName, player, () => (levels, depth) => simulateRun(heroStats(levels, depth), dice, player, depth), upTo);
+  return playGame(shopperName, player, () => (levels, depth, crafter) => simulateRun(geared(heroStats(levels, depth), crafter), dice, player, depth), upTo, 2_000_003 * seed);
 }
 
 // ---- The report ------------------------------------------------------------
@@ -427,6 +452,11 @@ function summarize(shopperName, depth, path, typical, efficient, before) {
   lines.push(`  room 1 first cleared (median): run ${typical.roomOne.run} after ${typical.roomOne.upgrades} upgrades (typical player), `
     + `run ${efficient.roomOne.run} after ${efficient.roomOne.upgrades} (efficient)` + (depth === 1 ? "  [target 10-15 nodes]" : ""));
   if (before !== null) lines.push(`  room 1 with only the depths before it: cleared in ${fmt(100 * before)}% of runs (efficient player, golden path)`);
+  if (path.gear) {
+    const earned = path.runs.reduce((sum, r) => sum + r.gold, 0);
+    lines.push(`  gear when the boss fell: ${path.gear.worn.join("; ") || "none yet"}`);
+    lines.push(`  the merchant paid ${fmt(path.gear.sold)} gold in this depth (${fmt(100 * path.gear.sold / Math.max(1, earned))}% on top of the runs' gold)`);
+  }
   if (path.opening?.length) lines.push(`  bought before the first run (with the last boss's gold): ${path.opening.join(", ")}`);
   lines.push(`  first run: reached ${fmt(path.runs[0].deepest, 1)}, earned ${path.runs[0].gold} gold, bought ${path.runs[0].bought.join(", ") || "nothing"}`);
   lines.push(`  ring bought when the boss fell: ${boughtLevels} of ${allLevels} nodes`
@@ -462,6 +492,7 @@ function main(args) {
   const option = (name, fallback) => (args.includes(name) ? args[args.indexOf(name) + 1] : fallback);
   const seeds = Number(option("--seeds", 100));
   const upTo = Math.min(DEPTHS, Number(option("--depths", DEPTHS)));
+  if (args.includes("--no-gear")) setGear(false);
   const results = SHOPPER_NAMES.map((shopper) => ({
     shopper,
     path: goldenPath(shopper, PLAYERS.efficient, upTo),

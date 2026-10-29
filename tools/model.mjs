@@ -191,6 +191,8 @@ function pick(spawns, dice) {
 //            floor is collected (DESIGN.md section 6); coins a typical player
 //            leaves behind in an earlier room are lost.
 //   wall     real-world seconds it took (with cutscenes, without the hub)
+//   kills    how many of each monster he beat: { type: count } (the boss
+//            not counted), for the parts they drop (tools/gear.mjs)
 export function simulateRun(stats, dice, player = PLAYERS.efficient, depth = 1) {
   const DEPTH = BALANCE.depths[depth - 1];
   const SPECIAL = BALANCE.hits.special[depth - 1]; // hearts a special attack costs
@@ -214,6 +216,7 @@ export function simulateRun(stats, dice, player = PLAYERS.efficient, depth = 1) 
   let dryKills = 0;            // kills in a row without a heart (the bad-luck counter)
   let wall = 0;
   let gold = 0;
+  const kills = {};
 
   for (let sub = 1; sub <= 10; sub++) {
     // The pit offers its cards: he takes the mildest, and of those, the
@@ -335,7 +338,7 @@ export function simulateRun(stats, dice, player = PLAYERS.efficient, depth = 1) 
       gold += roomGold; // the coins on the floor are collected as the run ends
       wall += at;
       const progress = isBossRoom && full ? 1 : Math.min(1, xp / room.xp);
-      return { deepest: ending === "boss" ? 10 : sub - 1 + Math.min(progress, 0.999), ending, gold, wall };
+      return { deepest: ending === "boss" ? 10 : sub - 1 + Math.min(progress, 0.999), ending, gold, wall, kills };
     };
     // The bar fills: spawning stops at once, even for the monsters still on
     // their way up. In the boss room, the clock stops and the boss makes its
@@ -365,6 +368,7 @@ export function simulateRun(stats, dice, player = PLAYERS.efficient, depth = 1) 
     };
     const kill = (type) => {
       const def = BALANCE.mobs[type];
+      kills[type] = (kills[type] ?? 0) + 1;
       xp += def.xp * (1 + stats.xpBonus);
       if (!full && xp >= room.xp) fill();
       roomGold += coins((def.gold + stats.goldPerKill) * scale.gold * (1 + stats.goldBonus) * pactGold); // flat gold per kill on top
@@ -623,7 +627,7 @@ export function simulateRun(stats, dice, player = PLAYERS.efficient, depth = 1) 
     gold += Math.round(roomGold * player.gold);
     wall += t + MODEL.cutscenePerRoom;
     if (BALANCE.run.clockDuringCutscenes) clock -= MODEL.cutscenePerRoom; // the door and the fall-in
-    if (clock <= 0) return { deepest: sub, ending: "time", gold, wall };
+    if (clock <= 0) return { deepest: sub, ending: "time", gold, wall, kills };
     clock += stats.timePerSubDepth; // reached the next sub-depth
   }
 }
